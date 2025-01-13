@@ -64,7 +64,7 @@ export function useNews(celebrity: string, category: string | null) {
           acc[category] = (acc[category] || 0) + 1;
           return acc;
         }, {} as Record<string, number>);
-        console.log('Articles by category:', categoryCounts);
+        // console.log('Articles by category:', categoryCounts);
 
         const newsData = querySnapshot.docs.map((doc) => {
           const data = doc.data();
@@ -73,12 +73,12 @@ export function useNews(celebrity: string, category: string | null) {
             id: doc.id,
             ...data,
             // Ensure we're using formatted_date consistently
-            date: data.formatted_date || (data.date instanceof Timestamp ? 
+            date: data.formatted_date || (data.date instanceof Timestamp ?
               data.date.toDate().toLocaleDateString('ko-KR', {
                 year: 'numeric',
                 month: '2-digit',
                 day: '2-digit'
-              }).replace(/\./g, '') 
+              }).replace(/\./g, '')
               : data.date),
             // Ensure all our new fields are included
             topicHeader: data.topicHeader || '',
@@ -94,7 +94,7 @@ export function useNews(celebrity: string, category: string | null) {
           // First sort by isMainArticle (true comes first)
           if (a.isMainArticle && !b.isMainArticle) return -1;
           if (!a.isMainArticle && b.isMainArticle) return 1;
-          
+
           // Then sort by date
           return new Date(b.formatted_date).getTime() - new Date(a.formatted_date).getTime();
         });
