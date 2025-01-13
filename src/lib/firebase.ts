@@ -4,7 +4,7 @@ import { getFirestore } from 'firebase/firestore';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyA-J-s8gtZtnUI74TqcDnxBLobJY0349iQ",
+  apiKey: process.env.FIREBASE_API_KEY,
   authDomain: "ehco-85586.firebaseapp.com",
   projectId: "ehco-85586",
   storageBucket: "ehco-85586.firebasestorage.app",
