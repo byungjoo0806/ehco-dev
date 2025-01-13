@@ -10,6 +10,7 @@ interface SearchResult {
   id: string;
   name: string;
   koreanName: string;
+  profilePic: string;
 }
 
 export default function Header() {
@@ -64,10 +65,11 @@ export default function Header() {
         false;
 
       return matchesEnglishName || matchesKoreanName;
-    }).map(({ id, name, koreanName }) => ({
+    }).map(({ id, name, koreanName, profilePic }) => ({
       id,
       name,
-      koreanName
+      koreanName,
+      profilePic
     }));
 
     setSearchResults(filteredResults);
@@ -112,19 +114,22 @@ export default function Header() {
 
               {/* Search Results Dropdown */}
               {showResults && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg max-h-96 overflow-y-auto z-50">
+                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg min-w-52 max-h-96 overflow-y-auto z-50">
                   {searchResults.map((result) => (
                     <Link
                       key={result.id}
                       href={`/${result.id}`}
-                      className="block px-4 py-2 hover:bg-gray-100"
+                      className="flex flex-row justify-center items-center px-4 py-2 hover:bg-gray-100"
                       onClick={() => {
                         setShowResults(false);
                         setSearchQuery('');
                       }}
                     >
-                      <div className="font-medium">{result.name}</div>
-                      <div className="text-sm text-gray-500">{result.koreanName}</div>
+                      <img src={result.profilePic} alt={result.name} className='w-1/4 h-10 rounded-full' />
+                      <div className='w-3/4 pl-3'>
+                        <div className="font-medium">{result.name}</div>
+                        <div className="text-sm text-gray-500">{result.koreanName}</div>
+                      </div>
                     </Link>
                   ))}
                 </div>

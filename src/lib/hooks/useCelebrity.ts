@@ -9,6 +9,7 @@ interface Celebrity {
   birthDate: string | Timestamp;
   nationality: string;
   company: string;
+  profilePic: string;
 }
 
 interface ProcessedCelebrity {
@@ -17,6 +18,7 @@ interface ProcessedCelebrity {
   birthDate: string;
   nationality: string;
   company: string;
+  profilePic: string;
 }
 
 export function useCelebrity(celebrityId: string) {
