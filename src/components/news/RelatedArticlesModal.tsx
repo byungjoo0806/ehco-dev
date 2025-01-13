@@ -9,7 +9,7 @@ interface RelatedArticlesModalProps {
   isOpen: boolean;
   onClose: () => void;
   article: NewsItem | null;
-  celebrity: string;
+  celebrityId: string;
 }
 
 interface EnhancedNewsItem extends NewsItem {
@@ -20,9 +20,9 @@ export default function RelatedArticlesModal({
   isOpen,
   onClose,
   article,
-  celebrity
+  celebrityId
 }: RelatedArticlesModalProps) {
-  const { relatedArticles, loading, error } = useRelatedArticles(article, celebrity);
+  const { relatedArticles, loading, error } = useRelatedArticles(article, celebrityId);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

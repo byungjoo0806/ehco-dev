@@ -23,7 +23,7 @@ export interface NewsItem {
   mainArticleId?: string;
 }
 
-export function useNews(celebrity: string, category: string | null) {
+export function useNews(celebrityId: string, category: string | null) {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +40,7 @@ export function useNews(celebrity: string, category: string | null) {
         // Base query for all articles
         let q = query(
           collection(db, 'news'),
-          where('celebrity', '==', celebrity),
+          where('celebrity', '==', celebrityId),
           orderBy('formatted_date', 'desc')
         );
 
@@ -49,7 +49,7 @@ export function useNews(celebrity: string, category: string | null) {
           console.log('Adding category filter:', category);
           q = query(
             collection(db, 'news'),
-            where('celebrity', '==', celebrity),
+            where('celebrity', '==', celebrityId),
             where('mainCategory', '==', category),
             orderBy('formatted_date', 'desc')
           );
@@ -111,7 +111,7 @@ export function useNews(celebrity: string, category: string | null) {
     }
 
     fetchNews();
-  }, [celebrity, category]);
+  }, [celebrityId, category]);
 
   return { news, loading, error };
 }

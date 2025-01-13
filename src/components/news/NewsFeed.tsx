@@ -6,18 +6,20 @@ import CategoryFilter from './CategoryFilter';
 import type { NewsItem } from '@/lib/hooks/useNews';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import RelatedArticlesModal from './RelatedArticlesModal';
+import { useCelebrity } from '@/lib/hooks/useCelebrity';
 
 interface NewsFeedProps {
-  celebrity: string;
+  celebrityId: string;
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export default function NewsFeed({ celebrity }: NewsFeedProps) {
+export default function NewsFeed({ celebrityId }: NewsFeedProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
-  const { news, loading, error } = useNews(celebrity, selectedCategory);
+  const { news, loading, error } = useNews(celebrityId, selectedCategory);
+  const { celebrity } = useCelebrity(celebrityId);
 
   if (loading) {
     return (
@@ -89,6 +91,44 @@ export default function NewsFeed({ celebrity }: NewsFeedProps) {
       key={article.id}
       className="bg-white rounded-lg hover:shadow-md transition-all duration-200"
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "NewsArticle",
+            "headline": article.title,
+            "datePublished": article.formatted_date,
+            "dateModified": article.formatted_date,
+            "description": article.content,
+            "image": article.thumbnail,
+            "mainEntityOfPage": {
+              "@type": "WebPage",
+              "@id": `https://ehco.ai/news/${article.id}`
+            },
+            "author": {
+              "@type": "Organization",
+              "name": "EHCO"
+            },
+            "publisher": {
+              "@type": "Organization",
+              "name": "EHCO",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://ehco.ai/logo.png"
+              }
+            },
+            "articleSection": article.mainCategory,
+            "keywords": [
+              celebrity?.name,
+              celebrity?.koreanName,
+              article.mainCategory,
+              "Korean entertainment",
+              "K-pop news"
+            ]
+          })
+        }}
+      />
       <div
         className="flex gap-4 p-4 cursor-pointer"
         onClick={() => window.open(article.url, '_blank', 'noopener,noreferrer')}
@@ -173,8 +213,8 @@ export default function NewsFeed({ celebrity }: NewsFeedProps) {
             key={number}
             onClick={() => setCurrentPage(number)}
             className={`px-3 py-1 rounded-lg ${currentPage === number
-                ? 'bg-blue-600 text-white'
-                : 'hover:bg-gray-100'
+              ? 'bg-blue-600 text-white'
+              : 'hover:bg-gray-100'
               }`}
           >
             {number}
@@ -231,7 +271,7 @@ export default function NewsFeed({ celebrity }: NewsFeedProps) {
         isOpen={selectedArticle !== null}
         onClose={() => setSelectedArticle(null)}
         article={selectedArticle}
-        celebrity={celebrity}
+        celebrityId={celebrityId}
       />
     </div>
   );

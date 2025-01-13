@@ -8,21 +8,20 @@ interface ProfileInfoProps {
 
 export default function ProfileInfo({ celebrityId }: ProfileInfoProps) {
   const { celebrity, loading, error } = useCelebrity(celebrityId);
-  // console.log(celebrity);
 
   if (loading) {
     return (
-      <div className="bg-gray-50 py-8">
+      <div className="bg-gray-50 py-4 md:py-8">
         <div className="container mx-auto px-4">
-          <div className="flex gap-8">
-            <div className="w-32 h-32 rounded-full bg-gray-200 animate-pulse" />
-            <div className="flex-1">
-              <div className="h-8 bg-gray-200 rounded w-1/4 mb-4 animate-pulse" />
-              <div className="grid grid-cols-2 gap-y-2">
+          <div className="flex flex-col items-center md:flex-row md:items-start md:gap-8">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 animate-pulse mb-4 md:mb-0" />
+            <div className="flex-1 w-full md:w-auto">
+              <div className="h-8 bg-gray-200 rounded w-3/4 md:w-1/4 mb-4 animate-pulse mx-auto md:mx-0" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 max-w-sm mx-auto md:mx-0">
                 {[...Array(4)].map((_, i) => (
-                  <div key={i} className="col-span-2 flex gap-4">
-                    <div className="h-4 bg-gray-200 rounded w-1/4 animate-pulse" />
-                    <div className="h-4 bg-gray-200 rounded w-1/4 animate-pulse" />
+                  <div key={i} className="col-span-1 md:col-span-2 flex flex-col md:flex-row gap-2 md:gap-4">
+                    <div className="h-4 bg-gray-200 rounded w-full md:w-1/4 animate-pulse" />
+                    <div className="h-4 bg-gray-200 rounded w-full md:w-1/4 animate-pulse" />
                   </div>
                 ))}
               </div>
@@ -35,8 +34,8 @@ export default function ProfileInfo({ celebrityId }: ProfileInfoProps) {
 
   if (error || !celebrity) {
     return (
-      <div className="bg-gray-50 py-8">
-        <div className="container mx-auto px-4 text-red-500">
+      <div className="bg-gray-50 py-4 md:py-8">
+        <div className="container mx-auto px-4 text-red-500 text-center md:text-left">
           Error loading celebrity information
         </div>
       </div>
@@ -44,27 +43,35 @@ export default function ProfileInfo({ celebrityId }: ProfileInfoProps) {
   }
 
   return (
-    <div className="w-full bg-gray-50 py-8">
-      <div className="w-[60%] mx-auto px-4">
-        <div className="flex gap-8">
-          <div className="w-32 h-32 rounded-full bg-gray-200 overflow-hidden">
+    <div className="w-full bg-gray-50 py-4 md:py-8">
+      <div className="w-full md:w-[60%] mx-auto px-4">
+        <div className="flex flex-col items-center md:flex-row md:items-start md:gap-8">
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 mb-4 md:mb-0 overflow-hidden">
             <img src={celebrity.profilePic} alt={celebrity.name} className='w-full h-full object-cover' />
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold mb-4">{celebrity.name}</h1>
-            <div className="grid grid-cols-2 gap-y-2">
-              <div className="text-sm">Actual Name:</div>
-              <div className="text-sm">{celebrity.koreanName}</div>
-              <div className="text-sm">Birth of Date:</div>
-              <div className="text-sm">{celebrity.birthDate}</div>
-              <div className="text-sm">Nationality:</div>
-              <div className="text-sm">{celebrity.nationality}</div>
-              <div className="text-sm">Management Company:</div>
-              {celebrity.company ? (
-                <div className="text-sm">{celebrity.company}</div>
-              ) : (
-                <div className="text-sm">N/A</div>
-              )}
+          <div className="flex-1 w-full md:w-auto">
+            <h1 className="text-xl md:text-2xl font-bold mb-4 text-center md:text-left">{celebrity.name}</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 max-w-sm mx-auto md:mx-0">
+              <div className='flex justify-between'>
+                <div className="w-[45%] text-sm text-end md:text-start font-medium md:font-normal">Actual Name:</div>
+                <div className="w-[45%] text-sm text-gray-600">{celebrity.koreanName}</div>
+              </div>
+              <div className='flex justify-between'>
+                <div className="w-[45%] text-sm text-end md:text-start font-medium md:font-normal">Birth of Date:</div>
+                <div className="w-[45%] text-sm text-gray-600">{celebrity.birthDate}</div>
+              </div>
+              <div className='flex justify-between'>
+                <div className="w-[45%] text-sm text-end md:text-start font-medium md:font-normal">Nationality:</div>
+                <div className="w-[45%] text-sm text-gray-600">{celebrity.nationality}</div>
+              </div>
+              <div className='flex justify-between'>
+                <div className="w-[45%] text-sm text-end md:text-start font-medium md:font-normal">Management:</div>
+                {celebrity.company ? (
+                  <div className="w-[45%] text-sm text-gray-600">{celebrity.company}</div>
+                ) : (
+                  <div className="w-[45%] text-sm text-gray-600">N/A</div>
+                )}
+              </div>
             </div>
           </div>
         </div>
