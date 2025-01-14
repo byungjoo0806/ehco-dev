@@ -70,7 +70,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="border-b">
+      <header className="border-b bg-white">
         <div className="container mx-auto px-4 h-16 flex items-center">
           {/* Left section with menu */}
           <div className="flex-none w-1/3">
@@ -85,8 +85,8 @@ export default function Header() {
           </div>
 
           {/* Right section with search */}
-          <div className="w-1/3 flex-none sm:w-36 md:w-48" ref={searchRef}>
-            <div className="relative flex flex-row items-center">
+          <div className="w-1/3 flex justify-end" ref={searchRef}>
+            <div className="sm:w-2/3 relative flex flex-row items-center">
               <Search className="absolute left-2 text-gray-400" size={16} />
               {searchQuery && (
                 <X
