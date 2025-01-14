@@ -46,7 +46,7 @@ export function useNews(celebrityId: string, category: string | null) {
 
         // Add category filter if selected
         if (category) {
-          console.log('Adding category filter:', category);
+          // console.log('Adding category filter:', category);
           q = query(
             collection(db, 'news'),
             where('celebrity', '==', celebrityId),

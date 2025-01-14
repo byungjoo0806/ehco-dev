@@ -71,7 +71,7 @@ export default function Header() {
   return (
     <>
       <header className="border-b">
-        <div className="container mx-auto px-2 sm:px-4 h-16 flex items-center">
+        <div className="container mx-auto px-4 h-16 flex items-center">
           {/* Left section with menu */}
           <div className="flex-none w-1/3">
             <Menu onClick={() => setIsOpen(!isOpen)} className="cursor-pointer" />

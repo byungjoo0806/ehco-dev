@@ -106,7 +106,7 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
           <div>
             <p className="text-sm font-medium my-2">Filter</p>
             <div className="flex flex-wrap items-center gap-2">
-              {filters.map((filter) => (
+              {/* {filters.map((filter) => (
                 <button
                   key={filter}
                   onClick={() => handleSortClick(filter)}
@@ -118,7 +118,8 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
                 >
                   {filter}
                 </button>
-              ))}
+              ))} */}
+              {filterButtons}
             </div>
           </div>
         </div>

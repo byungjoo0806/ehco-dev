@@ -144,7 +144,7 @@ export default function NewsFeed({ celebrityId, selectedCategory, sortOrder }: N
         }}
       />
       <div
-        className="flex flex-col items-center md:flex-row gap-4 p-4 cursor-pointer"
+        className="flex flex-col items-center md:flex-row gap-4 p-4 cursor-pointer border border-slate-200 rounded-lg shadow-md"
         onClick={() => window.open(article.url, '_blank', 'noopener,noreferrer')}
       >
         {article.thumbnail && (
@@ -262,9 +262,11 @@ export default function NewsFeed({ celebrityId, selectedCategory, sortOrder }: N
     <div>
       <div className="flex justify-between items-center my-6">
         <h2 className="text-lg font-medium">Timeline</h2>
-        <span className="text-sm text-gray-500">
-          Showing {startIndex + 1}-{Math.min(endIndex, allArticles.length)} of {allArticles.length} articles
-        </span>
+        {allArticles.length > 0 && (
+          <span className="text-sm text-gray-500">
+            Showing {startIndex + 1}-{Math.min(endIndex, allArticles.length)} of {allArticles.length} articles
+          </span>
+        )}
       </div>
 
       <div className="space-y-8">
