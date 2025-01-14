@@ -100,90 +100,108 @@ export default function NewsFeed({ celebrityId, selectedCategory, sortOrder }: N
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentArticles = sortedArticles.slice(startIndex, endIndex);
 
-  const renderArticle = (article: NewsItem & { relatedArticlesCount: number }) => (
-    <div
-      key={article.id}
-      className="bg-white rounded-lg hover:shadow-md transition-all duration-200 flex flex-col"
-    >
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "NewsArticle",
-            "headline": article.title,
-            "datePublished": article.formatted_date,
-            "dateModified": article.formatted_date,
-            "description": article.content,
-            "image": article.thumbnail,
-            "mainEntityOfPage": {
-              "@type": "WebPage",
-              "@id": `https://ehco.ai/news/${article.id}`
-            },
-            "author": {
-              "@type": "Organization",
-              "name": "EHCO"
-            },
-            "publisher": {
-              "@type": "Organization",
-              "name": "EHCO",
-              "logo": {
-                "@type": "ImageObject",
-                "url": "https://ehco.ai/logo.png"
-              }
-            },
-            "articleSection": article.mainCategory,
-            "keywords": [
-              celebrity?.name,
-              celebrity?.koreanName,
-              article.mainCategory,
-              "Korean entertainment",
-              "K-pop news"
-            ]
-          })
-        }}
-      />
+  const renderArticle = (article: NewsItem & { relatedArticlesCount: number }) => {
+    const handleArticleClick = (e: React.MouseEvent) => {
+      // Check if text is being selected
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) {
+        return; // Don't open the link if text is being selected
+      }
+
+      // Check if the user was dragging
+      if (e.detail === 0) {
+        return; // Don't open the link if the user was dragging
+      }
+
+      window.open(article.url, '_blank', 'noopener,noreferrer');
+    };
+
+    return (
       <div
-        className="flex flex-col items-center md:flex-row gap-4 p-4 cursor-pointer border border-slate-200 rounded-lg shadow-md"
-        onClick={() => window.open(article.url, '_blank', 'noopener,noreferrer')}
+        key={article.id}
+        className="bg-white rounded-lg hover:shadow-md transition-all duration-200 flex flex-col"
       >
-        {article.thumbnail && (
-          <img
-            src={article.thumbnail}
-            alt={article.title}
-            className="w-32 h-24 object-cover rounded-l-lg flex-shrink-0"
-          />
-        )}
-        <div className="flex-1">
-          <h4 className="font-medium mb-1 text-lg hover:text-blue-600 transition-colors">
-            {article.title}
-          </h4>
-          <div className="flex items-center space-x-2">
-            <p className="text-sm text-gray-600">
-              {article.source} • {article.formatted_date}
-            </p>
-            <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-600">
-              {article.mainCategory}
-            </span>
-          </div>
-          <p className="text-sm text-gray-700 mt-2 line-clamp-2">
-            {article.content}
-          </p>
-        </div>
-      </div>
-      {article.relatedArticlesCount > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "NewsArticle",
+              "headline": article.title,
+              "datePublished": article.formatted_date,
+              "dateModified": article.formatted_date,
+              "description": article.content,
+              "image": article.thumbnail,
+              "mainEntityOfPage": {
+                "@type": "WebPage",
+                "@id": `https://ehco.ai/news/${article.id}`
+              },
+              "author": {
+                "@type": "Organization",
+                "name": "EHCO"
+              },
+              "publisher": {
+                "@type": "Organization",
+                "name": "EHCO",
+                "logo": {
+                  "@type": "ImageObject",
+                  "url": "https://ehco.ai/logo.png"
+                }
+              },
+              "articleSection": article.mainCategory,
+              "keywords": [
+                celebrity?.name,
+                celebrity?.koreanName,
+                article.mainCategory,
+                "Korean entertainment",
+                "K-pop news"
+              ]
+            })
+          }}
+        />
         <div
-          className="border-t border-gray-100 p-3 flex items-center justify-end cursor-pointer hover:bg-gray-50 rounded-b-lg group"
-          onClick={() => setSelectedArticle(article)}
+          className="flex flex-col items-center md:flex-row gap-4 p-4 cursor-pointer border border-slate-200 rounded-lg shadow-md"
+          onClick={handleArticleClick}
         >
-          <span className="text-sm text-gray-600 mr-2 group-hover:text-blue-600">
-            View {article.relatedArticlesCount} related articles
-          </span>
-          <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600" />
+          {article.thumbnail && (
+            <img
+              src={article.thumbnail}
+              alt={article.title}
+              className="w-32 h-24 object-cover rounded-l-lg flex-shrink-0"
+              draggable={false}
+            />
+          )}
+          <div className="flex-1">
+            <h4 className="font-medium mb-1 text-lg hover:text-blue-600 transition-colors">
+              {article.title}
+            </h4>
+            <div className="flex items-center space-x-2">
+              <p className="text-sm text-gray-600">
+                {article.source} • {article.formatted_date}
+              </p>
+              <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-600">
+                {article.mainCategory}
+              </span>
+            </div>
+            <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+              {article.content}
+            </p>
+          </div>
         </div>
-      )}
-    </div>
-  );
+        {article.relatedArticlesCount > 0 && (
+          <div
+            className="border-t border-gray-100 p-3 flex items-center justify-end cursor-pointer hover:bg-gray-50 rounded-b-lg group"
+            onClick={() => setSelectedArticle(article)}
+          >
+            <span className="text-sm text-gray-600 mr-2 group-hover:text-blue-600">
+              View {article.relatedArticlesCount} related articles
+            </span>
+            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-blue-600" />
+          </div>
+        )}
+      </div>
+    )
+  };
 
   const renderPagination = () => {
     const pageNumbers = [];
