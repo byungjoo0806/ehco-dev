@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 interface CategoryFilterProps {
@@ -10,10 +10,15 @@ interface CategoryFilterProps {
   currentSort: 'newest' | 'oldest';
 }
 
-const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selectedCategory, onSortChange, currentSort }: CategoryFilterProps) {
+const CategoryFilter = memo(function CategoryFilter({
+  onCategoryChange,
+  selectedCategory,
+  onSortChange,
+  currentSort
+}: CategoryFilterProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
-  // Memoize the static arrays
+
   const categories = useMemo(() =>
     ['All', 'Music', 'Acting', 'Promotion', 'Social', 'Controversy'],
     []
@@ -24,13 +29,77 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
     []
   );
 
+  // Initialize from URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const categoryParam = params.get('category');
+      const sortParam = params.get('sort') as 'newest' | 'oldest';
+
+      // Set initial category if it exists in URL
+      if (categoryParam && categoryParam !== 'All') {
+        onCategoryChange(categoryParam);
+      }
+
+      // Set initial sort if it exists in URL
+      if (sortParam) {
+        onSortChange(sortParam);
+      }
+
+      // Set initial URL if parameters don't exist
+      if (!params.has('category') || !params.has('sort')) {
+        params.set('category', selectedCategory || 'All');
+        params.set('sort', currentSort);
+        window.history.replaceState({}, '', `${window.location.pathname}?${params.toString()}`);
+      }
+    }
+  }, []);
+
   const handleCategoryClick = (category: string) => {
-    onCategoryChange(category === "All" ? null : category);
+    const newCategory = category === "All" ? null : category;
+    onCategoryChange(newCategory);
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams();
+      params.set('category', category);
+
+      const currentParams = new URLSearchParams(window.location.search);
+      ['sort', 'page'].forEach(param => {
+        if (currentParams.has(param)) {
+          params.append(param, currentParams.get(param)!);
+        }
+      });
+
+      window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+    }
+
     setIsDropdownOpen(false);
   };
 
   const handleSortClick = (filter: string) => {
-    onSortChange(filter === 'Newest First' ? 'newest' : 'oldest');
+    const newSort = filter === 'Newest First' ? 'newest' : 'oldest';
+    onSortChange(newSort);
+
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams();
+      const currentParams = new URLSearchParams(window.location.search);
+
+      // Preserve category first if it exists
+      if (currentParams.has('category')) {
+        params.set('category', currentParams.get('category')!);
+      }
+
+      // Set sort
+      params.set('sort', newSort);
+
+      // Add page last if it exists
+      if (currentParams.has('page')) {
+        params.set('page', currentParams.get('page')!);
+      }
+
+      window.history.pushState({}, '', `${window.location.pathname}?${params.toString()}`);
+    }
+    setIsSortDropdownOpen(false);
   };
 
   // Memoize the derived values
@@ -48,7 +117,7 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
     categories.map((category) => (
       <button
         key={category}
-        onClick={() => handleCategoryClick(category)} // Use handleCategoryClick instead
+        onClick={() => handleCategoryClick(category)}
         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors 
           ${(category === 'All' && !selectedCategory) || category === selectedCategory
             ? 'bg-black text-white'
@@ -57,15 +126,14 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
         {category}
       </button>
     )),
-    [categories, selectedCategory, handleCategoryClick] // Add handleCategoryClick to dependencies
+    [categories, selectedCategory]
   );
 
-  // Memoize the filter buttons
   const filterButtons = useMemo(() =>
     filters.map((filter) => (
       <button
         key={filter}
-        onClick={() => onSortChange(filter === 'Newest First' ? 'newest' : 'oldest')}
+        onClick={() => handleSortClick(filter)}
         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors 
           ${(filter === 'Newest First' && currentSort === 'newest') ||
             (filter === 'Oldest First' && currentSort === 'oldest')
@@ -75,7 +143,7 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
         {filter}
       </button>
     )),
-    [filters, currentSort, onSortChange]
+    [filters, currentSort]
   );
 
   return (
@@ -87,18 +155,6 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
           <div>
             <p className="text-sm font-medium mb-2">Category</p>
             <div className="flex flex-wrap items-center gap-2">
-              {/* {categories.map((category) => (
-                <button
-                  key={category}
-                  onClick={() => handleCategoryClick(category)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors 
-                    ${(category === 'All' && !selectedCategory) || category === selectedCategory
-                      ? 'bg-black text-white'
-                      : 'bg-gray-100 hover:bg-gray-200'}`}
-                >
-                  {category}
-                </button>
-              ))} */}
               {categoryButtons}
             </div>
           </div>
@@ -106,19 +162,6 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
           <div>
             <p className="text-sm font-medium my-2">Filter</p>
             <div className="flex flex-wrap items-center gap-2">
-              {/* {filters.map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => handleSortClick(filter)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors 
-                    ${(filter === 'Newest First' && currentSort === 'newest') ||
-                      (filter === 'Oldest First' && currentSort === 'oldest')
-                      ? 'bg-black text-white'
-                      : 'bg-gray-100 hover:bg-gray-200'}`}
-                >
-                  {filter}
-                </button>
-              ))} */}
               {filterButtons}
             </div>
           </div>
@@ -145,9 +188,10 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
                 <button
                   key={category}
                   onClick={() => handleCategoryClick(category)}
-                  className={`w-full px-4 py-2 text-left text-sm transition-colors ${(category === 'All' && !selectedCategory) || category === selectedCategory
-                    ? 'bg-gray-100 font-medium'
-                    : 'hover:bg-gray-50'
+                  className={`w-full px-4 py-2 text-left text-sm transition-colors 
+                    ${(category === 'All' && !selectedCategory) || category === selectedCategory
+                      ? 'bg-gray-100 font-medium'
+                      : 'hover:bg-gray-50'
                     } ${category !== categories[categories.length - 1] ? 'border-b border-gray-100' : ''}`}
                 >
                   {category}
@@ -156,7 +200,6 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
             </div>
           )}
 
-          {/* Overlay to close dropdown when clicking outside */}
           {isDropdownOpen && (
             <div
               className="fixed inset-0 z-40 bg-transparent"
@@ -180,16 +223,13 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
                 {filters.map((filter) => (
                   <button
                     key={filter}
-                    onClick={() => {
-                      handleSortClick(filter);
-                      setIsSortDropdownOpen(false);  // Close dropdown after selection
-                    }}
+                    onClick={() => handleSortClick(filter)}
                     className={`w-full px-4 py-2 text-left text-sm transition-colors 
-            ${(filter === 'Newest First' && currentSort === 'newest') ||
+                      ${(filter === 'Newest First' && currentSort === 'newest') ||
                         (filter === 'Oldest First' && currentSort === 'oldest')
                         ? 'bg-gray-100 font-medium'
                         : 'hover:bg-gray-50'} 
-            ${filter !== filters[filters.length - 1] ? 'border-b border-gray-100' : ''}`}
+                      ${filter !== filters[filters.length - 1] ? 'border-b border-gray-100' : ''}`}
                   >
                     {filter}
                   </button>
