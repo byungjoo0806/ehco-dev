@@ -44,12 +44,11 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
     [currentSort]
   );
 
-  // Memoize the category buttons
   const categoryButtons = useMemo(() =>
     categories.map((category) => (
       <button
         key={category}
-        onClick={() => onCategoryChange(category === "All" ? null : category)}
+        onClick={() => handleCategoryClick(category)} // Use handleCategoryClick instead
         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors 
           ${(category === 'All' && !selectedCategory) || category === selectedCategory
             ? 'bg-black text-white'
@@ -58,11 +57,11 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
         {category}
       </button>
     )),
-    [categories, selectedCategory, onCategoryChange]
+    [categories, selectedCategory, handleCategoryClick] // Add handleCategoryClick to dependencies
   );
 
   // Memoize the filter buttons
-  const filterButtons = useMemo(() => 
+  const filterButtons = useMemo(() =>
     filters.map((filter) => (
       <button
         key={filter}
@@ -177,20 +176,23 @@ const CategoryFilter = memo(function CategoryFilter({ onCategoryChange, selected
           {isSortDropdownOpen && (
             <>
               <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-100 z-50 w-[200px]">
-                <button
-                  onClick={() => handleSortClick('newest')}
-                  className={`w-full px-4 py-2 text-left text-sm transition-colors ${currentSort === 'newest' ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'
-                    } border-b border-gray-100`}
-                >
-                  Newest First
-                </button>
-                <button
-                  onClick={() => handleSortClick('oldest')}
-                  className={`w-full px-4 py-2 text-left text-sm transition-colors ${currentSort === 'oldest' ? 'bg-gray-100 font-medium' : 'hover:bg-gray-50'
-                    }`}
-                >
-                  Oldest First
-                </button>
+                {filters.map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => {
+                      handleSortClick(filter);
+                      setIsSortDropdownOpen(false);  // Close dropdown after selection
+                    }}
+                    className={`w-full px-4 py-2 text-left text-sm transition-colors 
+            ${(filter === 'Newest First' && currentSort === 'newest') ||
+                        (filter === 'Oldest First' && currentSort === 'oldest')
+                        ? 'bg-gray-100 font-medium'
+                        : 'hover:bg-gray-50'} 
+            ${filter !== filters[filters.length - 1] ? 'border-b border-gray-100' : ''}`}
+                  >
+                    {filter}
+                  </button>
+                ))}
               </div>
               <div
                 className="fixed inset-0 z-40 bg-transparent"

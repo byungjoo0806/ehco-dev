@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useNews } from '@/lib/hooks/useNews';
 import CategoryFilter from './CategoryFilter';
 import type { NewsItem } from '@/lib/hooks/useNews';
@@ -10,15 +10,15 @@ import { useCelebrity } from '@/lib/hooks/useCelebrity';
 
 interface NewsFeedProps {
   celebrityId: string;
+  selectedCategory: string | null;
+  sortOrder: 'newest' | 'oldest';
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export default function NewsFeed({ celebrityId }: NewsFeedProps) {
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+export default function NewsFeed({ celebrityId, selectedCategory, sortOrder }: NewsFeedProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const { news, loading, error } = useNews(celebrityId, selectedCategory);
   const { celebrity } = useCelebrity(celebrityId);
 
@@ -260,13 +260,6 @@ export default function NewsFeed({ celebrityId }: NewsFeedProps) {
 
   return (
     <div>
-      <CategoryFilter
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-        currentSort={sortOrder}
-        onSortChange={setSortOrder}
-      />
-
       <div className="flex justify-between items-center my-6">
         <h2 className="text-lg font-medium">Timeline</h2>
         <span className="text-sm text-gray-500">

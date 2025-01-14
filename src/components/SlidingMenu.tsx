@@ -32,7 +32,7 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                 <div className="p-6">
                     <nav className="space-y-4">
                         {celebrities.map((item) => (
-                            <Link key={item.id} href={item.id} className='block p-2 hover:bg-gray-100 rounded-lg'>
+                            <Link key={item.id} href={item.id} onClick={onClose} className='block p-2 hover:bg-gray-100 rounded-lg'>
                                 {item.name}
                             </Link>
                         ))}

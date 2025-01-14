@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Metadata, Viewport } from 'next';
+import NewsFeedContainer from '@/components/news/NewsFeedContainer';
 
 interface CelebrityPageProps {
   params: Promise<{
@@ -104,9 +105,7 @@ export default async function CelebrityPage({ params }: CelebrityPageProps) {
     <Suspense fallback={<div>Loading...</div>}>
       <div className='w-full'>
         <ProfileInfo celebrityId={celebrityId} />
-        <div className="w-[90%] md:w-[75%] lg:w-[60%] mx-auto px-4 py-8">
-          <NewsFeed celebrityId={celebrityId} />
-        </div>
+        <NewsFeedContainer celebrityId={celebrityId} />
       </div>
     </Suspense>
   );
