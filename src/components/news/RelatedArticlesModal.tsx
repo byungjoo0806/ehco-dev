@@ -24,7 +24,6 @@ export default function RelatedArticlesModal({
   relatedArticleIds
 }: RelatedArticlesModalProps) {
   const { newsItems, isLoading, hasError, validNewsItems } = useNewsItems(relatedArticleIds);
-  console
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
