@@ -104,7 +104,7 @@ export default async function CelebrityPage({ params }: CelebrityPageProps) {
     <Suspense fallback={<div>Loading...</div>}>
       <div className='w-full'>
         <ProfileInfo celebrityId={celebrityId} />
-        <div className="w-[60%] mx-auto px-4 py-8">
+        <div className="w-[90%] md:w-[75%] lg:w-[60%] mx-auto px-4 py-8">
           <NewsFeed celebrityId={celebrityId} />
         </div>
       </div>

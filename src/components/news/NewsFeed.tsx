@@ -18,6 +18,7 @@ export default function NewsFeed({ celebrityId }: NewsFeedProps) {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedArticle, setSelectedArticle] = useState<NewsItem | null>(null);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const { news, loading, error } = useNews(celebrityId, selectedCategory);
   const { celebrity } = useCelebrity(celebrityId);
 
@@ -67,6 +68,12 @@ export default function NewsFeed({ celebrityId }: NewsFeedProps) {
     }
   });
 
+  // Store related articles for each main article
+  const relatedArticlesMap: { [key: string]: NewsItem[] } = {};
+  Object.entries(groupedArticles).forEach(([mainArticleId, group]) => {
+    relatedArticlesMap[mainArticleId] = group.filter(article => !article.isMainArticle);
+  });
+
   // Prepare articles for pagination
   const allArticles = [
     ...Object.entries(groupedArticles).map(([_id, group]) => {
@@ -80,16 +87,23 @@ export default function NewsFeed({ celebrityId }: NewsFeedProps) {
     }))
   ].filter((article): article is NewsItem & { relatedArticlesCount: number } => article !== null);
 
+  // Add this sorting logic before the pagination calculation
+  const sortedArticles = [...allArticles].sort((a, b) => {
+    const dateA = new Date(a.formatted_date);
+    const dateB = new Date(b.formatted_date);
+    return sortOrder === 'newest' ? dateB.getTime() - dateA.getTime() : dateA.getTime() - dateB.getTime();
+  });
+
   // Calculate pagination
-  const totalPages = Math.ceil(allArticles.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(sortedArticles.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentArticles = allArticles.slice(startIndex, endIndex);
+  const currentArticles = sortedArticles.slice(startIndex, endIndex);
 
   const renderArticle = (article: NewsItem & { relatedArticlesCount: number }) => (
     <div
       key={article.id}
-      className="bg-white rounded-lg hover:shadow-md transition-all duration-200"
+      className="bg-white rounded-lg hover:shadow-md transition-all duration-200 flex flex-col"
     >
       <script
         type="application/ld+json"
@@ -130,7 +144,7 @@ export default function NewsFeed({ celebrityId }: NewsFeedProps) {
         }}
       />
       <div
-        className="flex gap-4 p-4 cursor-pointer"
+        className="flex flex-col items-center md:flex-row gap-4 p-4 cursor-pointer"
         onClick={() => window.open(article.url, '_blank', 'noopener,noreferrer')}
       >
         {article.thumbnail && (
@@ -246,7 +260,12 @@ export default function NewsFeed({ celebrityId }: NewsFeedProps) {
 
   return (
     <div>
-      <CategoryFilter onCategoryChange={setSelectedCategory} />
+      <CategoryFilter
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        currentSort={sortOrder}
+        onSortChange={setSortOrder}
+      />
 
       <div className="flex justify-between items-center my-6">
         <h2 className="text-lg font-medium">Timeline</h2>
@@ -271,7 +290,7 @@ export default function NewsFeed({ celebrityId }: NewsFeedProps) {
         isOpen={selectedArticle !== null}
         onClose={() => setSelectedArticle(null)}
         article={selectedArticle}
-        celebrityId={celebrityId}
+        relatedArticleIds={selectedArticle?.relatedArticles ?? []}
       />
     </div>
   );

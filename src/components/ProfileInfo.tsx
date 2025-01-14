@@ -11,8 +11,8 @@ export default function ProfileInfo({ celebrityId }: ProfileInfoProps) {
 
   if (loading) {
     return (
-      <div className="bg-gray-50 py-4 md:py-8">
-        <div className="container mx-auto px-4">
+      <div className="w-full bg-gray-50 py-4 md:py-8">
+        <div className="w-full md:w-[60%] mx-auto px-4">
           <div className="flex flex-col items-center md:flex-row md:items-start md:gap-8">
             <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 animate-pulse mb-4 md:mb-0" />
             <div className="flex-1 w-full md:w-auto">
@@ -51,7 +51,7 @@ export default function ProfileInfo({ celebrityId }: ProfileInfoProps) {
           </div>
           <div className="flex-1 w-full md:w-auto">
             <h1 className="text-xl md:text-2xl font-bold mb-4 text-center md:text-left">{celebrity.name}</h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 max-w-sm mx-auto md:mx-0">
+            <div className="grid grid-cols-1 gap-y-2 max-w-sm mx-auto md:mx-0">
               <div className='flex justify-between'>
                 <div className="w-[45%] text-sm text-end md:text-start font-medium md:font-normal">Actual Name:</div>
                 <div className="w-[45%] text-sm text-gray-600">{celebrity.koreanName}</div>

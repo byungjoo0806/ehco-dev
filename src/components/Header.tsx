@@ -23,11 +23,6 @@ export default function Header() {
   const { celebrities, loading } = useAllCelebrities();
 
   useEffect(() => {
-    console.log('Loaded celebrities:', celebrities);
-  }, [celebrities]);
-
-  // Handle clicks outside of search results
-  useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowResults(false);
@@ -38,7 +33,6 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Search functionality
   const handleSearch = (query: string) => {
     setSearchQuery(query);
 
@@ -54,12 +48,10 @@ export default function Header() {
       const searchTerm = query;
       const searchTermLower = searchTerm.toLowerCase();
 
-      // For English name, use case-insensitive comparison with null check
       const matchesEnglishName = celebrity.name ?
         celebrity.name.toLowerCase().includes(searchTermLower) :
         false;
 
-      // For Korean name, use direct comparison with null check
       const matchesKoreanName = celebrity.koreanName ?
         celebrity.koreanName.includes(searchTerm) :
         false;
@@ -79,24 +71,27 @@ export default function Header() {
   return (
     <>
       <header className="border-b">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-center">
-          <div className="w-1/3 flex justify-start items-center pl-10">
+        <div className="container mx-auto px-2 sm:px-4 h-16 flex items-center">
+          {/* Left section with menu */}
+          <div className="flex-none w-1/3">
             <Menu onClick={() => setIsOpen(!isOpen)} className="cursor-pointer" />
           </div>
 
-          <div className="w-1/3 flex justify-center items-center">
-            <Link href="/" className="text-2xl font-bold text-key-color">
+          {/* Center section with logo */}
+          <div className="w-1/3 flex-1 flex justify-center">
+            <Link href="/" className="text-xl sm:text-2xl font-bold text-key-color">
               EHCO
             </Link>
           </div>
 
-          <div className="w-1/3 flex justify-end" ref={searchRef}>
-            <div className="w-[70%] relative flex flex-row items-center">
-              <Search className="absolute left-3 text-gray-400" size={20} />
+          {/* Right section with search */}
+          <div className="w-1/3 flex-none sm:w-36 md:w-48" ref={searchRef}>
+            <div className="relative flex flex-row items-center">
+              <Search className="absolute left-2 text-gray-400" size={16} />
               {searchQuery && (
                 <X
-                  className="absolute right-3 text-gray-400 cursor-pointer"
-                  size={20}
+                  className="absolute right-2 text-gray-400 cursor-pointer"
+                  size={16}
                   onClick={() => {
                     setSearchQuery('');
                     setSearchResults([]);
@@ -108,27 +103,27 @@ export default function Header() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search Echo"
-                className="pl-10 pr-10 py-2 border rounded-lg w-full"
+                placeholder="Search"
+                className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm"
               />
 
               {/* Search Results Dropdown */}
               {showResults && searchResults.length > 0 && (
-                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg min-w-52 max-h-96 overflow-y-auto z-50">
+                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 max-h-96 overflow-y-auto z-50">
                   {searchResults.map((result) => (
                     <Link
                       key={result.id}
                       href={`/${result.id}`}
-                      className="flex flex-row justify-center items-center px-4 py-2 hover:bg-gray-100"
+                      className="flex flex-row items-center px-3 py-2 hover:bg-gray-100"
                       onClick={() => {
                         setShowResults(false);
                         setSearchQuery('');
                       }}
                     >
-                      <img src={result.profilePic} alt={result.name} className='w-1/4 h-10 rounded-full' />
-                      <div className='w-3/4 pl-3'>
-                        <div className="font-medium">{result.name}</div>
-                        <div className="text-sm text-gray-500">{result.koreanName}</div>
+                      <img src={result.profilePic} alt={result.name} className='w-8 h-8 rounded-full' />
+                      <div className='flex-1 pl-2'>
+                        <div className="font-medium text-sm">{result.name}</div>
+                        <div className="text-xs text-gray-500">{result.koreanName}</div>
                       </div>
                     </Link>
                   ))}
@@ -137,8 +132,8 @@ export default function Header() {
 
               {/* No Results State */}
               {showResults && searchQuery && searchResults.length === 0 && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50">
-                  <div className="px-4 py-3 text-gray-500 text-center">
+                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
+                  <div className="px-3 py-3 text-sm text-gray-500 text-center">
                     No results found
                   </div>
                 </div>
@@ -146,8 +141,8 @@ export default function Header() {
 
               {/* Loading State */}
               {loading && searchQuery && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50">
-                  <div className="px-4 py-3 text-gray-500 text-center">
+                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
+                  <div className="px-3 py-3 text-sm text-gray-500 text-center">
                     Loading...
                   </div>
                 </div>

@@ -4,12 +4,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useRelatedArticles } from '@/lib/hooks/useRelatedArticles';
 import { NewsItem } from '@/lib/hooks/useNews';
 import Link from 'next/link';
+import { useNewsItems } from '@/lib/hooks/useNewsItem';
 
 interface RelatedArticlesModalProps {
   isOpen: boolean;
   onClose: () => void;
   article: NewsItem | null;
-  celebrityId: string;
+  relatedArticleIds: string[];
 }
 
 interface EnhancedNewsItem extends NewsItem {
@@ -20,12 +21,13 @@ export default function RelatedArticlesModal({
   isOpen,
   onClose,
   article,
-  celebrityId
+  relatedArticleIds
 }: RelatedArticlesModalProps) {
-  const { relatedArticles, loading, error } = useRelatedArticles(article, celebrityId);
+  const { newsItems, isLoading, hasError, validNewsItems } = useNewsItems(relatedArticleIds);
+  console
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Related Articles</DialogTitle>
@@ -34,58 +36,49 @@ export default function RelatedArticlesModal({
           </DialogDescription>
         </DialogHeader>
 
-        {loading && (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+        {isLoading && (
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={`skeleton-${i}`} className="animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                <div className="h-3 bg-gray-100 rounded w-1/2" />
+              </div>
+            ))}
           </div>
         )}
 
-        {error && (
-          <div className="text-center py-4 text-red-500">{error}</div>
+        {hasError && (
+          <div className="text-red-500 text-center py-4">
+            Error loading related articles
+          </div>
         )}
 
-        {!loading && !error && (
-          <>
-            {relatedArticles && relatedArticles.length > 0 ? (
-              <div className="space-y-4">
-                {(relatedArticles as EnhancedNewsItem[]).map((related) => (
-                  <div key={related.id} className="border-b border-gray-100 last:border-0">
-                    <Link
-                      href={related.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block hover:bg-gray-50 rounded-lg transition-colors"
-                    >
-                      <div className="flex gap-4 p-4">
-                        {related.thumbnail && (
-                          <img
-                            src={related.thumbnail}
-                            alt={related.title}
-                            className="w-24 h-24 object-cover rounded flex-shrink-0"
-                          />
-                        )}
-                        <div className="flex-1">
-                          <h3 className="font-medium mb-2">{related.title}</h3>
-                          <div className="text-sm text-gray-500 mb-2">
-                            {related.source} • {related.formatted_date}
-                          </div>
-                          {related.relationship && (
-                            <div className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full inline-block">
-                              {related.relationship}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  </div>
-                ))}
+        {!isLoading && !hasError && (
+          <div className="space-y-4">
+            {validNewsItems.map(({ newsItem }) => (
+              <div
+                key={newsItem?.id}
+                className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                onClick={() => window.open(newsItem?.url, '_blank', 'noopener,noreferrer')}
+              >
+                <h4 className="font-medium mb-2">{newsItem?.title}</h4>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <span>{newsItem?.source}</span>
+                  <span>•</span>
+                  <span>{newsItem?.formatted_date}</span>
+                </div>
+                <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                  {newsItem?.content}
+                </p>
               </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
+            ))}
+
+            {validNewsItems.length === 0 && (
+              <div className="text-center text-gray-500 py-4">
                 No related articles found
               </div>
             )}
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>
