@@ -174,7 +174,7 @@ const CategoryFilter = memo(function CategoryFilter({
           <p className='text-sm pl-1'>Category</p>
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="w-full pl-4 pr-2 py-2 bg-gray-100 rounded-lg flex items-center justify-between text-sm font-medium"
+            className="w-full pl-4 pr-2 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-slate-400 dark:hover:bg-slate-500 text-black rounded-lg flex items-center justify-between text-sm font-medium"
           >
             <span className='truncate'>{displayCategory}</span>
             <ChevronDown
@@ -183,15 +183,15 @@ const CategoryFilter = memo(function CategoryFilter({
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-lg border border-gray-100 z-50">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-300 rounded-lg shadow-lg border border-gray-100 z-50">
               {categories.map((category) => (
                 <button
                   key={category}
                   onClick={() => handleCategoryClick(category)}
-                  className={`w-full px-4 py-2 text-left text-sm transition-colors 
+                  className={`w-full px-4 py-2 text-left text-sm text-black transition-colors 
                     ${(category === 'All' && !selectedCategory) || category === selectedCategory
-                      ? 'bg-gray-100 font-medium'
-                      : 'hover:bg-gray-50'
+                      ? 'bg-gray-100 dark:bg-slate-400 font-medium'
+                      : 'hover:bg-gray-50 dark:hover:bg-slate-400'
                     } ${category !== categories[categories.length - 1] ? 'border-b border-gray-100' : ''}`}
                 >
                   {category}
@@ -211,7 +211,7 @@ const CategoryFilter = memo(function CategoryFilter({
           <p className='text-sm pl-1'>Filter</p>
           <button
             onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
-            className="w-full pl-4 pr-2 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium whitespace-nowrap flex items-center justify-between gap-2"
+            className="w-full pl-4 pr-2 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-400 dark:hover:bg-slate-500 text-black text-sm font-medium whitespace-nowrap flex items-center justify-between gap-2"
           >
             {displaySort}
             <ChevronDown className={`w-4 h-4 transition-transform ${isSortDropdownOpen ? 'rotate-180' : ''}`} />
@@ -219,16 +219,16 @@ const CategoryFilter = memo(function CategoryFilter({
 
           {isSortDropdownOpen && (
             <>
-              <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-100 z-50 w-[200px]">
+              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-300 rounded-lg shadow-lg border border-gray-100 z-50 w-[200px]">
                 {filters.map((filter) => (
                   <button
                     key={filter}
                     onClick={() => handleSortClick(filter)}
-                    className={`w-full px-4 py-2 text-left text-sm transition-colors 
+                    className={`w-full px-4 py-2 text-black text-left text-sm transition-colors 
                       ${(filter === 'Newest First' && currentSort === 'newest') ||
                         (filter === 'Oldest First' && currentSort === 'oldest')
-                        ? 'bg-gray-100 font-medium'
-                        : 'hover:bg-gray-50'} 
+                        ? 'bg-gray-100 dark:bg-slate-400 font-medium'
+                        : 'hover:bg-gray-50 dark:hover:bg-slate-400'} 
                       ${filter !== filters[filters.length - 1] ? 'border-b border-gray-100' : ''}`}
                   >
                     {filter}

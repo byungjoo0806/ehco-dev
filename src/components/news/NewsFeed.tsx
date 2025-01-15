@@ -132,7 +132,7 @@ export default function NewsFeed({ celebrityId, selectedCategory, sortOrder }: N
     return (
       <div
         key={article.id}
-        className="bg-white rounded-lg hover:shadow-md transition-all duration-200 flex flex-col"
+        className="bg-white dark:bg-slate-500 rounded-lg hover:shadow-md transition-all duration-200 flex flex-col"
       >
         <script
           type="application/ld+json"

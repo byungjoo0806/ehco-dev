@@ -176,11 +176,11 @@ export default function Header() {
 
   return (
     <>
-      <header className="border-b bg-white">
+      <header className="border-b dark:border-b-black bg-white dark:bg-black">
         <div className="container mx-auto px-4 h-16 flex justify-center items-center">
           <div className="w-[90%] md:w-[75%] lg:w-[60%] h-full flex">
             {/* Left section with menu */}
-            <div className="flex justify-start items-center w-1/3">
+            <div className="flex justify-start items-center w-1/3 text-black dark:text-white">
               <Menu onClick={() => setIsMenuOpen(!isMenuOpen)} className="cursor-pointer" />
             </div>
 
