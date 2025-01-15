@@ -3,25 +3,22 @@
 import { Menu, Search, X } from 'lucide-react';
 import Link from 'next/link';
 import SlidingMenu from './SlidingMenu';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAllCelebrities } from '@/lib/hooks/useAllCelebrities';
-
-interface SearchResult {
-  id: string;
-  name: string;
-  koreanName: string;
-  profilePic: string;
-}
+import { SearchResult } from '@/lib/search';
+import { debounce } from 'lodash';
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const { celebrities, loading } = useAllCelebrities();
+  const { celebrities } = useAllCelebrities();
 
+  // Handle clicks outside of search results
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -33,120 +30,254 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
+  // searched article click
+  const handleSearchedArticleclick = (article: SearchResult) => {
+    // console.log(article);
+    window.open(article.url, '_blank', 'noopener,noreferrer')
+  }
 
-    if (query.trim() === '') {
+  // Search function that combines both celebrity and article results
+  const performSearch = async (query: string) => {
+    setIsSearching(true);
+
+    try {
+      // Celebrity search (client-side)
+      const celebrityResults: SearchResult[] = celebrities
+        .filter(celebrity => {
+          if (!celebrity) return false;
+          const searchTermLower = query.toLowerCase();
+
+          const matchesEnglishName = celebrity.name ?
+            celebrity.name.toLowerCase().includes(searchTermLower) : false;
+
+          const matchesKoreanName = celebrity.koreanName ?
+            celebrity.koreanName.includes(query) : false;
+
+          return matchesEnglishName || matchesKoreanName;
+        })
+        .map(({ id, name, koreanName, profilePic }) => ({
+          type: 'celebrity' as const,
+          id,
+          name,
+          koreanName,
+          profilePic
+        }));
+      // console.log(celebrityResults);
+
+      // Article search (server-side)
+      const articleResponse = await fetch(`/api/news/search?q=${encodeURIComponent(query)}&limit=5`);
+      if (!articleResponse.ok) {
+        throw new Error('Failed to fetch articles');
+      }
+      const articles = await articleResponse.json();
+      // console.log(articles);
+      const articleResults: SearchResult[] = articles.map((article: any) => ({
+        type: 'article' as const,
+        id: article.id,
+        name: article.name,
+        content: article.content,
+        date: article.date,
+        category: article.category,
+        celebrity: article.celebrity,
+        thumbnail: article.thumbnail,
+        source: article.source,
+        url: article.url
+      }));
+
+      // Combine and sort results
+      const combinedResults = [...celebrityResults, ...articleResults];
+      // console.log(combinedResults);
+
+      // Sort by exact matches first
+      combinedResults.sort((a, b) => {
+        const aExactMatch = a.name.toLowerCase() === query.toLowerCase();
+        const bExactMatch = b.name.toLowerCase() === query.toLowerCase();
+
+        if (aExactMatch && !bExactMatch) return -1;
+        if (!aExactMatch && bExactMatch) return 1;
+        return 0;
+      });
+
+      setSearchResults(combinedResults);
+      setShowResults(true);
+    } catch (error) {
+      console.error('Search error:', error);
       setSearchResults([]);
-      setShowResults(false);
-      return;
+    } finally {
+      setIsSearching(false);
+    }
+  };
+  // console.log(searchResults);
+
+  // Debounced search to prevent too many API calls
+  const debouncedSearch = useCallback(
+    debounce((query: string) => {
+      if (query.trim()) {
+        performSearch(query);
+      } else {
+        setSearchResults([]);
+        setShowResults(false);
+      }
+    }, 300),
+    [celebrities] // Dependency on celebrities since we use it in search
+  );
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    debouncedSearch(query);
+  };
+
+  const renderSearchResult = (result: SearchResult) => {
+    if (result.type === 'celebrity') {
+      return (
+        <Link
+          key={result.id}
+          href={`/${result.id}`}
+          className="flex flex-row items-center px-3 py-2 hover:bg-gray-100"
+          onClick={() => {
+            setShowResults(false);
+            setSearchQuery('');
+          }}
+        >
+          {result.profilePic && (
+            <img src={result.profilePic} alt={result.name} className='w-8 h-8 rounded-full' />
+          )}
+          <div className='flex-1 pl-2'>
+            <div className="font-medium text-sm">{result.name}</div>
+            {result.koreanName && (
+              <div className="text-xs text-gray-500">{result.koreanName}</div>
+            )}
+          </div>
+        </Link>
+      );
     }
 
-    const filteredResults = celebrities.filter(celebrity => {
-      if (!celebrity) return false;
-
-      const searchTerm = query;
-      const searchTermLower = searchTerm.toLowerCase();
-
-      const matchesEnglishName = celebrity.name ?
-        celebrity.name.toLowerCase().includes(searchTermLower) :
-        false;
-
-      const matchesKoreanName = celebrity.koreanName ?
-        celebrity.koreanName.includes(searchTerm) :
-        false;
-
-      return matchesEnglishName || matchesKoreanName;
-    }).map(({ id, name, koreanName, profilePic }) => ({
-      id,
-      name,
-      koreanName,
-      profilePic
-    }));
-
-    setSearchResults(filteredResults);
-    setShowResults(true);
+    return (
+      <div
+        key={result.id}
+        onClick={() => {
+          // Handle click event (e.g., navigate to article)
+          handleSearchedArticleclick(result);
+          setShowResults(false);
+          setSearchQuery('');
+        }}
+        className="flex flex-col items-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer mb-4"
+      >
+        {result.thumbnail && (
+          <img
+            src={result.thumbnail}
+            alt={result.name}
+            className="w-48 h-48 object-contain"
+          />
+        )}
+        <div className="p-4">
+          <h3 className="text-xl font-semibold mb-2">{result.name}</h3>
+          <div className="text-sm text-gray-600 mb-2">
+            {result.source} • {result.date}
+          </div>
+          {result.category && (
+            <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">
+              {result.category}
+            </span>
+          )}
+          {result.content && (
+            <p className="text-gray-700 text-base line-clamp-3">{result.content}</p>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
     <>
       <header className="border-b bg-white">
-        <div className="container mx-auto px-4 h-16 flex items-center">
-          {/* Left section with menu */}
-          <div className="flex-none w-1/3">
-            <Menu onClick={() => setIsOpen(!isOpen)} className="cursor-pointer" />
-          </div>
+        <div className="container mx-auto px-4 h-16 flex justify-center items-center">
+          <div className='w-[90%] md:w-[75%] lg:w-[60%] h-full flex'>
+            {/* Left section with menu */}
+            <div className="flex justify-start items-center w-1/3">
+              <Menu onClick={() => setIsOpen(!isOpen)} className="cursor-pointer" />
+            </div>
 
-          {/* Center section with logo */}
-          <div className="w-1/3 flex-1 flex justify-center">
-            <Link href="/" className="text-xl sm:text-2xl font-bold text-key-color">
-              EHCO
-            </Link>
-          </div>
+            {/* Center section with logo */}
+            <div className="w-1/3 flex-1 flex justify-center items-center">
+              <Link href="/" className="text-xl sm:text-2xl font-bold text-key-color">
+                EHCO
+              </Link>
+            </div>
 
-          {/* Right section with search */}
-          <div className="w-1/3 flex justify-end" ref={searchRef}>
-            <div className="sm:w-2/3 relative flex flex-row items-center">
-              <Search className="absolute left-2 text-gray-400" size={16} />
-              {searchQuery && (
-                <X
-                  className="absolute right-2 text-gray-400 cursor-pointer"
-                  size={16}
-                  onClick={() => {
-                    setSearchQuery('');
-                    setSearchResults([]);
-                    setShowResults(false);
-                  }}
+            {/* Right section with search */}
+            <div className="w-1/3 flex justify-end" ref={searchRef}>
+              <div className="sm:w-2/3 relative flex flex-row items-center">
+                <Search className="absolute left-2 text-gray-400" size={16} />
+                {searchQuery && (
+                  <X
+                    className="absolute right-2 text-gray-400 cursor-pointer"
+                    size={16}
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchResults([]);
+                      setShowResults(false);
+                    }}
+                  />
+                )}
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={handleInputChange}
+                  placeholder="Search"
+                  className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm"
                 />
-              )}
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search"
-                className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm"
-              />
 
-              {/* Search Results Dropdown */}
-              {showResults && searchResults.length > 0 && (
-                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 max-h-96 overflow-y-auto z-50">
-                  {searchResults.map((result) => (
-                    <Link
-                      key={result.id}
-                      href={`/${result.id}`}
-                      className="flex flex-row items-center px-3 py-2 hover:bg-gray-100"
-                      onClick={() => {
-                        setShowResults(false);
-                        setSearchQuery('');
-                      }}
-                    >
-                      <img src={result.profilePic} alt={result.name} className='w-8 h-8 rounded-full' />
-                      <div className='flex-1 pl-2'>
-                        <div className="font-medium text-sm">{result.name}</div>
-                        <div className="text-xs text-gray-500">{result.koreanName}</div>
+                {/* Loading State */}
+                {isSearching ? (
+                  <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
+                    <div className="px-3 py-3 text-sm text-gray-500 text-center">
+                      Loading...
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Search Results */}
+                    {showResults && searchResults.length > 0 && (
+                      <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-80 sm:w-64 max-h-96 overflow-y-auto z-50">
+                        {/* Celebrity Results Section */}
+                        {searchResults.some(result => result.type === 'celebrity') && (
+                          <div>
+                            <div className="px-3 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-600">
+                              Celebrities
+                            </div>
+                            {searchResults
+                              .filter(result => result.type === 'celebrity')
+                              .map(renderSearchResult)}
+                          </div>
+                        )}
+
+                        {/* Article Results Section */}
+                        {searchResults.some(result => result.type === 'article') && (
+                          <div>
+                            <div className="px-3 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-600">
+                              Articles
+                            </div>
+                            {searchResults
+                              .filter(result => result.type === 'article')
+                              .map(renderSearchResult)}
+                          </div>
+                        )}
                       </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
+                    )}
 
-              {/* No Results State */}
-              {showResults && searchQuery && searchResults.length === 0 && (
-                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
-                  <div className="px-3 py-3 text-sm text-gray-500 text-center">
-                    No results found
-                  </div>
-                </div>
-              )}
-
-              {/* Loading State */}
-              {loading && searchQuery && (
-                <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
-                  <div className="px-3 py-3 text-sm text-gray-500 text-center">
-                    Loading...
-                  </div>
-                </div>
-              )}
+                    {/* No Results State */}
+                    {showResults && searchQuery && searchResults.length === 0 && (
+                      <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
+                        <div className="px-3 py-3 text-sm text-gray-500 text-center">
+                          No results found
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
