@@ -71,7 +71,7 @@ export default function Header() {
       }
       const articles = await articleResponse.json();
       // console.log(articles);
-      const articleResults: SearchResult[] = articles.map((article: any) => ({
+      const articleResults: SearchResult[] = articles.map((article: SearchResult) => ({
         type: 'article' as const,
         id: article.id,
         name: article.name,
@@ -141,12 +141,12 @@ export default function Header() {
           }}
         >
           {result.profilePic && (
-            <img src={result.profilePic} alt={result.name} className='w-8 h-8 rounded-full' />
+            <img src={result.profilePic} alt={result.name} className='w-16 h-16 rounded-full' />
           )}
           <div className='flex-1 pl-2'>
-            <div className="font-medium text-sm">{result.name}</div>
+            <div className="font-medium text-md">{result.name}</div>
             {result.koreanName && (
-              <div className="text-xs text-gray-500">{result.koreanName}</div>
+              <div className="text-sm text-gray-500">{result.koreanName}</div>
             )}
           </div>
         </Link>
@@ -165,24 +165,26 @@ export default function Header() {
         className="w-[90%] flex flex-col sm:flex-row items-center bg-white border border-slate-200 pl-2 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer my-2"
       >
         {result.thumbnail && (
-          <img
-            src={result.thumbnail}
-            alt={result.name}
-            className="w-48 sm:w-24 h-48 sm:h-24 object-contain"
-          />
+          <div className='sm:w-1/4 flex justify-center items-center'>
+            <img
+              src={result.thumbnail}
+              alt={result.name}
+              className="w-48 h-48 sm:w-[90%] sm:h-40 object-contain"
+            />
+          </div>
         )}
-        <div className="p-4">
-          <h3 className="text-md font-semibold mb-2">{result.name}</h3>
-          <div className="text-sm text-gray-600 mb-2">
+        <div className="p-4 sm:w-3/4">
+          <h3 className="text-md sm:text-base font-semibold mb-2">{result.name}</h3>
+          <div className="text-sm sm:text-xs text-gray-600 mb-2">
             {result.source} • {result.date}
           </div>
           {result.category && (
-            <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 mr-2 mb-2">
+            <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm sm:text-xs text-gray-700 mr-2 mb-2">
               {result.category}
             </span>
           )}
           {result.content && (
-            <p className="text-gray-700 text-sm line-clamp-3">{result.content}</p>
+            <p className="text-gray-700 text-sm sm:text-xs line-clamp-3">{result.content}</p>
           )}
         </div>
       </div>
