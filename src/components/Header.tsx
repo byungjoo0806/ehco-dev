@@ -159,30 +159,30 @@ export default function Header() {
         onClick={() => {
           // Handle click event (e.g., navigate to article)
           handleSearchedArticleclick(result);
-          setShowResults(false);
+          // setShowResults(false);
           setSearchQuery('');
         }}
-        className="flex flex-col items-center bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer mb-4"
+        className="w-[90%] flex flex-col sm:flex-row items-center bg-white border border-slate-200 pl-2 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer my-2"
       >
         {result.thumbnail && (
           <img
             src={result.thumbnail}
             alt={result.name}
-            className="w-48 h-48 object-contain"
+            className="w-48 sm:w-24 h-48 sm:h-24 object-contain"
           />
         )}
         <div className="p-4">
-          <h3 className="text-xl font-semibold mb-2">{result.name}</h3>
+          <h3 className="text-md font-semibold mb-2">{result.name}</h3>
           <div className="text-sm text-gray-600 mb-2">
             {result.source} • {result.date}
           </div>
           {result.category && (
-            <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">
+            <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 mr-2 mb-2">
               {result.category}
             </span>
           )}
           {result.content && (
-            <p className="text-gray-700 text-base line-clamp-3">{result.content}</p>
+            <p className="text-gray-700 text-sm line-clamp-3">{result.content}</p>
           )}
         </div>
       </div>
@@ -231,7 +231,7 @@ export default function Header() {
 
                 {/* Loading State */}
                 {isSearching ? (
-                  <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
+                  <div className="absolute top-[80%] right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
                     <div className="px-3 py-3 text-sm text-gray-500 text-center">
                       Loading...
                     </div>
@@ -240,7 +240,7 @@ export default function Header() {
                   <>
                     {/* Search Results */}
                     {showResults && searchResults.length > 0 && (
-                      <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-80 sm:w-64 max-h-96 overflow-y-auto z-50">
+                      <div className="absolute top-[80%] right-0 mt-1 bg-white border rounded-lg shadow-lg w-80 sm:w-[400%] max-h-96 overflow-y-auto z-50">
                         {/* Celebrity Results Section */}
                         {searchResults.some(result => result.type === 'celebrity') && (
                           <div>
@@ -255,8 +255,8 @@ export default function Header() {
 
                         {/* Article Results Section */}
                         {searchResults.some(result => result.type === 'article') && (
-                          <div>
-                            <div className="px-3 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-600">
+                          <div className='w-full flex flex-col items-center'>
+                            <div className="w-full px-3 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-600">
                               Articles
                             </div>
                             {searchResults
@@ -269,7 +269,7 @@ export default function Header() {
 
                     {/* No Results State */}
                     {showResults && searchQuery && searchResults.length === 0 && (
-                      <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
+                      <div className="absolute top-[80%] right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
                         <div className="px-3 py-3 text-sm text-gray-500 text-center">
                           No results found
                         </div>
