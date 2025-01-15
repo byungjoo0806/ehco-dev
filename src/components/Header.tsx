@@ -1,21 +1,23 @@
 'use client';
 
+// Modified Header.tsx
 import { Menu, Search, X } from 'lucide-react';
 import Link from 'next/link';
-import SlidingMenu from './SlidingMenu';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAllCelebrities } from '@/lib/hooks/useAllCelebrities';
 import { SearchResult } from '@/lib/search';
 import { debounce } from 'lodash';
+import SlidingMenu from './SlidingMenu';
+import SearchSlider from './SearchSlider';
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
-
   const { celebrities } = useAllCelebrities();
 
   // Handle clicks outside of search results
@@ -30,29 +32,22 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // searched article click
   const handleSearchedArticleclick = (article: SearchResult) => {
-    // console.log(article);
-    window.open(article.url, '_blank', 'noopener,noreferrer')
-  }
+    window.open(article.url, '_blank', 'noopener,noreferrer');
+  };
 
-  // Search function that combines both celebrity and article results
   const performSearch = async (query: string) => {
     setIsSearching(true);
 
     try {
-      // Celebrity search (client-side)
       const celebrityResults: SearchResult[] = celebrities
         .filter(celebrity => {
           if (!celebrity) return false;
           const searchTermLower = query.toLowerCase();
-
           const matchesEnglishName = celebrity.name ?
             celebrity.name.toLowerCase().includes(searchTermLower) : false;
-
           const matchesKoreanName = celebrity.koreanName ?
             celebrity.koreanName.includes(query) : false;
-
           return matchesEnglishName || matchesKoreanName;
         })
         .map(({ id, name, koreanName, profilePic }) => ({
@@ -62,15 +57,12 @@ export default function Header() {
           koreanName,
           profilePic
         }));
-      // console.log(celebrityResults);
 
-      // Article search (server-side)
       const articleResponse = await fetch(`/api/news/search?q=${encodeURIComponent(query)}&limit=5`);
       if (!articleResponse.ok) {
         throw new Error('Failed to fetch articles');
       }
       const articles = await articleResponse.json();
-      // console.log(articles);
       const articleResults: SearchResult[] = articles.map((article: SearchResult) => ({
         type: 'article' as const,
         id: article.id,
@@ -84,15 +76,10 @@ export default function Header() {
         url: article.url
       }));
 
-      // Combine and sort results
       const combinedResults = [...celebrityResults, ...articleResults];
-      // console.log(combinedResults);
-
-      // Sort by exact matches first
       combinedResults.sort((a, b) => {
         const aExactMatch = a.name.toLowerCase() === query.toLowerCase();
         const bExactMatch = b.name.toLowerCase() === query.toLowerCase();
-
         if (aExactMatch && !bExactMatch) return -1;
         if (!aExactMatch && bExactMatch) return 1;
         return 0;
@@ -107,9 +94,7 @@ export default function Header() {
       setIsSearching(false);
     }
   };
-  // console.log(searchResults);
 
-  // Debounced search to prevent too many API calls
   const debouncedSearch = useCallback(
     debounce((query: string) => {
       if (query.trim()) {
@@ -119,7 +104,7 @@ export default function Header() {
         setShowResults(false);
       }
     }, 300),
-    [celebrities] // Dependency on celebrities since we use it in search
+    [celebrities]
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,9 +126,9 @@ export default function Header() {
           }}
         >
           {result.profilePic && (
-            <img src={result.profilePic} alt={result.name} className='w-16 h-16 rounded-full' />
+            <img src={result.profilePic} alt={result.name} className="w-16 h-16 rounded-full" />
           )}
-          <div className='flex-1 pl-2'>
+          <div className="flex-1 pl-2">
             <div className="font-medium text-md">{result.name}</div>
             {result.koreanName && (
               <div className="text-sm text-gray-500">{result.koreanName}</div>
@@ -157,15 +142,13 @@ export default function Header() {
       <div
         key={result.id}
         onClick={() => {
-          // Handle click event (e.g., navigate to article)
           handleSearchedArticleclick(result);
-          // setShowResults(false);
           setSearchQuery('');
         }}
         className="w-[90%] flex flex-col sm:flex-row items-center bg-white border border-slate-200 pl-2 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer my-2"
       >
         {result.thumbnail && (
-          <div className='sm:w-1/4 flex justify-center items-center'>
+          <div className="sm:w-1/4 flex justify-center items-center">
             <img
               src={result.thumbnail}
               alt={result.name}
@@ -195,10 +178,10 @@ export default function Header() {
     <>
       <header className="border-b bg-white">
         <div className="container mx-auto px-4 h-16 flex justify-center items-center">
-          <div className='w-[90%] md:w-[75%] lg:w-[60%] h-full flex'>
+          <div className="w-[90%] md:w-[75%] lg:w-[60%] h-full flex">
             {/* Left section with menu */}
             <div className="flex justify-start items-center w-1/3">
-              <Menu onClick={() => setIsOpen(!isOpen)} className="cursor-pointer" />
+              <Menu onClick={() => setIsMenuOpen(!isMenuOpen)} className="cursor-pointer" />
             </div>
 
             {/* Center section with logo */}
@@ -209,41 +192,42 @@ export default function Header() {
             </div>
 
             {/* Right section with search */}
-            <div className="w-1/3 flex justify-end" ref={searchRef}>
-              <div className="sm:w-2/3 relative flex flex-row items-center">
-                <Search className="absolute left-2 text-gray-400" size={16} />
-                {searchQuery && (
-                  <X
-                    className="absolute right-2 text-gray-400 cursor-pointer"
-                    size={16}
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSearchResults([]);
-                      setShowResults(false);
-                    }}
+            <div className="w-1/3 flex justify-end items-center">
+              {/* Desktop search with dropdown */}
+              <div className="hidden sm:block sm:w-2/3 relative" ref={searchRef}>
+                <div className="relative flex items-center">
+                  <Search className="absolute left-2 text-gray-400" size={16} />
+                  {searchQuery && (
+                    <X
+                      className="absolute right-2 text-gray-400 cursor-pointer"
+                      size={16}
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSearchResults([]);
+                        setShowResults(false);
+                      }}
+                    />
+                  )}
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={handleInputChange}
+                    placeholder="Search"
+                    className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm"
                   />
-                )}
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={handleInputChange}
-                  placeholder="Search"
-                  className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm"
-                />
+                </div>
 
-                {/* Loading State */}
+                {/* Desktop Search Results Dropdown */}
                 {isSearching ? (
-                  <div className="absolute top-[80%] right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
+                  <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-[400%] z-50">
                     <div className="px-3 py-3 text-sm text-gray-500 text-center">
                       Loading...
                     </div>
                   </div>
                 ) : (
                   <>
-                    {/* Search Results */}
                     {showResults && searchResults.length > 0 && (
-                      <div className="absolute top-[80%] right-0 mt-1 bg-white border rounded-lg shadow-lg w-80 sm:w-[400%] max-h-96 overflow-y-auto z-50">
-                        {/* Celebrity Results Section */}
+                      <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-80 sm:w-[400%] max-h-96 overflow-y-auto z-50">
                         {searchResults.some(result => result.type === 'celebrity') && (
                           <div>
                             <div className="px-3 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-600">
@@ -255,9 +239,8 @@ export default function Header() {
                           </div>
                         )}
 
-                        {/* Article Results Section */}
                         {searchResults.some(result => result.type === 'article') && (
-                          <div className='w-full flex flex-col items-center'>
+                          <div className="w-full flex flex-col items-center">
                             <div className="w-full px-3 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-600">
                               Articles
                             </div>
@@ -269,9 +252,8 @@ export default function Header() {
                       </div>
                     )}
 
-                    {/* No Results State */}
                     {showResults && searchQuery && searchResults.length === 0 && (
-                      <div className="absolute top-[80%] right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
+                      <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-48 sm:w-64 z-50">
                         <div className="px-3 py-3 text-sm text-gray-500 text-center">
                           No results found
                         </div>
@@ -280,12 +262,21 @@ export default function Header() {
                   </>
                 )}
               </div>
+
+              {/* Mobile search icon */}
+              <div className="sm:hidden">
+                <Search
+                  className="cursor-pointer"
+                  onClick={() => setIsSearchOpen(true)}
+                />
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      <SlidingMenu isOpen={isOpen} onClose={() => setIsOpen(false)} />
+      <SlidingMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      <SearchSlider isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
 }
