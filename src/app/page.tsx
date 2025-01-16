@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+import Link from "next/link";
 import { useState } from "react";
 
 export default function Home() {
@@ -53,7 +54,7 @@ export default function Home() {
       setStatus('error')
       setErrorMessage('Failed to subscribe. Please try again.')
     }
-  }
+  };
 
   return (
     <div className="w-full">
@@ -69,24 +70,23 @@ export default function Home() {
             with our comprehensive timeline of verified news from trusted sources.
           </p>
           <div className="flex justify-center gap-4">
-            <button className="bg-black text-white px-6 py-2 rounded-full text-sm md:text-base">
-              Start Exploring
-            </button>
-            <button className="bg-gray-200 text-black px-6 py-2 rounded-full text-sm md:text-base">
-              How it Works
-            </button>
+            <Link href={"/iu?category=All&sort=newest&page=1"}>
+              <button className="bg-black text-white px-6 py-2 rounded-full text-sm md:text-base">
+                Start Exploring
+              </button>
+            </Link>
           </div>
         </div>
 
         {/* EHCO Experience Section */}
-        <div className="bg-gray-50 p-8 rounded-lg mb-16">
+        {/* <div className="bg-gray-50 p-8 rounded-lg mb-16">
           <h2 className="text-xl md:text-2xl font-bold text-center mb-2">The EHCO Experience</h2>
           <p className="text-center text-gray-600 mb-12 text-sm md:text-base">
             Follow your favorite public figures with clarity and context
-          </p>
+          </p> */}
 
-          {/* Steps */}
-          <div className="space-y-12">
+        {/* Steps */}
+        {/* <div className="space-y-12">
             <div className="text-center">
               <span className="text-2xl md:text-3xl text-red-500 font-bold">01</span>
               <h3 className="text-lg md:text-xl font-bold mt-2">Choose Your Focus</h3>
@@ -112,11 +112,11 @@ export default function Home() {
               </p>
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
       {/* Stay Updated Section */}
       <div className="bg-black text-white p-8 text-center h-88 flex flex-col justify-center items-center">
-        <h2 className="text-xl md:text-4xl font-bold mb-4">Stay EHCOed!</h2>
+        <h2 className="text-xl md:text-4xl font-bold mb-4">Stay <span className="text-key-color">EHCO</span>ed!</h2>
         <p className="mb-8 text-sm md:text-base">
           Sign up for updates, special perks, <br />
           and stories that matter.
@@ -129,7 +129,7 @@ export default function Home() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
-                className="w-full px-3 py-2 border rounded placeholder:text-center"
+                className="w-[80%] px-3 py-2 border rounded placeholder:text-center text-black"
                 disabled={status === 'loading'}
               />
             </div>
@@ -146,7 +146,7 @@ export default function Home() {
           <button
             type="submit"
             disabled={status === 'loading'}
-            className="w-40 sm:w-48 md:w-56 px-4 py-2 mt-2 bg-key-color text-white rounded-lg hover:bg-red-400 disabled:opacity-50"
+            className="w-40 sm:w-48 px-4 py-2 mt-2 bg-key-color text-white rounded-lg hover:bg-red-400 disabled:opacity-50"
           >
             {status === 'loading' ? 'Subscribing...' : 'Subscribe'}
           </button>
