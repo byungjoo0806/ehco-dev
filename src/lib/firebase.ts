@@ -18,10 +18,8 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firestore
 export const db = getFirestore(app);
 
-// Initialize Analytics only on client side
-export const initializeAnalytics = () => {
-  if (typeof window !== 'undefined') {
-    return getAnalytics(app);
-  }
-  return null;
-};
+// Initialize Analytics with type safety
+export let analytics: Analytics | null = null;
+if (typeof window !== 'undefined') {
+  analytics = getAnalytics(app);
+}

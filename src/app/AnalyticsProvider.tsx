@@ -1,23 +1,23 @@
-// app/AnalyticsProvider.tsx (Client Component)
-'use client';
+// // app/AnalyticsProvider.tsx (Client Component)
+// 'use client';
 
-import { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import { initializeAnalytics } from '@/lib/firebase';
-import { logEvent } from 'firebase/analytics';
+// import { useEffect } from 'react';
+// import { usePathname } from 'next/navigation';
+// // import { initializeAnalytics } from '@/lib/firebase';
+// import { logEvent } from 'firebase/analytics';
 
-export default function AnalyticsProvider() {
-    const pathname = usePathname();
+// export default function AnalyticsProvider() {
+//     const pathname = usePathname();
 
-    useEffect(() => {
-        const analytics = initializeAnalytics();
+//     useEffect(() => {
+//         const analytics = initializeAnalytics();
 
-        if (analytics) {
-            logEvent(analytics, 'page_view', {
-                page_path: pathname
-            });
-        }
-    }, [pathname]);
+//         if (analytics) {
+//             logEvent(analytics, 'page_view', {
+//                 page_path: pathname
+//             });
+//         }
+//     }, [pathname]);
 
-    return null;
-}
+//     return null;
+// }

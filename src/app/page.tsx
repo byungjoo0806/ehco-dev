@@ -1,5 +1,4 @@
-import { initializeAnalytics } from '@/lib/firebase';
-import { logEvent } from 'firebase/analytics';
+
 
 export default function Home() {
   return (
