@@ -23,7 +23,8 @@ export default function RelatedArticlesModal({
   article,
   relatedArticleIds
 }: RelatedArticlesModalProps) {
-  const { newsItems, isLoading, hasError, validNewsItems } = useNewsItems(relatedArticleIds);
+  const { isLoading, hasError, validNewsItems } = useNewsItems(relatedArticleIds);
+  // console.log(validNewsItems);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -31,7 +32,8 @@ export default function RelatedArticlesModal({
         <DialogHeader>
           <DialogTitle>Related Articles</DialogTitle>
           <DialogDescription>
-            Articles related to &quot;{article?.title}&quot;
+            Articles related to <br />
+            &quot;{article?.title}&quot;
           </DialogDescription>
         </DialogHeader>
 
@@ -57,18 +59,30 @@ export default function RelatedArticlesModal({
             {validNewsItems.map(({ newsItem }) => (
               <div
                 key={newsItem?.id}
-                className="p-4 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                className="w-full py-4 px-2 border rounded-lg hover:bg-gray-50 cursor-pointer flex flex-col md:flex-row items-center shadow-lg"
                 onClick={() => window.open(newsItem?.url, '_blank', 'noopener,noreferrer')}
               >
-                <h4 className="font-medium mb-2">{newsItem?.title}</h4>
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <span>{newsItem?.source}</span>
-                  <span>•</span>
-                  <span>{newsItem?.formatted_date}</span>
+                <div className="md:w-1/4 flex justify-center items-center">
+                  <img
+                    src={newsItem?.thumbnail}
+                    alt={newsItem?.title}
+                    className="w-48 h-48 md:w-[90%] md:h-40 object-contain"
+                  />
                 </div>
-                <p className="text-sm text-gray-700 mt-2 line-clamp-2">
-                  {newsItem?.content}
-                </p>
+                <div className='w-3/4 pl-2'>
+                  <h4 className="font-medium mb-2">{newsItem?.title}</h4>
+                  <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <span>{newsItem?.source}</span>
+                    <span>•</span>
+                    <span>{newsItem?.formatted_date}</span>
+                    <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-600">
+                      {newsItem?.mainCategory}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                    {newsItem?.content}
+                  </p>
+                </div>
               </div>
             ))}
 
