@@ -12,6 +12,7 @@
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-slot": "^1.1.1",
     "@types/lodash": "^4.17.14",
+    "@vercel/analytics": "^1.4.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^11.1.0",

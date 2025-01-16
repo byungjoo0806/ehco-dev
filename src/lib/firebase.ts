@@ -1,7 +1,7 @@
 // src/lib/firebase.ts
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAnalytics } from 'firebase/analytics';
+import { Analytics, getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
@@ -18,10 +18,8 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firestore
 export const db = getFirestore(app);
 
-// Initialize Analytics only on client side
-export const initializeAnalytics = () => {
-  if (typeof window !== 'undefined') {
-    return getAnalytics(app);
-  }
-  return null;
-};
+// Initialize Analytics with type safety
+export let analytics: Analytics | null = null;
+if (typeof window !== 'undefined') {
+  analytics = getAnalytics(app);
+}

@@ -1,7 +1,7 @@
 'use client';
 
 // Modified Header.tsx
-import { Menu, Search, X } from 'lucide-react';
+import { Menu, Search, X, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAllCelebrities } from '@/lib/hooks/useAllCelebrities';
@@ -9,6 +9,7 @@ import { SearchResult } from '@/lib/search';
 import { debounce } from 'lodash';
 import SlidingMenu from './SlidingMenu';
 import SearchSlider from './SearchSlider';
+import { useRouter } from 'next/navigation';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -19,6 +20,8 @@ export default function Header() {
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const { celebrities } = useAllCelebrities();
+
+  const router = useRouter();
 
   // Handle clicks outside of search results
   useEffect(() => {
@@ -241,8 +244,20 @@ export default function Header() {
 
                         {searchResults.some(result => result.type === 'article') && (
                           <div className="w-full flex flex-col items-center">
-                            <div className="w-full px-3 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-600">
-                              Articles
+                            <div className="w-full flex flex-row px-3 py-2 bg-gray-50 border-b font-semibold text-gray-600">
+                              <p className='w-1/2 flex items-center justify-start text-xs'>Articles</p>
+                              <div className='w-1/2 flex flex-row justify-end items-center'>
+                                <p
+                                  className='text-xs pr-2 text-blue-500 hover:cursor-pointer'
+                                  onClick={() => {
+                                    router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+                                    setSearchQuery('');
+                                    setSearchResults([]);
+                                    setShowResults(false);
+                                  }}>
+                                  see more
+                                </p>
+                              </div>
                             </div>
                             {searchResults
                               .filter(result => result.type === 'article')
