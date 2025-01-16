@@ -35,14 +35,26 @@ export const db = getFirestore(app);
 //   return null;
 // };
 
-export const initializeAnalytics = () => {
-  if (typeof window !== 'undefined') {
-    try {
-      return getAnalytics(app);
-    } catch (error) {
-      console.error('Analytics initialization error:', error);
-      return null;
-    }
+// Initialize Analytics with better error handling and type safety
+export let analytics: Analytics | null = null;
+
+if (typeof window !== 'undefined') {
+  try {
+    analytics = getAnalytics(app);
+    console.log('Firebase Analytics initialized successfully');
+  } catch (error) {
+    console.error('Firebase Analytics initialization error:', error);
   }
-  return null;
-};
+}
+
+// export const initializeAnalytics = () => {
+//   if (typeof window !== 'undefined') {
+//     try {
+//       return getAnalytics(app);
+//     } catch (error) {
+//       console.error('Analytics initialization error:', error);
+//       return null;
+//     }
+//   }
+//   return null;
+// };
