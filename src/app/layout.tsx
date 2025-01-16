@@ -101,7 +101,7 @@ export default function RootLayout({
           {children}
         </main>
         <Analytics />
-        <AnalyticsProvider />
+        {/* <AnalyticsProvider /> */}
       </body>
     </html>
   )
