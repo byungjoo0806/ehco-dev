@@ -96,8 +96,10 @@ export default function RootLayout({
         <meta name="google-adsense-account" content="ca-pub-1708240738390806" />
       </head>
       <body className={inter.className}>
-        <Header />
-        <main className="min-h-screen">
+        <div className="fixed top-0 left-0 right-0 z-50 shadow-md">
+          <Header />
+        </div>
+        <main className="min-h-screen pt-16">
           {children}
         </main>
         <Analytics />
