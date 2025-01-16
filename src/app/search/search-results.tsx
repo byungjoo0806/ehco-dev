@@ -3,7 +3,10 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { SearchResult } from '@/lib/search';
+
+const ITEMS_PER_PAGE = 10;
 
 export default function SearchResults() {
     const searchParams = useSearchParams();
@@ -11,6 +14,7 @@ export default function SearchResults() {
     const [articles, setArticles] = useState<SearchResult[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
 
     useEffect(() => {
         const fetchResults = async () => {
@@ -26,6 +30,7 @@ export default function SearchResults() {
                 if (!response.ok) throw new Error('Failed to fetch results');
                 const data = await response.json();
                 setArticles(data);
+                setCurrentPage(1); // Reset to first page when new search is performed
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'An error occurred');
             } finally {
@@ -38,6 +43,17 @@ export default function SearchResults() {
 
     const handleArticleClick = (article: SearchResult) => {
         window.open(article.url, '_blank', 'noopener,noreferrer');
+    };
+
+    // Pagination calculations
+    const totalPages = Math.max(1, Math.ceil(articles.length / ITEMS_PER_PAGE));
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const currentArticles = articles.slice(startIndex, endIndex);
+
+    const handlePageChange = (pageNumber: number) => {
+        setCurrentPage(pageNumber);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     if (isLoading) {
@@ -59,53 +75,98 @@ export default function SearchResults() {
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            <h1 className="text-2xl font-bold mb-6">
+        <div className="w-full py-8 flex flex-col items-center">
+            {/* <div className='w-full '> */}
+            <h1 className="w-[90%] md:w-[75%] lg:w-[60%] text-2xl font-bold mb-6 px-4">
                 Search Results for &quot;{query}&quot;
-                <span className="text-gray-500 text-lg ml-2">
+                <span className="hidden md:inline text-gray-500 text-lg ml-2">
+                    ({articles.length} results)
+                </span>
+                <span className="block md:hidden text-gray-500 text-lg mt-1">
                     ({articles.length} results)
                 </span>
             </h1>
 
             {articles.length === 0 ? (
-                <div className="text-center text-gray-500 py-12">
+                <div className="w-[90%] md:w-[75%] lg:w-[60%] text-center text-gray-500 py-12 px-4">
                     No results found for &quot;{query}&quot;
                 </div>
             ) : (
-                <div className="grid gap-6">
-                    {articles.map((article) => (
-                        <div
-                            key={article.id}
-                            onClick={() => handleArticleClick(article)}
-                            className="flex flex-col sm:flex-row bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer overflow-hidden"
-                        >
-                            {article.thumbnail && (
-                                <div className="sm:w-1/4 flex justify-center items-center">
+                <>
+                    <div className="w-[90%] md:w-[75%] lg:w-[60%] grid gap-6 px-4">
+                        {currentArticles.map((article) => (
+                            <div
+                                key={article.id}
+                                onClick={() => handleArticleClick(article)}
+                                className="flex flex-col items-center md:flex-row gap-4 p-4 cursor-pointer border border-slate-200 rounded-lg shadow-md"
+                            >
+                                {article.thumbnail && (
                                     <img
                                         src={article.thumbnail}
                                         alt={article.name}
-                                        className="w-full h-48 sm:h-40 object-cover"
+                                        className="w-32 h-24 object-cover rounded-l-lg flex-shrink-0"
                                     />
-                                </div>
-                            )}
-                            <div className="flex-1 p-4">
-                                <h2 className="text-xl font-semibold mb-2">{article.name}</h2>
-                                <div className="text-sm text-gray-600 mb-2">
-                                    {article.source} • {article.date}
-                                </div>
-                                {article.category && (
-                                    <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 mr-2 mb-2">
-                                        {article.category}
-                                    </span>
                                 )}
-                                {article.content && (
-                                    <p className="text-gray-700 line-clamp-3">{article.content}</p>
-                                )}
+                                <div className="flex-1">
+                                    <h4 className="font-medium mb-1 text-lg hover:text-blue-600 transition-colors">
+                                        {article.name}
+                                    </h4>
+                                    <div className="flex items-center space-x-2">
+                                        <p className="text-sm text-gray-600">
+                                            {article.source} • {article.date}
+                                        </p>
+                                        <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-600">
+                                            {article.category}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                                        {article.content}
+                                    </p>
+                                </div>
                             </div>
+                        ))}
+                    </div>
+
+                    {/* Pagination */}
+                    <div className="mt-8 flex items-center justify-center gap-2">
+                        {currentPage > 1 && (
+                            <button
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                className="p-2 rounded hover:bg-gray-50"
+                                aria-label="Previous page"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                        )}
+
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() => handlePageChange(page)}
+                                    className={`px-3 py-1 rounded ${currentPage === page
+                                        ? 'bg-blue-600 text-white'
+                                        : 'border border-gray-300 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
                         </div>
-                    ))}
-                </div>
+
+                        {currentPage < totalPages && (
+                            <button
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                className="p-2 rounded hover:bg-gray-50"
+                                aria-label="Next page"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        )}
+                    </div>
+                </>
             )}
+            {/* </div> */}
         </div>
     );
 }
