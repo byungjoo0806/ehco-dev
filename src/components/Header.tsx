@@ -3,7 +3,7 @@
 // Modified Header.tsx
 import { Menu, Search, X, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useAllCelebrities } from '@/lib/hooks/useAllCelebrities';
 import { SearchResult } from '@/lib/search';
 import { debounce } from 'lodash';
@@ -290,7 +290,15 @@ export default function Header() {
         </div>
       </header>
 
-      <SlidingMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      <Suspense fallback={
+        <div className="fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-500 shadow-lg z-50 transform -translate-x-full">
+          <div className='w-full h-16 px-8 flex justify-start items-center border-b border-b-black dark:border-b-white'>
+            <p className='text-xl font-bold text-black dark:text-white'>Loading...</p>
+          </div>
+        </div>
+      }>
+        <SlidingMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
+      </Suspense>
       <SearchSlider isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
