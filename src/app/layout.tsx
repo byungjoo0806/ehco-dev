@@ -1,15 +1,10 @@
-'use client';
-
 // src/app/layout.tsx
 import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Header from '@/components/Header'
 import { Analytics } from '@vercel/analytics/next'
-import { useEffect } from 'react';
-import { usePathname } from 'next/navigation';
-import { initializeAnalytics } from '@/lib/firebase';
-import { logEvent } from 'firebase/analytics';
+import AnalyticsProvider from './AnalyticsProvider'
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -95,19 +90,6 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const pathname = usePathname();
-
-  useEffect(() => {
-    const analytics = initializeAnalytics();
-
-    if (analytics) {
-      // Log page view whenever pathname changes
-      logEvent(analytics, 'page_view', {
-        page_path: pathname
-      });
-    }
-  }, [pathname]); // Re-run when pathname changes
-
   return (
     <html lang="en">
       <head>
@@ -119,6 +101,7 @@ export default function RootLayout({
           {children}
         </main>
         <Analytics />
+        <AnalyticsProvider />
       </body>
     </html>
   )
