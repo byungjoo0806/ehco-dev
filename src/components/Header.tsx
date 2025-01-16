@@ -244,24 +244,26 @@ export default function Header() {
 
                         {searchResults.some(result => result.type === 'article') && (
                           <div className="w-full flex flex-col items-center">
-                            <div className="w-full flex flex-row px-3 py-2 bg-gray-50 border-b font-semibold text-gray-600">
-                              <p className='w-1/2 flex items-center justify-start text-xs'>Articles</p>
-                              <div className='w-1/2 flex flex-row justify-end items-center'>
-                                <p
-                                  className='text-xs pr-2 text-blue-500 hover:cursor-pointer'
-                                  onClick={() => {
-                                    router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-                                    setSearchQuery('');
-                                    setSearchResults([]);
-                                    setShowResults(false);
-                                  }}>
-                                  see more
-                                </p>
-                              </div>
+                            <div className="w-full px-3 py-2 bg-gray-50 border-b">
+                              <p className='text-xs font-semibold text-gray-600'>Articles</p>
                             </div>
                             {searchResults
                               .filter(result => result.type === 'article')
                               .map(renderSearchResult)}
+
+                            {/* Moved "see more" link to bottom */}
+                            <div className="w-full border-t py-2 mt-2">
+                              <div className="flex items-center justify-center hover:bg-gray-50 py-2 cursor-pointer"
+                                onClick={() => {
+                                  router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+                                  setSearchQuery('');
+                                  setSearchResults([]);
+                                  setShowResults(false);
+                                }}>
+                                <span className="text-sm text-blue-500 pr-1">See more results</span>
+                                <ArrowRight size={16} className="text-blue-500" />
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
