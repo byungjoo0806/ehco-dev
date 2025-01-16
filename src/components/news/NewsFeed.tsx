@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { useNews } from '@/lib/hooks/useNews';
-import CategoryFilter from './CategoryFilter';
 import type { NewsItem } from '@/lib/hooks/useNews';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import RelatedArticlesModal from './RelatedArticlesModal';
@@ -232,59 +231,65 @@ export default function NewsFeed({ celebrityId, selectedCategory, sortOrder }: N
     }
 
     return (
-      <div className="flex items-center justify-center space-x-2 mt-8">
-        <button
-          onClick={() => handlePageChange(Math.max(1, page - 1))}
-          disabled={page === 1}
-          className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-
-        {startPage > 1 && (
-          <>
-            <button
-              onClick={() => handlePageChange(1)}
-              className="px-3 py-1 rounded-lg hover:bg-gray-100"
-            >
-              1
-            </button>
-            {startPage > 2 && <span className="px-2">...</span>}
-          </>
-        )}
-
-        {pageNumbers.map(number => (
+      <div className="mt-8 flex items-center justify-center gap-2">
+        {page > 1 && (
           <button
-            key={number}
-            onClick={() => handlePageChange(number)}
-            className={`px-3 py-1 rounded-lg ${page === number
-                ? 'bg-blue-600 text-white'
-                : 'hover:bg-gray-100'
-              }`}
+            onClick={() => handlePageChange(page - 1)}
+            className="p-2 rounded hover:bg-gray-50"
+            aria-label="Previous page"
           >
-            {number}
+            <ChevronLeft size={16} />
           </button>
-        ))}
-
-        {endPage < totalPages && (
-          <>
-            {endPage < totalPages - 1 && <span className="px-2">...</span>}
-            <button
-              onClick={() => handlePageChange(totalPages)}
-              className="px-3 py-1 rounded-lg hover:bg-gray-100"
-            >
-              {totalPages}
-            </button>
-          </>
         )}
 
-        <button
-          onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-          disabled={page === totalPages}
-          className="p-2 rounded-lg hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          {startPage > 1 && (
+            <>
+              <button
+                onClick={() => handlePageChange(1)}
+                className="px-3 py-1 rounded hover:bg-gray-50"
+              >
+                1
+              </button>
+              {startPage > 2 && <span className="px-2">...</span>}
+            </>
+          )}
+
+          {pageNumbers.map(number => (
+            <button
+              key={number}
+              onClick={() => handlePageChange(number)}
+              className={`px-3 py-1 rounded ${page === number
+                ? 'bg-blue-600 text-white'
+                : 'hover:bg-gray-50'
+                }`}
+            >
+              {number}
+            </button>
+          ))}
+
+          {endPage < totalPages && (
+            <>
+              {endPage < totalPages - 1 && <span className="px-2">...</span>}
+              <button
+                onClick={() => handlePageChange(totalPages)}
+                className="px-3 py-1 rounded hover:bg-gray-50"
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+        </div>
+
+        {page < totalPages && (
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            className="p-2 rounded hover:bg-gray-50"
+            aria-label="Next page"
+          >
+            <ChevronRight size={16} />
+          </button>
+        )}
       </div>
     );
   };
