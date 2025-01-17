@@ -23,8 +23,14 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
         setIsNavigating(false);
     }, [pathname, searchParams]);
 
-    const handleClick = () => {
-        setIsNavigating(true);
+    const handleClick = (celebrityId: string) => {
+        // Get the current celebrity ID from the pathname
+        const currentCelebrityId = pathname.split('/')[1];
+        
+        // Only set loading state if we're actually changing pages
+        if (currentCelebrityId !== celebrityId) {
+            setIsNavigating(true);
+        }
         onClose();
     };
 
@@ -66,7 +72,7 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                                     sort: 'newest',
                                     page: '1'
                                 }
-                            }} onClick={handleClick} >
+                            }} onClick={() => handleClick(celebrity.id)} >
                                 <div key={celebrity.name} className="flex items-center py-2 space-x-3 cursor-pointer border-b border-dashed border-b-black dark:border-b-white hover:bg-slate-200 dark:hover:bg-slate-600">
                                     <img
                                         src={celebrity.profilePic}
