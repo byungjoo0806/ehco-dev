@@ -136,26 +136,30 @@ class YonhapNewsCrawler:
 
         # Initialize Firebase
         try:
-            # Try to get existing client first
-            self.db = firestore.client()
-        except:
-            # If no existing client, initialize with specific database
+            # Initialize with specific database
             cred = credentials.Certificate(
                 '/Users/byungjoopark/Desktop/Coding/ehco-dev/firebase/config/serviceAccountKey.json')
-            firebase_admin.initialize_app(cred)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': 'https://crawling-test-1.firebaseio.com'
+            })
             self.db = firestore.Client.from_service_account_json(
                 '/Users/byungjoopark/Desktop/Coding/ehco-dev/firebase/config/serviceAccountKey.json',
                 database='crawling-test-1'
             )
-            print("Successfully connected to Firebase 'crawling-test-1' database")
+        except ValueError as e:
+            if "The default Firebase app already exists" in str(e):
+                # If app is already initialized, just get the client with specific database
+                self.db = firestore.Client.from_service_account_json(
+                    '/Users/byungjoopark/Desktop/Coding/ehco-dev/firebase/config/serviceAccountKey.json',
+                    database='crawling-test-1'
+                )
+            else:
+                raise e
 
         # Initialize Selenium
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
         self.driver = webdriver.Chrome(options=options)
-        self.driver.set_page_load_timeout(60)
 
     def parse_article(self, article) -> Optional[Dict]:
         """Parse article data from webpage"""
@@ -265,12 +269,10 @@ class YonhapNewsCrawler:
                 'url': article_data['url'],
                 'thumbnail': article_data.get('thumbnail', ''),
                 'source': 'Yonhap News',
-                'date': firestore.Timestamp.from_date(article_date),  # Use article's actual date
                 'formatted_date': article_data['date'],
                 'celebrity': self.celebrity_id,
                 'mainCategory': analyzed_data['mainCategory'],
                 'topicHeader': '',
-                'contextLine': '',
                 'relatedArticles': [],
                 'isMainArticle': True,
                 'created_at': firestore.SERVER_TIMESTAMP  # This one stays as server timestamp
@@ -290,62 +292,59 @@ class YonhapNewsCrawler:
         """Save backup files with change tracking"""
         backup_dir = "python/backup"
         os.makedirs(backup_dir, exist_ok=True)
-
+    
         def compare_and_save(new_data, file_path, type_label):
-            # Load existing data if file exists
-            try:
-                existing_df = pd.read_csv(file_path, encoding='utf-8-sig')
-                print(f"Loaded existing {type_label} backup file")
-            except FileNotFoundError:
-                existing_df = pd.DataFrame()
-                print(f"No existing {type_label} backup file found")
-
             # Convert new data to DataFrame
             new_df = pd.DataFrame(new_data)
-
-            if not existing_df.empty:
-                # Mark entries that exist in old but not in new (deleted)
-                # Using URL as unique identifier
-                deleted_mask = ~existing_df['url'].isin(new_df['url'])
-                deleted_entries = existing_df[deleted_mask].copy()
-                if not deleted_entries.empty:
-                    deleted_entries['status'] = 'DELETED'
-
-                    # Add deleted entries to new DataFrame
-                    new_df['status'] = 'CURRENT'
-                    combined_df = pd.concat(
-                        [new_df, deleted_entries], ignore_index=True)
-
+            new_df['status'] = 'CURRENT'
+    
+            # Check if file exists
+            file_exists = os.path.exists(file_path)
+    
+            if file_exists:
+                try:
+                    existing_df = pd.read_csv(file_path, encoding='utf-8-sig')
+                    print(f"Loaded existing {type_label} backup file")
+    
+                    # Mark entries that exist in old but not in new (deleted)
+                    deleted_mask = ~existing_df['url'].isin(new_df['url'])
+                    deleted_entries = existing_df[deleted_mask].copy()
+    
+                    if not deleted_entries.empty:
+                        deleted_entries['status'] = 'DELETED'
+                        combined_df = pd.concat([new_df, deleted_entries], ignore_index=True)
+                        print(f"Found {len(deleted_entries)} deleted entries in {type_label} file")
+                    else:
+                        combined_df = new_df
+                        print(f"No deleted entries found in {type_label} file")
+    
                     # Sort by date to maintain chronological order
                     combined_df['date'] = pd.to_datetime(combined_df['date'])
-                    combined_df = combined_df.sort_values(
-                        'date', ascending=False)
-
-                    print(
-                        f"Found {len(deleted_entries)} deleted entries in {type_label} file")
-                else:
+                    combined_df = combined_df.sort_values('date', ascending=False)
+                except Exception as e:
+                    print(f"Error reading existing file: {str(e)}")
                     combined_df = new_df
-                    combined_df['status'] = 'CURRENT'
-                    print(f"No deleted entries found in {type_label} file")
             else:
-                combined_df = new_df
-                combined_df['status'] = 'CURRENT'
                 print(f"Creating new {type_label} file")
-
+                combined_df = new_df
+                # Skip the date sorting for new files since we know it's just the initial data
+                combined_df.to_csv(file_path, index=False, encoding='utf-8-sig')
+                print(f"{type_label} backup saved to: {file_path}")
+                return combined_df
+    
             # Save the combined data
             combined_df.to_csv(file_path, index=False, encoding='utf-8-sig')
             print(f"{type_label} backup saved to: {file_path}")
-
+    
             return combined_df
-
+    
         if self.raw_articles:
             raw_filename = f'{backup_dir}/raw_yonhap_{self.celebrity_id}.csv'
             raw_df = compare_and_save(self.raw_articles, raw_filename, "raw")
-
+    
         if self.processed_articles:
             processed_filename = f'{backup_dir}/processed_yonhap_{self.celebrity_id}.csv'
-            processed_df = compare_and_save(
-                self.processed_articles, processed_filename, "processed")
+            processed_df = compare_and_save(self.processed_articles, processed_filename, "processed")
 
     def crawl(self):
         """Main crawling function"""
@@ -421,8 +420,10 @@ def main():
             print(f"\n{'='*50}")
             print(f"Starting crawl for {celebrity['name_eng']}")
             print(f"{'='*50}\n")
-
+            
             max_retries = 3
+            crawler = None
+            
             for attempt in range(max_retries):
                 try:
                     crawler = YonhapNewsCrawler(celebrity)
@@ -430,20 +431,25 @@ def main():
                     break
                 except Exception as e:
                     if attempt == max_retries - 1:
-                        print(
-                            f"Failed to crawl for {celebrity['name_eng']} after {max_retries} attempts")
+                        print(f"Failed to crawl for {celebrity['name_eng']} after {max_retries} attempts")
                         print(f"Error: {str(e)}")
                     else:
                         print(f"Attempt {attempt + 1} failed, retrying...")
                         time.sleep(5)
-
-            print(f"\nCompleted processing for {celebrity['name_eng']}")
-
+            
+            # Save backup files outside the retry loop
+            if crawler and (crawler.raw_articles or crawler.processed_articles):
+                try:
+                    crawler.save_backup_files()
+                except Exception as e:
+                    print(f"Error saving backup files: {str(e)}")
+                    # Don't retry for backup errors
+            
         except Exception as e:
             print(f"Error processing {celebrity['name_eng']}: {str(e)}")
             continue
-
-        print("\nWaiting 30 seconds before next celebrity...")
+        
+        print("\nWaiting 30 seconds before processing next celebrity...")
         time.sleep(30)
 
 

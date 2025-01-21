@@ -11,6 +11,7 @@ from datetime import datetime
 import time
 from typing import Dict, List, Optional
 import os
+import hashlib
 
 class NewsAnalyzer:
     def __init__(self, celebrity_name: str, korean_name: str):
@@ -130,18 +131,25 @@ class EnhancedJoongAngCrawler:
         
         # Initialize Firebase
         try:
-            # Try to get existing client first
-            self.db = firestore.client()
-        except:
-            # If no existing client, initialize with specific database
+            # Initialize with specific database
             cred = credentials.Certificate(
                 '/Users/byungjoopark/Desktop/Coding/ehco-dev/firebase/config/serviceAccountKey.json')
-            firebase_admin.initialize_app(cred)
+            firebase_admin.initialize_app(cred, {
+                'databaseURL': 'https://crawling-test-1.firebaseio.com'
+            })
             self.db = firestore.Client.from_service_account_json(
                 '/Users/byungjoopark/Desktop/Coding/ehco-dev/firebase/config/serviceAccountKey.json',
                 database='crawling-test-1'
             )
-            print("Successfully connected to Firebase 'crawling-test-1' database")
+        except ValueError as e:
+            if "The default Firebase app already exists" in str(e):
+                # If app is already initialized, just get the client with specific database
+                self.db = firestore.Client.from_service_account_json(
+                    '/Users/byungjoopark/Desktop/Coding/ehco-dev/firebase/config/serviceAccountKey.json',
+                    database='crawling-test-1'
+                )
+            else:
+                raise e
         
         # Initialize Selenium
         options = webdriver.ChromeOptions()
@@ -185,55 +193,52 @@ class EnhancedJoongAngCrawler:
             return None
 
     def save_to_firebase(self, article_data: Dict) -> bool:
-        """Process and save article to Firebase with enhanced error handling"""
+        def generate_doc_id(url: str) -> str:
+            return hashlib.md5(url.encode()).hexdigest()
+
         try:
-            date_str = article_data['date'].strip()
-            if not date_str:
-                print(f"Empty date string for article: {article_data['title'][:50]}...")
+            doc_id = generate_doc_id(article_data['url'])
+            doc_ref = self.db.collection('news').document(doc_id)
+            doc = doc_ref.get()
+
+            if doc.exists:
+                print(f"Article already exists: {article_data['title'][:50]}...")
                 return False
-                
-            try:
-                try:
-                    date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-                except ValueError:
-                    date_obj = datetime.strptime(date_str, '%b. %d, %Y')
-            except ValueError:
-                print(f"Unable to parse date: {date_str}")
-                return False
-            
+
             analyzed_data = self.analyzer.analyze_article({
                 'title': article_data['title'],
                 'content': article_data['content']
             })
-            
+
             if not analyzed_data:
                 print(f"Article filtered out: {article_data['title'][:100]}")
                 return False
-            
-            # Prepare document data with correct celebrity ID
+
+            # Convert article date to Firestore timestamp
+            article_date = datetime.strptime(article_data['date'], '%Y-%m-%d')
+
             doc_data = {
                 'title': article_data['title'],
                 'content': article_data['content'],
                 'url': article_data['url'],
                 'thumbnail': article_data.get('thumbnail', ''),
-                'source': 'Korea JoongAng Daily',
-                'date': firestore.SERVER_TIMESTAMP,
-                'formatted_date': date_obj.strftime('%Y-%m-%d'),
+                'source': 'Yonhap News',
+                'date': firestore.Timestamp.from_date(article_date),  # Use article's actual date
+                'formatted_date': article_data['date'],
                 'celebrity': self.celebrity_id,
                 'mainCategory': analyzed_data['mainCategory'],
-                'created_at': firestore.SERVER_TIMESTAMP
+                'topicHeader': '',
+                'relatedArticles': [],
+                'isMainArticle': True,
+                'created_at': firestore.SERVER_TIMESTAMP  # This one stays as server timestamp
             }
-            
-            # Save processed article for backup
+
             self.processed_articles.append(doc_data)
-            
-            # Save to Firebase
-            doc_ref = self.db.collection('news').document()
             doc_ref.set(doc_data)
-            
-            print(f"Saved article for {self.celebrity_id}: {doc_data['title'][:50]}... as {analyzed_data['mainCategory']} to firebase")
+
+            print(f"Saved article: {doc_data['title'][:50]}... as {analyzed_data['mainCategory']}")
             return True
-            
+
         except Exception as e:
             print(f"Error saving to Firebase: {str(e)}")
             return False
@@ -244,45 +249,39 @@ class EnhancedJoongAngCrawler:
         os.makedirs(backup_dir, exist_ok=True)
 
         def compare_and_save(new_data, file_path, type_label):
-            # Load existing data if file exists
-            try:
-                existing_df = pd.read_csv(file_path, encoding='utf-8-sig')
-                print(f"Loaded existing {type_label} backup file")
-            except FileNotFoundError:
-                existing_df = pd.DataFrame()
-                print(f"No existing {type_label} backup file found")
-
             # Convert new data to DataFrame
             new_df = pd.DataFrame(new_data)
+            new_df['status'] = 'CURRENT'
 
-            if not existing_df.empty:
-                # Mark entries that exist in old but not in new (deleted)
-                # Using URL as unique identifier
-                deleted_mask = ~existing_df['url'].isin(new_df['url'])
-                deleted_entries = existing_df[deleted_mask].copy()
-                if not deleted_entries.empty:
-                    deleted_entries['status'] = 'DELETED'
+            # Check if file exists
+            file_exists = os.path.exists(file_path)
 
-                    # Add deleted entries to new DataFrame
-                    new_df['status'] = 'CURRENT'
-                    combined_df = pd.concat(
-                        [new_df, deleted_entries], ignore_index=True)
+            if file_exists:
+                try:
+                    existing_df = pd.read_csv(file_path, encoding='utf-8-sig')
+                    print(f"Loaded existing {type_label} backup file")
+
+                    # Mark entries that exist in old but not in new (deleted)
+                    deleted_mask = ~existing_df['url'].isin(new_df['url'])
+                    deleted_entries = existing_df[deleted_mask].copy()
+
+                    if not deleted_entries.empty:
+                        deleted_entries['status'] = 'DELETED'
+                        combined_df = pd.concat([new_df, deleted_entries], ignore_index=True)
+                        print(f"Found {len(deleted_entries)} deleted entries in {type_label} file")
+                    else:
+                        combined_df = new_df
+                        print(f"No deleted entries found in {type_label} file")
 
                     # Sort by date to maintain chronological order
                     combined_df['date'] = pd.to_datetime(combined_df['date'])
-                    combined_df = combined_df.sort_values(
-                        'date', ascending=False)
-
-                    print(
-                        f"Found {len(deleted_entries)} deleted entries in {type_label} file")
-                else:
+                    combined_df = combined_df.sort_values('date', ascending=False)
+                except Exception as e:
+                    print(f"Error reading existing file: {str(e)}")
                     combined_df = new_df
-                    combined_df['status'] = 'CURRENT'
-                    print(f"No deleted entries found in {type_label} file")
             else:
-                combined_df = new_df
-                combined_df['status'] = 'CURRENT'
                 print(f"Creating new {type_label} file")
+                combined_df = new_df
 
             # Save the combined data
             combined_df.to_csv(file_path, index=False, encoding='utf-8-sig')
@@ -296,8 +295,7 @@ class EnhancedJoongAngCrawler:
 
         if self.processed_articles:
             processed_filename = f'{backup_dir}/processed_joongang_{self.celebrity_id}.csv'
-            processed_df = compare_and_save(
-                self.processed_articles, processed_filename, "processed")
+            processed_df = compare_and_save(self.processed_articles, processed_filename, "processed")
 
     def crawl(self):
         """Main crawling function with proper end-of-results detection"""
@@ -368,9 +366,7 @@ class EnhancedJoongAngCrawler:
 
 def main():
     celebrities = [
-        {"name_eng": "IU", "name_kr": "아이유"},
-        {"name_eng": "Kim Soo-hyun", "name_kr": "김수현"},
-        {"name_eng": "Han So-hee", "name_kr": "한소희"}
+        {"name_eng": "IU", "name_kr": "아이유"}
     ]
     
     for celebrity in celebrities:
@@ -380,6 +376,8 @@ def main():
             print(f"{'='*50}\n")
             
             max_retries = 3
+            crawler = None
+            
             for attempt in range(max_retries):
                 try:
                     crawler = EnhancedJoongAngCrawler(celebrity)
@@ -393,7 +391,13 @@ def main():
                         print(f"Attempt {attempt + 1} failed, retrying...")
                         time.sleep(5)
             
-            print(f"\nCompleted processing for {celebrity['name_eng']}")
+            # Save backup files outside the retry loop
+            if crawler and (crawler.raw_articles or crawler.processed_articles):
+                try:
+                    crawler.save_backup_files()
+                except Exception as e:
+                    print(f"Error saving backup files: {str(e)}")
+                    # Don't retry for backup errors
             
         except Exception as e:
             print(f"Error processing {celebrity['name_eng']}: {str(e)}")
