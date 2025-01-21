@@ -223,7 +223,6 @@ class EnhancedJoongAngCrawler:
                 'url': article_data['url'],
                 'thumbnail': article_data.get('thumbnail', ''),
                 'source': 'Yonhap News',
-                'date': firestore.Timestamp.from_date(article_date),  # Use article's actual date
                 'formatted_date': article_data['date'],
                 'celebrity': self.celebrity_id,
                 'mainCategory': analyzed_data['mainCategory'],

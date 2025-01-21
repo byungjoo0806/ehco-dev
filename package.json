@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "postbuild": "npm run sync-algolia",
     "start": "next start",
     "lint": "next lint",
     "sync-algolia": "ts-node -r tsconfig-paths/register src/scripts/initialAlgoliaSync.ts"
