@@ -95,6 +95,12 @@ export default function Home() {
             </div>
           </div>
 
+          {/* <InstantSearch searchClient={searchClient} indexName="celebrities">
+            {/* Add widgets here */}
+            {/* <SearchBox className="border border-black" />
+            <Hits<MyHit> hitComponent={Hit} />
+          </InstantSearch> */}
+
           {/* EHCO Experience Section */}
           {/* <div className="bg-gray-50 p-8 rounded-lg mb-16">
           <h2 className="text-xl md:text-2xl font-bold text-center mb-2">The EHCO Experience</h2>
