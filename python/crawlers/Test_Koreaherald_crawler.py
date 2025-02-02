@@ -67,16 +67,16 @@ class NewsAnalyzer:
         return f"""
         TASK: Analyze this article for {self.celebrity_name} ({self.korean_name}) content.
     
-        IMPORTANT: Return ONLY a valid JSON object with exact formatting. Do NOT include commas within text values.
+        IMPORTANT: Return ONLY a valid Python dictionary. Use simple key-value pairs. Use all single quotes.
         
         STEP 1: Check if {self.celebrity_name} is mentioned.
         
         If {self.celebrity_name} is NOT mentioned, return exactly:
         {{
-            "main_category": "None",
-            "sub_category": "None",
-            "heading": "No {self.celebrity_name} Content",
-            "subheading": "Article does not mention {self.celebrity_name}"
+            'main_category': 'None',
+            'sub_category': 'None',
+            'heading': f'No {self.celebrity_name} Content',
+            'subheading': f'Article does not mention {self.celebrity_name}'
         }}
         
         STEP 2: If {self.celebrity_name} IS mentioned:
@@ -97,70 +97,89 @@ class NewsAnalyzer:
         - Include context
         - Use simple language
         
-        STRICT JSON FORMAT RULES:
-        1. Do not use any punctuation (periods commas) inside the text values
-        2. Use single quotes (') for any quotation marks needed within text values
-        3. Reserve double quotes (") only for JSON structure
-        4. Text values must not end with punctuation
-        5. All JSON strings must use straight double quotes (")
-        6. No line breaks in the JSON structure
-
-        Example of CORRECT format:
-        {{
-            "main_category": "Promotion",
-            "sub_category": "Media appearance",
-            "heading": "Han So-hee Talks About 'Gyeongseong Creature'",
-            "subheading": "She shares insights on portrayal of colonial era in 'Netflix' series"
-        }}
+        PYTHON DICTIONARY FORMAT RULES:
+        1. Use single quotes for string values
+        2. No punctuation (periods commas) inside text values
+        3. Text values must not end with punctuation
+        4. Keys must be simple strings
+        5. Return dictionary in single-line format
         
         Article text:
         {article_data['content']}
         """
 
-    def analyze_with_retry(self, article_data: Dict) -> Optional[Dict]:
-        for attempt in range(3):
+
+    def analyze_article(self, article_data: Dict) -> Optional[Dict]:
+        def clean_dictionary_string(dict_string: str) -> str:
+            # Remove extra curly brackets at start/end
+            dict_string = dict_string.strip()
+            while dict_string.startswith('{{'):
+                dict_string = dict_string[1:]
+            while dict_string.endswith('}}'):
+                dict_string = dict_string[:-1]
+
+            # Fix quote issues and spacing
+            dict_string = (dict_string
+                .replace('"', "'")  # Remove consecutive single quotes
+                .replace(",' ", ",'")  # Fix spacing after commas
+                .replace(' ,', ',')   # Fix spacing before commas
+                .replace("','", "', '")  # Add proper spacing between values
+            )
+
+            # Ensure proper dictionary structure
+            if not dict_string.startswith('{'):
+                dict_string = '{' + dict_string
+            if not dict_string.endswith('}'):
+                dict_string = dict_string + '}'
+
+            return dict_string
+
+        for attempt in range (3):
             try:
-                # Clear previous state
-                self.llm = None
-                time.sleep(1)
-
-                # Fresh instance
-                self.llm = OllamaLLM(model="llama3.2:latest")
-
-                # Use isolated prompt
-                response = self.llm.invoke(self._create_analysis_prompt(article_data))
-                print(response)
-                return self._validate_response(response)
-
-            except Exception as e:
-                print(f"Attempt {attempt + 1} failed: {str(e)}")
-                time.sleep(2 ** attempt)
+                # Reinitialize connection for each article
+                llm = None
+                llm = self.llm_manager.initialize_connection()
+                response = llm.invoke(self._create_analysis_prompt(article_data))
                 
-    def _validate_response(self, response: str) -> Optional[Dict]:
-        try:
-            json_string = response[response.find('{'):response.rfind('}')+1]
-            result = json.loads(json_string)
+                dict_string = response[response.find('{'):response.rfind('}')+1]
+                # print(dict_string)
 
-            # Validate required fields
-            required_fields = ['main_category', 'sub_category', 'heading', 'subheading']
-            if not all(field in result for field in required_fields):
-                raise ValueError("Missing required fields")
+                # Apply cleaning
+                # First, find and replace any nested double quotes with single quotes
+                dict_string = dict_string.replace('"', "'")
 
-            # Check for empty or invalid content
-            if any(not result[field].strip() for field in required_fields):
-                raise ValueError("Empty field detected")
+                # Then wrap the dictionary keys and values with double quotes
+                dict_string = dict_string.replace("{'", '{"')
+                dict_string = dict_string.replace("':", '":')
+                dict_string = dict_string.replace("': ", '": ')
+                dict_string = dict_string.replace(", '", ', "')
+                dict_string = dict_string.replace("'}", '"}')
+                print(dict_string)
 
-            return {
-                'mainCategory': result['main_category'].strip('.,'),
-                'subCategory': result['sub_category'].strip('.,'),
-                'heading': result['heading'].strip('.,'),
-                'subheading': result['subheading'].strip('.,')
-            }
-        except Exception as e:
-            print(f"Validation error: {str(e)}")
-            return None
+                # Use eval() to safely convert string to dictionary
+                result = eval(dict_string)
+                
+                # Validate it's a dictionary
+                if not isinstance(result, dict):
+                    raise ValueError("Result is not a dictionary")
 
+                # Additional validation
+                required_fields = ['main_category', 'sub_category', 'heading', 'subheading']
+                if not all(field in result for field in required_fields):
+                    return None
 
+                return {
+                    'mainCategory': result['main_category'].strip('.,'),
+                    'subCategory': result['sub_category'].strip('.,'),
+                    'heading': result['heading'].strip('.,'),
+                    'subheading': result['subheading'].strip('.,')
+                }
+            except LLMTimeoutError:
+                print(f"Timeout on attempt {attempt + 1}")
+                time.sleep(2 ** attempt)
+            except LLMConnectionError:
+                print(f"Connection error on attempt {attempt + 1}")
+                self.llm_manager = LLMManager()  # Reinitialize manager
 
 class KoreaHeraldCrawler:
     def __init__(self, celebrity: Dict[str, str]):
@@ -255,7 +274,7 @@ class KoreaHeraldCrawler:
                 print(f"Article already exists: {article_data['title'][:50]}...")
                 return False
 
-            analyzed_data = self.analyzer.analyze_with_retry({
+            analyzed_data = self.analyzer.analyze_article({
                 'title': article_data['title'],
                 'content': article_data['content']
             })
@@ -404,7 +423,7 @@ class KoreaHeraldCrawler:
 
 def main():
     celebrities = [
-        {"name_eng": "Han So-hee", "name_kr": "한소희"}
+        {"name_eng": "IU", "name_kr": "아이유"}
     ]
     
     for celebrity in celebrities:

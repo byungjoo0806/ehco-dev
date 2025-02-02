@@ -1,0 +1,7 @@
+pandas
+firebase-admin
+anthropic
+playwright
+python-dotenv
+scikit-learn
+numpy

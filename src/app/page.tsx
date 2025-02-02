@@ -87,7 +87,7 @@ export default function Home() {
               with our comprehensive timeline of verified news from trusted sources.
             </p>
             <div className="flex justify-center gap-4">
-              <Link href={"/iu?category=All&sort=newest&page=1"} onClick={handleNavigate}>
+              <Link href="/explore" onClick={handleNavigate}>
                 <button className="bg-black text-white px-6 py-2 rounded-full text-sm md:text-base">
                   Start Exploring
                 </button>
