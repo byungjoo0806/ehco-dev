@@ -3,24 +3,98 @@
 // Modified Header.tsx
 import { Menu, Search, X, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
-import { useAllCelebrities } from '@/lib/hooks/useAllCelebrities';
-import { SearchResult } from '@/lib/search';
-import { debounce } from 'lodash';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import SlidingMenu from './SlidingMenu';
 import SearchSlider from './SearchSlider';
 import { useRouter } from 'next/navigation';
+import algoliasearch, { SearchIndex } from 'algoliasearch';
+
+const searchClient = algoliasearch(
+  "B1QF6MLIU5",
+  "ef0535bdd12e549ffa7c9541395432a1"
+);
+
+type AlgoliaResult = {
+  objectID: string;
+  type: 'celebrity' | 'news';
+  name?: string;
+  title?: string;
+  koreanName?: string;
+  profilePic?: string;
+  content?: string;
+  formatted_date?: string;
+  mainCategory?: string;
+  thumbnail?: string;
+  source?: string;
+  url?: string;
+  _highlightResult?: {
+    name?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    };
+    content?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    };
+    koreanName?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    };
+    title?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    }
+  };
+}
+
+type SearchResultHit = {
+  objectID: string;
+  name?: string;
+  title?: string;
+  koreanName?: string;
+  profilePic?: string;
+  content?: string;
+  date?: string;
+  mainCategory?: string;
+  thumbnail?: string;
+  source?: string;
+  url?: string;
+  _highlightResult?: {
+    name?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    };
+    content?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    };
+    koreanName?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    };
+    title?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    }
+  };
+};
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<AlgoliaResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
-  const { celebrities } = useAllCelebrities();
-
   const router = useRouter();
 
   // Handle clicks outside of search results
@@ -35,93 +109,92 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSearchedArticleclick = (article: SearchResult) => {
-    window.open(article.url, '_blank', 'noopener,noreferrer');
+  const handleSearchedArticleClick = (article: AlgoliaResult) => {
+    if (article.url) {
+      window.open(article.url, '_blank', 'noopener,noreferrer');
+    }
   };
 
   const performSearch = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
     setIsSearching(true);
 
     try {
-      const celebrityResults: SearchResult[] = celebrities
-        .filter(celebrity => {
-          if (!celebrity) return false;
-          const searchTermLower = query.toLowerCase();
-          const matchesEnglishName = celebrity.name ?
-            celebrity.name.toLowerCase().includes(searchTermLower) : false;
-          const matchesKoreanName = celebrity.koreanName ?
-            celebrity.koreanName.includes(query) : false;
-          return matchesEnglishName || matchesKoreanName;
-        })
-        .map(({ id, name, koreanName, profilePic }) => ({
-          type: 'celebrity' as const,
-          id,
-          name,
-          koreanName,
-          profilePic
-        }));
-
-      const articleResponse = await fetch(`/api/news/search?q=${encodeURIComponent(query)}&limit=5`);
-      if (!articleResponse.ok) {
-        throw new Error('Failed to fetch articles');
+      interface MultipleSearchResponse {
+        results: Array<{
+          hits: SearchResultHit[];
+          nbHits: number;
+          page: number;
+          nbPages: number;
+          hitsPerPage: number;
+          exhaustiveNbHits: boolean;
+          query: string;
+          params: string;
+        }>;
       }
-      const articles = await articleResponse.json();
-      const articleResults: SearchResult[] = articles.map((article: SearchResult) => ({
-        type: 'article' as const,
-        id: article.id,
-        name: article.name,
-        content: article.content,
-        date: article.date,
-        category: article.category,
-        celebrity: article.celebrity,
-        thumbnail: article.thumbnail,
-        source: article.source,
-        url: article.url
-      }));
 
-      const combinedResults = [...celebrityResults, ...articleResults];
-      combinedResults.sort((a, b) => {
-        const aExactMatch = a.name.toLowerCase() === query.toLowerCase();
-        const bExactMatch = b.name.toLowerCase() === query.toLowerCase();
-        if (aExactMatch && !bExactMatch) return -1;
-        if (!aExactMatch && bExactMatch) return 1;
-        return 0;
-      });
+      const response = await searchClient.multipleQueries<SearchResultHit>([{
+        indexName: "celebrities_name_asc",
+        query: query,
+        params: {
+          hitsPerPage: 5,
+          attributesToHighlight: ['name', 'koreanName'],
+          highlightPreTag: '<mark class="bg-yellow-200">',
+          highlightPostTag: '</mark>',
+          queryType: 'prefixAll',
+          typoTolerance: true
+        }
+      }, {
+        indexName: "news",
+        query: query,
+        params: {
+          hitsPerPage: 5,
+          attributesToHighlight: ['title', 'content'],
+          highlightPreTag: '<mark class="bg-yellow-200">',
+          highlightPostTag: '</mark>'
+        }
+      }]) as MultipleSearchResponse;
 
+      const combinedResults = response.results.flatMap((result, index) =>
+        result.hits.map(hit => ({
+          ...hit,
+          type: index === 0 ? 'celebrity' : 'news'
+        } as AlgoliaResult))
+      );
+
+      console.log(combinedResults);
       setSearchResults(combinedResults);
       setShowResults(true);
     } catch (error) {
-      console.error('Search error:', error);
+      console.error('Algolia search error:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
   };
 
-  const debouncedSearch = useCallback(
-    debounce((query: string) => {
-      if (query.trim()) {
-        performSearch(query);
-      } else {
-        setSearchResults([]);
-        setShowResults(false);
-      }
-    }, 300),
-    [celebrities]
-  );
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
-    debouncedSearch(query);
+    performSearch(query);
   };
 
-  const renderSearchResult = (result: SearchResult) => {
+  // Add this function to safely render HTML content
+  const renderHighlightedText = (text: string) => {
+    return <span dangerouslySetInnerHTML={{ __html: text }} />;
+  };
+
+  const renderSearchResult = (result: AlgoliaResult) => {
     if (result.type === 'celebrity') {
       return (
         <Link
-          key={result.id}
-          href={`/${result.id}`}
+          key={result.objectID}
+          href={`/${result.objectID}`}
           className="flex flex-row items-center px-3 py-2 hover:bg-gray-100"
           onClick={() => {
             setShowResults(false);
@@ -129,12 +202,24 @@ export default function Header() {
           }}
         >
           {result.profilePic && (
-            <img src={result.profilePic} alt={result.name} className="w-16 h-16 rounded-full" />
+            <img
+              src={result.profilePic}
+              alt={result.name}
+              className="w-16 h-16 rounded-full"
+            />
           )}
           <div className="flex-1 pl-2">
-            <div className="font-medium text-md">{result.name}</div>
+            <div className="font-medium text-md">
+              {result._highlightResult?.name ?
+                renderHighlightedText(result._highlightResult.name.value) :
+                result.name}
+            </div>
             {result.koreanName && (
-              <div className="text-sm text-gray-500">{result.koreanName}</div>
+              <div className="text-sm text-gray-500">
+                {result._highlightResult?.koreanName ?
+                  renderHighlightedText(result._highlightResult.koreanName.value) :
+                  result.koreanName}
+              </div>
             )}
           </div>
         </Link>
@@ -143,9 +228,9 @@ export default function Header() {
 
     return (
       <div
-        key={result.id}
+        key={result.objectID}
         onClick={() => {
-          handleSearchedArticleclick(result);
+          handleSearchedArticleClick(result);
           setSearchQuery('');
         }}
         className="w-[90%] flex flex-col sm:flex-row items-center bg-white border border-slate-200 pl-2 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 overflow-hidden cursor-pointer my-2"
@@ -154,23 +239,31 @@ export default function Header() {
           <div className="sm:w-1/4 flex justify-center items-center">
             <img
               src={result.thumbnail}
-              alt={result.name}
+              alt="Image Unavailable"
               className="w-48 h-48 sm:w-[90%] sm:h-40 object-contain"
             />
           </div>
         )}
         <div className="p-4 sm:w-3/4">
-          <h3 className="text-md sm:text-base font-semibold mb-2">{result.name}</h3>
+          <h3 className="text-md sm:text-base font-semibold mb-2">
+            {result._highlightResult?.title ?
+              renderHighlightedText(result._highlightResult.title.value) :
+              result.title}
+          </h3>
           <div className="text-sm sm:text-xs text-gray-600 mb-2">
-            {result.source} • {result.date}
+            {result.source} • {result.formatted_date}
           </div>
-          {result.category && (
+          {result.mainCategory && (
             <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm sm:text-xs text-gray-700 mr-2 mb-2">
-              {result.category}
+              {result.mainCategory}
             </span>
           )}
           {result.content && (
-            <p className="text-gray-700 text-sm sm:text-xs line-clamp-3">{result.content}</p>
+            <p className="text-gray-700 text-sm sm:text-xs line-clamp-3">
+              {result._highlightResult?.content ?
+                renderHighlightedText(result._highlightResult.content.value) :
+                result.content}
+            </p>
           )}
         </div>
       </div>
@@ -242,13 +335,13 @@ export default function Header() {
                           </div>
                         )}
 
-                        {searchResults.some(result => result.type === 'article') && (
+                        {searchResults.some(result => result.type === 'news') && (
                           <div className="w-full flex flex-col items-center">
                             <div className="w-full px-3 py-2 bg-gray-50 border-b">
                               <p className='text-xs font-semibold text-gray-600'>Articles</p>
                             </div>
                             {searchResults
-                              .filter(result => result.type === 'article')
+                              .filter(result => result.type === 'news')
                               .map(renderSearchResult)}
 
                             {/* Moved "see more" link to bottom */}

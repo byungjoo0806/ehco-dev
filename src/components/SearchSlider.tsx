@@ -1,10 +1,54 @@
+'use client';
+
 // SearchSlider.tsx
-import React, { useRef, useState, useCallback } from 'react';
-import { X, Search } from 'lucide-react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
+import { X, Search, ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { debounce } from 'lodash';
-import { SearchResult } from '@/lib/search';
-import { useAllCelebrities } from '@/lib/hooks/useAllCelebrities';
+import { usePathname, useRouter } from 'next/navigation';
+import algoliasearch from 'algoliasearch';
+
+const searchClient = algoliasearch(
+    "B1QF6MLIU5",
+    "ef0535bdd12e549ffa7c9541395432a1"
+);
+
+type AlgoliaResult = {
+    objectID: string;
+    type: 'celebrity' | 'news';
+    name?: string;
+    title?: string;
+    koreanName?: string;
+    profilePic?: string;
+    content?: string;
+    formatted_date?: string;
+    mainCategory?: string;
+    thumbnail?: string;
+    source?: string;
+    url?: string;
+    _highlightResult?: {
+        name?: {
+            value: string;
+            matchLevel: string;
+            matchedWords: string[];
+        };
+        content?: {
+            value: string;
+            matchLevel: string;
+            matchedWords: string[];
+        };
+        koreanName?: {
+            value: string;
+            matchLevel: string;
+            matchedWords: string[];
+        };
+        title?: {
+            value: string;
+            matchLevel: string;
+            matchedWords: string[];
+        }
+    };
+}
 
 interface SearchSliderProps {
     isOpen: boolean;
@@ -14,68 +58,98 @@ interface SearchSliderProps {
 export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [showResults, setShowResults] = useState(false);
-    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+    const [searchResults, setSearchResults] = useState<AlgoliaResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const { celebrities } = useAllCelebrities();
+    const [isNavigating, setIsNavigating] = useState(false);
+    const router = useRouter();
+    const pathname = usePathname();
 
-    const handleSearchedArticleclick = (article: SearchResult) => {
-        window.open(article.url, '_blank', 'noopener,noreferrer');
+    // Reset isNavigating when pathname changes
+    useEffect(() => {
+        setIsNavigating(false);
+    }, [pathname]);
+
+    const handleSearchedArticleClick = (article: AlgoliaResult) => {
+        if (article.url) {
+            window.open(article.url, '_blank', 'noopener,noreferrer');
+        }
+        onClose();
+    };
+
+    const handleCelebrityClick = (celebrityId: string) => {
+        setIsNavigating(true);
+        onClose();
+        setSearchQuery('');
+        setSearchResults([]);
+        setShowResults(false);
+        router.push(`/${celebrityId}`);
+    };
+
+    const handleSeeMoreClick = () => {
+        setIsNavigating(true);
+        router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+        setSearchQuery('');
+        setSearchResults([]);
+        setShowResults(false);
         onClose();
     };
 
     const performSearch = async (query: string) => {
+        if (!query.trim()) {
+            setSearchResults([]);
+            setShowResults(false);
+            return;
+        }
+
         setIsSearching(true);
 
         try {
-            const celebrityResults: SearchResult[] = celebrities
-                .filter(celebrity => {
-                    if (!celebrity) return false;
-                    const searchTermLower = query.toLowerCase();
-                    const matchesEnglishName = celebrity.name ?
-                        celebrity.name.toLowerCase().includes(searchTermLower) : false;
-                    const matchesKoreanName = celebrity.koreanName ?
-                        celebrity.koreanName.includes(query) : false;
-                    return matchesEnglishName || matchesKoreanName;
-                })
-                .map(({ id, name, koreanName, profilePic }) => ({
-                    type: 'celebrity' as const,
-                    id,
-                    name,
-                    koreanName,
-                    profilePic
-                }));
-
-            const articleResponse = await fetch(`/api/news/search?q=${encodeURIComponent(query)}&limit=5`);
-            if (!articleResponse.ok) {
-                throw new Error('Failed to fetch articles');
+            interface MultipleSearchResponse {
+                results: Array<{
+                    hits: AlgoliaResult[];
+                    nbHits: number;
+                    page: number;
+                    nbPages: number;
+                    hitsPerPage: number;
+                    exhaustiveNbHits: boolean;
+                    query: string;
+                    params: string;
+                }>;
             }
-            const articles = await articleResponse.json();
-            const articleResults: SearchResult[] = articles.map((article: SearchResult) => ({
-                type: 'article' as const,
-                id: article.id,
-                name: article.name,
-                content: article.content,
-                date: article.date,
-                category: article.category,
-                celebrity: article.celebrity,
-                thumbnail: article.thumbnail,
-                source: article.source,
-                url: article.url
-            }));
 
-            const combinedResults = [...celebrityResults, ...articleResults];
-            combinedResults.sort((a, b) => {
-                const aExactMatch = a.name.toLowerCase() === query.toLowerCase();
-                const bExactMatch = b.name.toLowerCase() === query.toLowerCase();
-                if (aExactMatch && !bExactMatch) return -1;
-                if (!aExactMatch && bExactMatch) return 1;
-                return 0;
-            });
+            const response = await searchClient.multipleQueries<AlgoliaResult>([{
+                indexName: "celebrities_name_asc",
+                query: query,
+                params: {
+                    hitsPerPage: 5,
+                    attributesToHighlight: ['name', 'koreanName'],
+                    highlightPreTag: '<mark class="bg-yellow-200">',
+                    highlightPostTag: '</mark>',
+                    queryType: 'prefixAll',
+                    typoTolerance: true
+                }
+            }, {
+                indexName: "news",
+                query: query,
+                params: {
+                    hitsPerPage: 5,
+                    attributesToHighlight: ['title', 'content'],
+                    highlightPreTag: '<mark class="bg-yellow-200">',
+                    highlightPostTag: '</mark>'
+                }
+            }]) as MultipleSearchResponse;
+
+            const combinedResults = response.results.flatMap((result, index) =>
+                result.hits.map(hit => ({
+                    ...hit,
+                    type: index === 0 ? 'celebrity' : 'news'
+                } as AlgoliaResult))
+            );
 
             setSearchResults(combinedResults);
             setShowResults(true);
         } catch (error) {
-            console.error('Search error:', error);
+            console.error('Algolia search error:', error);
             setSearchResults([]);
         } finally {
             setIsSearching(false);
@@ -83,15 +157,8 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
     };
 
     const debouncedSearch = useCallback(
-        debounce((query: string) => {
-            if (query.trim()) {
-                performSearch(query);
-            } else {
-                setSearchResults([]);
-                setShowResults(false);
-            }
-        }, 300),
-        [celebrities]
+        debounce((query: string) => performSearch(query), 300),
+        []
     );
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -100,27 +167,35 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
         debouncedSearch(query);
     };
 
-    const renderSearchResult = (result: SearchResult) => {
+    // Add this function to safely render HTML content
+    const renderHighlightedText = (text: string) => {
+        return <span dangerouslySetInnerHTML={{ __html: text }} />;
+    };
+
+    const renderSearchResult = (result: AlgoliaResult) => {
         if (result.type === 'celebrity') {
             return (
                 <Link
-                    key={result.id}
-                    href={`/${result.id}`}
+                    key={result.objectID}
+                    href={`/${result.objectID}`}
                     className="flex flex-row items-center px-3 py-2 hover:bg-gray-100"
-                    onClick={() => {
-                        onClose();
-                        setSearchQuery('');
-                        setSearchResults([]);
-                        setShowResults(false);
-                    }}
+                    onClick={() => handleCelebrityClick(result.objectID)}
                 >
                     {result.profilePic && (
                         <img src={result.profilePic} alt={result.name} className="w-16 h-16 rounded-full" />
                     )}
                     <div className="flex-1 pl-2">
-                        <div className="font-medium text-md">{result.name}</div>
+                        <div className="font-medium text-md">
+                            {result._highlightResult?.name ?
+                                renderHighlightedText(result._highlightResult.name.value) :
+                                result.name}
+                        </div>
                         {result.koreanName && (
-                            <div className="text-sm text-gray-500">{result.koreanName}</div>
+                            <div className="text-sm text-gray-500">
+                                {result._highlightResult?.koreanName ?
+                                    renderHighlightedText(result._highlightResult.koreanName.value) :
+                                    result.koreanName}
+                            </div>
                         )}
                     </div>
                 </Link>
@@ -129,9 +204,9 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
 
         return (
             <div
-                key={result.id}
+                key={result.objectID}
                 onClick={() => {
-                    handleSearchedArticleclick(result);
+                    handleSearchedArticleClick(result);
                     setSearchQuery('');
                     setSearchResults([]);
                     setShowResults(false);
@@ -142,23 +217,31 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
                     <div className="w-full flex justify-center items-center">
                         <img
                             src={result.thumbnail}
-                            alt={result.name}
+                            alt="Image Unavailable"
                             className="w-48 h-48 object-contain"
                         />
                     </div>
                 )}
                 <div className="p-4 w-full">
-                    <h3 className="text-md font-semibold mb-2">{result.name}</h3>
+                    <h3 className="text-md font-semibold mb-2">
+                        {result._highlightResult?.title ?
+                            renderHighlightedText(result._highlightResult.title.value) :
+                            result.title}
+                    </h3>
                     <div className="text-sm text-gray-600 mb-2">
-                        {result.source} • {result.date}
+                        {result.source} • {result.formatted_date}
                     </div>
-                    {result.category && (
+                    {result.mainCategory && (
                         <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm text-gray-700 mr-2 mb-2">
-                            {result.category}
+                            {result.mainCategory}
                         </span>
                     )}
                     {result.content && (
-                        <p className="text-gray-700 text-sm line-clamp-3">{result.content}</p>
+                        <p className="text-gray-700 text-sm line-clamp-3">
+                            {result._highlightResult?.content ?
+                                renderHighlightedText(result._highlightResult.content.value) :
+                                result.content}
+                        </p>
                     )}
                 </div>
             </div>
@@ -172,6 +255,16 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
                     className="fixed inset-0 bg-black bg-opacity-50 z-40"
                     onClick={onClose}
                 />
+            )}
+
+            {/* Navigation Loading Overlay */}
+            {isNavigating && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
+                    <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
+                        <Loader2 className="animate-spin text-slate-600 dark:text-white" size={24} />
+                        <span className="text-slate-600 dark:text-white font-medium">Loading...</span>
+                    </div>
+                </div>
             )}
 
             <div
@@ -230,14 +323,25 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
                                         </div>
                                     )}
 
-                                    {searchResults.some(result => result.type === 'article') && (
+                                    {searchResults.some(result => result.type === 'news') && (
                                         <div className="w-full flex flex-col items-center">
                                             <div className="w-full px-3 py-2 bg-gray-50 border-b text-xs font-semibold text-gray-600">
                                                 Articles
                                             </div>
                                             {searchResults
-                                                .filter(result => result.type === 'article')
+                                                .filter(result => result.type === 'news')
                                                 .map(renderSearchResult)}
+
+                                            {/* Added "see more" link */}
+                                            <div className="w-full border-t py-2 mt-2">
+                                                <div
+                                                    className="flex items-center justify-center hover:bg-gray-50 py-2 cursor-pointer"
+                                                    onClick={handleSeeMoreClick}
+                                                >
+                                                    <span className="text-sm text-blue-500 pr-1">See more results</span>
+                                                    <ArrowRight size={16} className="text-blue-500" />
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

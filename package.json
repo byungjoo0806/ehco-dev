@@ -10,11 +10,12 @@
     "sync-algolia": "ts-node -r tsconfig-paths/register src/scripts/initialAlgoliaSync.ts"
   },
   "dependencies": {
+    "@algolia/client-search": "^5.20.0",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-slot": "^1.1.1",
     "@types/lodash": "^4.17.14",
     "@vercel/analytics": "^1.4.1",
-    "algoliasearch": "^5.19.0",
+    "algoliasearch": "^4.24.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "firebase": "^11.1.0",

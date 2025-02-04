@@ -97,16 +97,36 @@ export async function generateMetadata({ params }: { params: Promise<{ celebrity
   }
 }
 
+// Loading components for individual sections
+function ProfileInfoLoading() {
+  return (
+    <div className="w-full h-48 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg"></div>
+  );
+}
+
+function NewsFeedLoading() {
+  return (
+    <div className="w-full space-y-4 mt-4">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="w-full h-32 bg-gray-100 dark:bg-gray-800 animate-pulse rounded-lg"></div>
+      ))}
+    </div>
+  );
+}
+
 export default async function CelebrityPage({ params }: CelebrityPageProps) {
   const resolvedParams = await params;
   const celebrityId = resolvedParams.celebrity.toLowerCase();
 
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <div className='w-full'>
+    <div className='w-full'>
+      <Suspense fallback={<ProfileInfoLoading />}>
         <ProfileInfo celebrityId={celebrityId} />
+      </Suspense>
+
+      <Suspense fallback={<NewsFeedLoading />}>
         <NewsFeedContainer celebrityId={celebrityId} />
-      </div>
-    </Suspense>
+      </Suspense>
+    </div>
   );
 }
