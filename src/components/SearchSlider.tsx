@@ -66,8 +66,8 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
 
     // Reset isNavigating when pathname changes
     useEffect(() => {
-        console.log('pathname changed:', pathname);
-        console.log('isNavigating:', isNavigating);
+        // console.log('pathname changed:', pathname);
+        // console.log('isNavigating:', isNavigating);
         setIsNavigating(false);
     }, [pathname]);
 
@@ -260,14 +260,14 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
             )}
 
             {/* Navigation Loading Overlay */}
-            {/* {isNavigating && (
+            {isNavigating && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
                         <Loader2 className="animate-spin text-slate-600 dark:text-white" size={24} />
                         <span className="text-slate-600 dark:text-white font-medium">Loading...</span>
                     </div>
                 </div>
-            )} */}
+            )}
 
             <div
                 className={`fixed top-0 right-0 h-full w-full bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'

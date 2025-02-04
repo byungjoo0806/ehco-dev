@@ -114,8 +114,8 @@ export default function Header() {
   }, []);
 
   useEffect(() => {
-    console.log('pathname changed:', pathname);
-    console.log('isNavigating:', isNavigating);
+    // console.log('pathname changed:', pathname);
+    // console.log('isNavigating:', isNavigating);
     setIsNavigating(false);
   }, [pathname]);
 
