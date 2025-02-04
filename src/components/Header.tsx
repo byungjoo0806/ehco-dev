@@ -250,14 +250,16 @@ export default function Header() {
               renderHighlightedText(result._highlightResult.title.value) :
               result.title}
           </h3>
-          <div className="text-sm sm:text-xs text-gray-600 mb-2">
-            {result.source} • {result.formatted_date}
+          <div className="text-sm sm:text-xs text-gray-600 flex items-center mb-2">
+            <span>{result.source}</span>
+            <span>•</span>
+            <span>{result.formatted_date}</span>
+            {result.mainCategory && (
+              <span className="bg-gray-200 rounded-full px-3 py-1 text-sm sm:text-xs text-gray-700 mx-2">
+                {result.mainCategory}
+              </span>
+            )}
           </div>
-          {result.mainCategory && (
-            <span className="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm sm:text-xs text-gray-700 mr-2 mb-2">
-              {result.mainCategory}
-            </span>
-          )}
           {result.content && (
             <p className="text-gray-700 text-sm sm:text-xs line-clamp-3">
               {result._highlightResult?.content ?
