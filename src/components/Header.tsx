@@ -8,6 +8,8 @@ import SlidingMenu from './SlidingMenu';
 import SearchSlider from './SearchSlider';
 import { useRouter } from 'next/navigation';
 import algoliasearch, { SearchIndex } from 'algoliasearch';
+import { usePathname } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
 const searchClient = algoliasearch(
   "B1QF6MLIU5",
@@ -94,8 +96,10 @@ export default function Header() {
   const [showResults, setShowResults] = useState(false);
   const [searchResults, setSearchResults] = useState<AlgoliaResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   // Handle clicks outside of search results
   useEffect(() => {
@@ -109,11 +113,25 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    console.log('pathname changed:', pathname);
+    console.log('isNavigating:', isNavigating);
+    setIsNavigating(false);
+  }, [pathname]);
+
   const handleSearchedArticleClick = (article: AlgoliaResult) => {
     if (article.url) {
       window.open(article.url, '_blank', 'noopener,noreferrer');
     }
   };
+
+  const handleSeeMoreResults = () => {
+    setIsNavigating(true);
+    router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowResults(false);
+  }
 
   const performSearch = async (query: string) => {
     if (!query.trim()) {
@@ -349,12 +367,7 @@ export default function Header() {
                             {/* Moved "see more" link to bottom */}
                             <div className="w-full border-t py-2 mt-2">
                               <div className="flex items-center justify-center hover:bg-gray-50 py-2 cursor-pointer"
-                                onClick={() => {
-                                  router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-                                  setSearchQuery('');
-                                  setSearchResults([]);
-                                  setShowResults(false);
-                                }}>
+                                onClick={handleSeeMoreResults}>
                                 <span className="text-sm text-blue-500 pr-1">See more results</span>
                                 <ArrowRight size={16} className="text-blue-500" />
                               </div>
