@@ -94,6 +94,8 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="google-adsense-account" content="ca-pub-1708240738390806" />
+        {/* <link rel="icon" type="image/x-icon" href="/favicon.ico"></link>
+        <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico"></link> */}
       </head>
       <body className={inter.className}>
         <div className="fixed top-0 left-0 right-0 z-50 shadow-md">
