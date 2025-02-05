@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { Loader2 } from "lucide-react";
 import Banner from '@/components/Banner';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 
 interface Celebrity {
     id: string;
@@ -40,6 +40,7 @@ function ExploreContent({
 }) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     useEffect(() => {
         onCelebrityClick(''); // Reset navigation state
@@ -47,6 +48,12 @@ function ExploreContent({
 
     const handleArticleClick = (url: string) => {
         window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleCelebrityCardClick = async (e: React.MouseEvent, celebrity: Celebrity) => {
+        e.preventDefault(); // Prevent default Link behavior
+        onCelebrityClick(celebrity.id);
+        router.push(`/${celebrity.id}?category=All&sort=newest&page=1`);
     };
 
     return (
@@ -66,7 +73,7 @@ function ExploreContent({
                                     page: '1'
                                 }
                             }}
-                            onClick={() => onCelebrityClick(celebrity.id)}
+                            onClick={(e) => handleCelebrityCardClick(e, celebrity)}
                         >
                             <div className="bg-white rounded-lg shadow-md p-4 hover:shadow-lg transition-all duration-200 cursor-pointer hover:scale-110">
                                 <div className="flex items-center space-x-4">
@@ -173,9 +180,11 @@ export default function ExplorePage() {
         fetchData();
     }, []);
 
-    const handleCelebrityClick = (celebrityId: string) => {
-        if (celebrityId) { // Only set navigating if we have an ID (actual navigation)
+    const handleCelebrityClick = async (celebrityId: string) => {
+        if (celebrityId) {
             setIsNavigating(true);
+            // Add a small delay to ensure the loading state is visible
+            await new Promise(resolve => setTimeout(resolve, 300));
         } else {
             setIsNavigating(false);
         }

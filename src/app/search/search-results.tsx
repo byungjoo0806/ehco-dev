@@ -196,23 +196,25 @@ export default function SearchResults() {
 
                     {/* Article Results */}
                     {articles.length > 0 && (
-                        <div>
+                        <div className='w-full'>
                             <h2 className="text-lg font-semibold mb-4">Articles</h2>
-                            <div className="grid gap-6">
+                            <div className="grid gap-6 w-full">
                                 {articles.map((article) => (
                                     <div
                                         key={article.objectID}
                                         onClick={() => handleArticleClick(article)}
-                                        className="flex flex-col md:flex-row gap-4 p-4 cursor-pointer border border-slate-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
+                                        className="w-full overflow-hidden flex flex-col md:flex-row md:items-center gap-4 p-4 cursor-pointer border border-slate-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
                                     >
                                         {article.thumbnail && (
-                                            <img
-                                                src={article.thumbnail}
-                                                alt={article.title || 'Article thumbnail'}
-                                                className="w-full md:w-32 h-48 md:h-24 object-cover rounded-lg flex-shrink-0"
-                                            />
+                                            <div className='w-full md:w-32 flex-shrink-0'>
+                                                <img
+                                                    src={article.thumbnail}
+                                                    alt={article.title || 'Article thumbnail'}
+                                                    className="w-full md:w-32 h-48 md:h-24 object-cover rounded-lg flex-shrink-0"
+                                                />
+                                            </div>
                                         )}
-                                        <div className="flex-1">
+                                        <div className="flex-1 min-w-0">
                                             <h4 className="font-medium mb-1 text-lg hover:text-blue-600 transition-colors">
                                                 {article._highlightResult?.title
                                                     ? renderHighlightedText(article._highlightResult.title.value)
