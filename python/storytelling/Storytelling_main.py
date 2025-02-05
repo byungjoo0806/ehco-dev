@@ -9,10 +9,10 @@ async def main():
     news_manager = NewsManager()
     
     # Initialize ContentGenerationManager with NewsManager instance
-    content_manager = ContentGenerationManager(news_manager)
+    manager = ContentGenerationManager(news_manager, celebrity_name="Han So-hee")
     
     # Generate and store content
-    processed_batches = await content_manager.generate_and_store_content()
+    processed_batches = await manager.generate_and_store_content()
     print(f"Processed {processed_batches} batches of content")
 
 if __name__ == "__main__":
