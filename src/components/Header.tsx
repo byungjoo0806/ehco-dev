@@ -15,22 +15,20 @@ const searchClient = algoliasearch(
 
 type Celebrity = {
   objectID: string;
-  type: 'celebrity';
   name?: string;
-  title?: string;
   koreanName?: string;
   profilePic?: string;
   _highlightResult?: {
-    name?: {
-      value: string;
-      matchLevel: string;
-      matchedWords: string[];
-    };
-    koreanName?: {
-      value: string;
-      matchLevel: string;
-      matchedWords: string[];
-    };
+      name?: {
+          value: string;
+          matchLevel: string;
+          matchedWords: string[];
+      };
+      koreanName?: {
+          value: string;
+          matchLevel: string;
+          matchedWords: string[];
+      };
   };
 }
 
