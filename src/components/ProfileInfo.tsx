@@ -1,77 +1,111 @@
 'use client';
 
-import { useCelebrity } from '@/lib/hooks/useCelebrity';
+import { Instagram, Music, Youtube } from 'lucide-react';
 
-interface ProfileInfoProps {
-  celebrityId: string;
+interface CelebrityData {
+  name: string;
+  koreanName: string;
+  profilePic: string;
+  youtubeUrl?: string;
+  instagramUrl?: string;
+  spotifyUrl?: string;
+  birthDate: string;
+  nationality: string;
+  company: string;
+  school?: string;
+  debutDate?: string;
+  occupation?: string;
+  group?: string;
+  zodiacSign?: string;
+  chineseZodiac?: string;
 }
 
-export default function ProfileInfo({ celebrityId }: ProfileInfoProps) {
-  const { celebrity, loading, error } = useCelebrity(celebrityId);
+interface ProfileInfoProps {
+  celebrityData: CelebrityData;
+}
 
-  if (loading) {
-    return (
-      <div className="w-full bg-gray-50 dark:bg-slate-600 py-4 md:py-8">
-        <div className="w-full md:w-[60%] mx-auto px-4">
-          <div className="flex flex-col items-center md:flex-row md:items-start md:gap-8">
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 animate-pulse mb-4 md:mb-0" />
-            <div className="flex-1 w-full md:w-auto">
-              <div className="h-8 bg-gray-200 rounded w-3/4 md:w-1/4 mb-4 animate-pulse mx-auto md:mx-0" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 max-w-sm mx-auto md:mx-0">
-                {[...Array(4)].map((_, i) => (
-                  <div key={i} className="col-span-1 md:col-span-2 flex flex-col md:flex-row gap-2 md:gap-4">
-                    <div className="h-4 bg-gray-200 rounded w-full md:w-1/4 animate-pulse" />
-                    <div className="h-4 bg-gray-200 rounded w-full md:w-1/4 animate-pulse" />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !celebrity) {
-    return (
-      <div className="bg-gray-50 dark:bg-slate-600 py-4 md:py-8">
-        <div className="container mx-auto px-4 text-red-500 text-center md:text-left">
-          Error loading celebrity information
-        </div>
-      </div>
-    );
-  }
+export default function ProfileInfo({ celebrityData }: ProfileInfoProps) {
+  const hasSocialMedia = celebrityData.youtubeUrl || celebrityData.instagramUrl || celebrityData.spotifyUrl;
 
   return (
-    <div className="w-full bg-gray-50 dark:bg-slate-600 py-4 md:py-8">
-      <div className="w-full md:w-[60%] mx-auto px-4">
-        <div className="flex flex-col items-center md:flex-row md:items-start md:gap-8">
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 mb-4 md:mb-0 overflow-hidden">
-            <img src={celebrity.profilePic} alt={celebrity.name} className='w-full h-full object-cover' />
-          </div>
-          <div className="flex-1 w-full md:w-auto">
-            <h1 className="text-xl md:text-2xl font-bold mb-4 text-center md:text-left text-black dark:text-white">{celebrity.name}</h1>
-            <div className="grid grid-cols-1 gap-y-2 max-w-sm mx-auto md:mx-0">
-              <div className='flex justify-between'>
-                <div className="w-[45%] text-sm text-end md:text-start font-medium md:font-normal text-black dark:text-white">Actual Name:</div>
-                <div className="w-[45%] text-sm text-black dark:text-white">{celebrity.koreanName}</div>
-              </div>
-              <div className='flex justify-between'>
-                <div className="w-[45%] text-sm text-end md:text-start font-medium md:font-normal text-black dark:text-white">Birth of Date:</div>
-                <div className="w-[45%] text-sm text-black dark:text-white">{celebrity.birthDate}</div>
-              </div>
-              <div className='flex justify-between'>
-                <div className="w-[45%] text-sm text-end md:text-start font-medium md:font-normal text-black dark:text-white">Nationality:</div>
-                <div className="w-[45%] text-sm text-black dark:text-white">{celebrity.nationality}</div>
-              </div>
-              <div className='flex justify-between'>
-                <div className="w-[45%] text-sm text-end md:text-start font-medium md:font-normal text-black dark:text-white">Management:</div>
-                {celebrity.company ? (
-                  <div className="w-[45%] text-sm text-black dark:text-white">{celebrity.company}</div>
-                ) : (
-                  <div className="w-[45%] text-sm text-black dark:text-white">N/A</div>
+    <div className="w-full bg-gray-50 dark:bg-slate-600 py-6 md:py-8 shadow-sm">
+      <div className="w-[90%] md:w-[80%] mx-auto px-2 md:px-4">
+        <div className="flex flex-col md:flex-row md:justify-between gap-6 md:gap-8">
+          {/* Left Section - Profile Picture and Basic Info */}
+          <div className="w-full md:w-64 flex flex-col items-center md:items-start md:border-r md:border-dashed md:border-black md:pr-4">
+            <div className="w-32 h-32 rounded-lg bg-gray-200 overflow-hidden mb-4">
+              <img src={celebrityData.profilePic} alt={celebrityData.name} className="w-full h-full object-cover" />
+            </div>
+
+            <h1 className="text-xl md:text-2xl font-bold mb-3 text-center md:text-left text-black dark:text-white">
+              {celebrityData.name}
+            </h1>
+
+            {hasSocialMedia && (
+              <div className="flex justify-center md:justify-start gap-4 mb-4 w-full">
+                {celebrityData.youtubeUrl && (
+                  <a href={celebrityData.youtubeUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-black dark:text-white hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                    <Youtube size={24} />
+                  </a>
+                )}
+                {celebrityData.instagramUrl && (
+                  <a href={celebrityData.instagramUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-black dark:text-white hover:text-pink-600 dark:hover:text-pink-400 transition-colors">
+                    <Instagram size={24} />
+                  </a>
+                )}
+                {celebrityData.spotifyUrl && (
+                  <a href={celebrityData.spotifyUrl} target="_blank" rel="noopener noreferrer"
+                    className="text-black dark:text-white hover:text-green-600 dark:hover:text-green-400 transition-colors">
+                    <Music size={24} />
+                  </a>
                 )}
               </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-y-3 w-full">
+              {[
+                { label: "Actual Name", value: celebrityData.koreanName },
+                { label: "Birth of Date", value: celebrityData.birthDate },
+                { label: "Nationality", value: celebrityData.nationality },
+                { label: "Management", value: celebrityData.company || "N/A" }
+              ].map((item, index) => (
+                <div key={index} className="flex flex-col md:flex-row gap-1 md:gap-2">
+                  <div className="text-sm font-medium text-center md:text-left text-black dark:text-white">
+                    {item.label}:
+                  </div>
+                  <div className="text-sm text-center md:text-left text-black dark:text-white">
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Section - Additional Info */}
+          <div className="w-full md:w-[70%] lg:w-[65%]">
+            <h2 className="text-xl font-bold mb-6 text-black dark:text-white text-center md:text-left">
+              Basic Info
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {[
+                { label: "School", value: celebrityData.school },
+                { label: "Debut", value: celebrityData.debutDate },
+                { label: "Occupation", value: celebrityData.occupation },
+                ...(celebrityData.group ? [{ label: "Group", value: celebrityData.group }] : []),
+                { label: "Zodiac Sign", value: celebrityData.zodiacSign },
+                { label: "Chinese Zodiac", value: celebrityData.chineseZodiac }
+              ].map((item, index) => (
+                <div key={index} className="flex flex-col gap-2">
+                  <div className="text-sm font-medium text-black dark:text-white text-center md:text-left">
+                    {item.label}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-300 text-center md:text-left">
+                    {item.value || "N/A"}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

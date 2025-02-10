@@ -25,6 +25,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-instantsearch": "^7.15.0",
+    "shadcn-ui": "^0.9.4",
     "swiper": "^11.2.2",
     "tailwind-merge": "^2.6.0"
   },

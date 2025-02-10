@@ -3,7 +3,7 @@
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 export default function Home() {
@@ -11,6 +11,12 @@ export default function Home() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isPageLoading, setIsPageLoading] = useState(true);
+
+  useEffect(() => {
+    // Hide loader once page is ready
+    setIsPageLoading(false);
+  }, []);
 
   const handleNavigate = () => {
     setIsNavigating(true);
@@ -64,8 +70,8 @@ export default function Home() {
 
   return (
     <>
-      {/* Navigation Loading Overlay */}
-      {isNavigating && (
+      {/* Loading Overlay */}
+      {(isPageLoading || isNavigating) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
           <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
             <Loader2 className="animate-spin text-slate-600 dark:text-white" size={24} />

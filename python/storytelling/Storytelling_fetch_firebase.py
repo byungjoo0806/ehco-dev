@@ -27,7 +27,7 @@ class NewsManager:
         try:
             # Get configuration from environment variables
             config_path = os.getenv('FIREBASE_CONFIG_PATH')
-            database_url = os.getenv('FIREBASE_DATABASE_URL')
+            database_url = os.getenv('FIREBASE_DEFAULT_DATABASE_URL')
             
             if not config_path:
                 raise ValueError("FIREBASE_CONFIG_PATH not found in environment variables")
@@ -52,8 +52,7 @@ class NewsManager:
             try:
                 # Get client with specific database
                 db = firestore.Client.from_service_account_json(
-                    config_path,
-                    database='crawling-test-1'
+                    config_path
                 )
                 print("Firestore client connected successfully to specified database")
                 return db
@@ -66,11 +65,11 @@ class NewsManager:
             raise
     
     # Add the fetch methods above
-    def fetch_multiple_fields(self, field_names):
+    def fetch_multiple_fields(self, field_names, celebrity_name):
         """Fetch specific fields from all documents in the news collection"""
         try:
             news_ref = self.db.collection('news')
-            docs = news_ref.stream()
+            docs = news_ref.where('celebrity', '==', celebrity_name).stream()
             
             documents = []
             for doc in docs:

@@ -776,112 +776,114 @@ class NewsProcessor:
     #         print(f"Error filtering articles: {str(e)}")
     #         return pd.DataFrame()
     
-    async def find_related_articles(self, df: pd.DataFrame, similarity_threshold: float = 0.3) -> pd.DataFrame:
-        """Find related articles using TF-IDF and cosine similarity, with a narrative explanation."""
-        print("Finding related articles...")
+    # =========================================================================
+    
+    # async def find_related_articles(self, df: pd.DataFrame, similarity_threshold: float = 0.3) -> pd.DataFrame:
+    #     """Find related articles using TF-IDF and cosine similarity, with a narrative explanation."""
+    #     print("Finding related articles...")
         
-        if len(df) < 2:
-            df['related_articles'] = df.apply(lambda x: [], axis=1)
-            df['relation_reason'] = ""
-            return df
+    #     if len(df) < 2:
+    #         df['related_articles'] = df.apply(lambda x: [], axis=1)
+    #         df['relation_reason'] = ""
+    #         return df
             
-        # Combine title and content for better similarity matching
-        documents = df.apply(lambda x: f"{x['title']} {x['content']}", axis=1).tolist()
+    #     # Combine title and content for better similarity matching
+    #     documents = df.apply(lambda x: f"{x['title']} {x['content']}", axis=1).tolist()
         
-        try:
-            # Create TF-IDF matrix
-            tfidf_matrix = self.vectorizer.fit_transform(documents)
-            feature_names = np.array(self.vectorizer.get_feature_names_out())
+    #     try:
+    #         # Create TF-IDF matrix
+    #         tfidf_matrix = self.vectorizer.fit_transform(documents)
+    #         feature_names = np.array(self.vectorizer.get_feature_names_out())
             
-            # Calculate similarity matrix
-            similarity_matrix = cosine_similarity(tfidf_matrix)
+    #         # Calculate similarity matrix
+    #         similarity_matrix = cosine_similarity(tfidf_matrix)
             
-            # Set diagonal to -1 to ensure self-similarity is never considered
-            np.fill_diagonal(similarity_matrix, -1)
+    #         # Set diagonal to -1 to ensure self-similarity is never considered
+    #         np.fill_diagonal(similarity_matrix, -1)
             
-        except Exception as e:
-            print(f"Error in TF-IDF/similarity calculation: {str(e)}")
-            df['related_articles'] = df.apply(lambda x: [], axis=1)
-            df['relation_reason'] = ""
-            return df
+    #     except Exception as e:
+    #         print(f"Error in TF-IDF/similarity calculation: {str(e)}")
+    #         df['related_articles'] = df.apply(lambda x: [], axis=1)
+    #         df['relation_reason'] = ""
+    #         return df
         
-        # Find groups of related articles
-        related_articles = []
-        relation_reasons = []
-        urls = df['url'].tolist()
+    #     # Find groups of related articles
+    #     related_articles = []
+    #     relation_reasons = []
+    #     urls = df['url'].tolist()
         
-        for idx in range(len(df)):
-            # Get similarity scores for this article
-            scores = similarity_matrix[idx]
+    #     for idx in range(len(df)):
+    #         # Get similarity scores for this article
+    #         scores = similarity_matrix[idx]
             
-            # Find indices of related articles above threshold
-            related_indices = np.where(scores > similarity_threshold)[0]
+    #         # Find indices of related articles above threshold
+    #         related_indices = np.where(scores > similarity_threshold)[0]
             
-            # Double-check no self-reference
-            if idx in related_indices:
-                related_indices = related_indices[related_indices != idx]
+    #         # Double-check no self-reference
+    #         if idx in related_indices:
+    #             related_indices = related_indices[related_indices != idx]
             
-            # Get URLs of related articles
-            current_related = [urls[i] for i in related_indices]
+    #         # Get URLs of related articles
+    #         current_related = [urls[i] for i in related_indices]
             
-            # If no related articles, add empty list and continue
-            if not current_related:
-                related_articles.append([])
-                relation_reasons.append("")
-                continue
+    #         # If no related articles, add empty list and continue
+    #         if not current_related:
+    #             related_articles.append([])
+    #             relation_reasons.append("")
+    #             continue
                 
-            related_articles.append(current_related)
+    #         related_articles.append(current_related)
             
-            # Generate narrative reason only if there are related articles
-            try:
-                # Get the related articles' data
-                related_articles_data = [df.iloc[i] for i in related_indices]
-                current_article = df.iloc[idx]
+    #         # Generate narrative reason only if there are related articles
+    #         try:
+    #             # Get the related articles' data
+    #             related_articles_data = [df.iloc[i] for i in related_indices]
+    #             current_article = df.iloc[idx]
                 
-                # Collect titles and dates
-                titles = [current_article['title']] + [art['title'] for art in related_articles_data]
-                dates = [current_article['date']] + [art['date'] for art in related_articles_data]
+    #             # Collect titles and dates
+    #             titles = [current_article['title']] + [art['title'] for art in related_articles_data]
+    #             dates = [current_article['date']] + [art['date'] for art in related_articles_data]
                 
-                # Find common important terms
-                related_docs_vectors = [tfidf_matrix[i].toarray().flatten() for i in [idx] + list(related_indices)]
-                common_terms_mask = np.all([vec > 0 for vec in related_docs_vectors], axis=0)
-                common_terms_indices = np.where(common_terms_mask)[0]
+    #             # Find common important terms
+    #             related_docs_vectors = [tfidf_matrix[i].toarray().flatten() for i in [idx] + list(related_indices)]
+    #             common_terms_mask = np.all([vec > 0 for vec in related_docs_vectors], axis=0)
+    #             common_terms_indices = np.where(common_terms_mask)[0]
                 
-                if len(common_terms_indices) > 0:
-                    # Calculate average importance scores for common terms
-                    avg_scores = np.mean([vec[common_terms_indices] for vec in related_docs_vectors], axis=0)
-                    top_indices = np.argsort(avg_scores)[-5:]  # Get top 5 terms
-                    key_topics = feature_names[common_terms_indices[top_indices]]
+    #             if len(common_terms_indices) > 0:
+    #                 # Calculate average importance scores for common terms
+    #                 avg_scores = np.mean([vec[common_terms_indices] for vec in related_docs_vectors], axis=0)
+    #                 top_indices = np.argsort(avg_scores)[-5:]  # Get top 5 terms
+    #                 key_topics = feature_names[common_terms_indices[top_indices]]
                     
-                    # Generate a narrative reason
-                    dates_sorted = sorted(set(dates))
-                    date_range = f"from {dates_sorted[0]} to {dates_sorted[-1]}" if len(dates_sorted) > 1 else f"on {dates_sorted[0]}"
+    #                 # Generate a narrative reason
+    #                 dates_sorted = sorted(set(dates))
+    #                 date_range = f"from {dates_sorted[0]} to {dates_sorted[-1]}" if len(dates_sorted) > 1 else f"on {dates_sorted[0]}"
                     
-                    reason = f"These articles, published {date_range}, are connected through their coverage of "
-                    reason += f"{self.celebrity['name_eng']}'s involvement with {', '.join(key_topics[:-1])} and {key_topics[-1]}. "
-                    reason += f"They collectively tell the story of {self.celebrity['name_eng']}'s activities and developments "
-                    reason += f"related to these themes during this period."
-                else:
-                    reason = f"These articles share coverage of {self.celebrity['name_eng']}'s activities "
-                    reason += f"during the period from {min(dates)} to {max(dates)}."
-            except Exception as e:
-                print(f"Error generating narrative reason: {str(e)}")
-                reason = f"These articles are related through their coverage of {self.celebrity['name_eng']}'s activities."
+    #                 reason = f"These articles, published {date_range}, are connected through their coverage of "
+    #                 reason += f"{self.celebrity['name_eng']}'s involvement with {', '.join(key_topics[:-1])} and {key_topics[-1]}. "
+    #                 reason += f"They collectively tell the story of {self.celebrity['name_eng']}'s activities and developments "
+    #                 reason += f"related to these themes during this period."
+    #             else:
+    #                 reason = f"These articles share coverage of {self.celebrity['name_eng']}'s activities "
+    #                 reason += f"during the period from {min(dates)} to {max(dates)}."
+    #         except Exception as e:
+    #             print(f"Error generating narrative reason: {str(e)}")
+    #             reason = f"These articles are related through their coverage of {self.celebrity['name_eng']}'s activities."
                 
-            relation_reasons.append(reason)
+    #         relation_reasons.append(reason)
         
-        # Add related articles and reasons to DataFrame
-        df['related_articles'] = related_articles
-        df['relation_reason'] = relation_reasons
+    #     # Add related articles and reasons to DataFrame
+    #     df['related_articles'] = related_articles
+    #     df['relation_reason'] = relation_reasons
         
-        # Print some statistics
-        articles_with_relations = sum(1 for r in related_articles if r)
-        print(f"Articles with relations: {articles_with_relations}/{len(df)}")
-        if articles_with_relations > 0:
-            avg_related = sum(len(r) for r in related_articles) / articles_with_relations
-            print(f"Average number of related articles (when present): {avg_related:.2f}")
+    #     # Print some statistics
+    #     articles_with_relations = sum(1 for r in related_articles if r)
+    #     print(f"Articles with relations: {articles_with_relations}/{len(df)}")
+    #     if articles_with_relations > 0:
+    #         avg_related = sum(len(r) for r in related_articles) / articles_with_relations
+    #         print(f"Average number of related articles (when present): {avg_related:.2f}")
         
-        return df
+    #     return df
 
     async def generate_headlines(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate headlines and subheadings using Claude API (Step 5)"""

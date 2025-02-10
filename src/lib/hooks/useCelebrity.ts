@@ -10,6 +10,15 @@ interface Celebrity {
   nationality: string;
   company: string;
   profilePic: string;
+  youtubeUrl: string;
+  instagramUrl: string;
+  spotifyUrl: string;
+  school: string;
+  debutDate: string;
+  occupation: string;
+  group: string;
+  zodiacSign: string;
+  chineseZodiac: string;
 }
 
 interface ProcessedCelebrity {
@@ -19,6 +28,15 @@ interface ProcessedCelebrity {
   nationality: string;
   company: string;
   profilePic: string;
+  youtubeUrl: string;
+  instagramUrl: string;
+  spotifyUrl: string;
+  school: string;
+  debutDate: string;
+  occupation: string;
+  group: string;
+  zodiacSign: string;
+  chineseZodiac: string;
 }
 
 export function useCelebrity(celebrityId: string) {

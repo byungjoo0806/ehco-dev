@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     default: 'EHCO - K-Entertainment Facts & Timeline',
     template: 'EHCO - %s | EHCO Timeline'
   },
-  description: 'Real-time verified facts and timeline about Korean celebrities IU, Kim Soo Hyun, and Han So Hee. Latest K-entertainment news with accurate fact-checking.',
+  description: 'Real-time verified facts and timeline about Korean celebrities. Latest K-entertainment news with accurate fact-checking.',
   keywords: [
     // English Keywords
     'Korean celebrity news',
