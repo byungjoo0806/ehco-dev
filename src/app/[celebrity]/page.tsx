@@ -53,8 +53,8 @@ interface FirestoreCelebrityData {
   youtubeUrl?: string;
   instagramUrl?: string;
   spotifyUrl?: string;
-  school?: string;
-  occupation?: string;
+  school?: string[];
+  occupation?: string[];
   group?: string;
   zodiacSign?: string;
   chineseZodiac?: string;

@@ -48,7 +48,6 @@ class NewsProcessor:
             "name_kr": str,
             "sex": str,  # "Male" or "Female"
             "occupation": List[str],  # e.g. ["Actor", "Director", "Producer"]
-            "primary_occupation": str  # Main occupation e.g. "Actor"
         }
         """
         self.celebrity = celebrity
@@ -1153,7 +1152,7 @@ async def main():
         celebrity = {
             "name_eng": "Kim Soo-hyun",
             "name_kr": "김수현",
-            "sex": "Female",
+            "sex": "Male",
             "occupation": ["Actor", "Model"],
             "primary_occupation": "Actor",
         }

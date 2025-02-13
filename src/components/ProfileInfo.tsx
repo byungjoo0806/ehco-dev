@@ -12,9 +12,9 @@ interface CelebrityData {
   birthDate: string;
   nationality: string;
   company: string;
-  school?: string;
+  school?: string[];
   debutDate?: string;
-  occupation?: string;
+  occupation?: string[];
   group?: string;
   zodiacSign?: string;
   chineseZodiac?: string;
@@ -26,6 +26,11 @@ interface ProfileInfoProps {
 
 export default function ProfileInfo({ celebrityData }: ProfileInfoProps) {
   const hasSocialMedia = celebrityData.youtubeUrl || celebrityData.instagramUrl || celebrityData.spotifyUrl;
+
+  const formatArrayValue = (value: string[] | undefined): string => {
+    if (!value || value.length === 0) return 'N/A';
+    return value.join(', ');
+  };
 
   return (
     <div className="w-full bg-gray-50 dark:bg-slate-600 py-6 md:py-8 shadow-sm">
@@ -90,9 +95,9 @@ export default function ProfileInfo({ celebrityData }: ProfileInfoProps) {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[
-                { label: "School", value: celebrityData.school },
+                { label: "School", value: formatArrayValue(celebrityData.school) },
                 { label: "Debut", value: celebrityData.debutDate },
-                { label: "Occupation", value: celebrityData.occupation },
+                { label: "Occupation", value: formatArrayValue(celebrityData.occupation) },
                 ...(celebrityData.group ? [{ label: "Group", value: celebrityData.group }] : []),
                 { label: "Zodiac Sign", value: celebrityData.zodiacSign },
                 { label: "Chinese Zodiac", value: celebrityData.chineseZodiac }
