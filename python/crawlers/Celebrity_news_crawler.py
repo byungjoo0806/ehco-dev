@@ -9,11 +9,9 @@ from anthropic import Anthropic
 from playwright.async_api import async_playwright
 import hashlib
 from dotenv import load_dotenv
-import csv
 from pathlib import Path
 import random
 from dataclasses import dataclass
-from concurrent.futures import ThreadPoolExecutor
 import time
 
 
@@ -1093,29 +1091,30 @@ class NewsProcessor:
     # Prompt creation methods
     def create_relevance_prompt(self, article: Dict) -> str:
         """
-        Enhanced relevance prompt that considers celebrity's sex and occupation
+        Relevance prompt that considers celebrity's sex and occupations
         """
         occupations_str = ", ".join(self.celebrity['occupation'])
-        return f"""Analyze this article's relevance to {self.celebrity['name_eng']}, who is a {self.celebrity['sex']} {self.celebrity['primary_occupation']} (occupations: {occupations_str}).
+        return f"""Analyze this article's relevance to {self.celebrity['name_eng']}, who is a {self.celebrity['sex']} {occupations_str}.
 
-Article: {article['title']}
-Content: {article['content']}
+    Article: {article['title']}
+    Content: {article['content']}
 
-Evaluation criteria:
-1. Does the article specifically mention {self.celebrity['name_eng']} or {self.celebrity['name_kr']}?
-2. Is the article's focus related to their work as a {occupations_str}?
-3. Is this about the correct person, considering their sex and occupation?
-4. Does the context match what would be expected for a {self.celebrity['primary_occupation']}?
+    Evaluation criteria:
+    1. Does the article specifically mention {self.celebrity['name_eng']} or {self.celebrity['name_kr']}?
+    2. Is the article's focus related to their work as {occupations_str}?
+    3. Is this about the correct person, considering their sex and occupation?
+    4. Does the context match what would be expected for {occupations_str}?
 
-Return exactly:
-SCORE: (1-5, where 5 is most relevant)
-REASON: (brief explanation)"""
+    Return exactly:
+    SCORE: (1-5, where 5 is most relevant)
+    REASON: (brief explanation)"""
 
     def create_headline_prompt(self, article: Dict) -> str:
         """
         Enhanced headline prompt that incorporates occupation
         """
-        return f"""Create a headline and subheading for this article about {self.celebrity['name_eng']}, a {self.celebrity['primary_occupation']}.
+        occupations_str = ", ".join(self.celebrity['occupation'])
+        return f"""Create a headline and subheading for this article about {self.celebrity['name_eng']}, a {occupations_str}.
 Content: {article['content']}
 
 Requirements:
@@ -1123,7 +1122,7 @@ Requirements:
 - Make the headline compelling and attention-grabbing
 - Make the subheading provide additional context
 - Keep the celebrity's name natural in the text, not forced
-- Consider their role as a {self.celebrity['primary_occupation']} in the framing
+- Consider their role as a {occupations_str} in the framing
 
 Return exactly:
 HEADLINE: (compelling headline with {self.celebrity['name_eng']})
