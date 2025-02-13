@@ -360,8 +360,8 @@ async def main():
     
     # Example celebrity
     celebrity = {
-        "name_eng": "Cha Eun-woo",
-        "name_kr": "차은우",
+        "name_eng": "Lee Jung-jae",
+        "name_kr": "이정재",
         "gender": "Male"
     }
     
