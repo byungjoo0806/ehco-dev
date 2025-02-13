@@ -2,7 +2,7 @@ name: Run News Crawler
 
 on:
   schedule:
-    - cron: '10 8 * * *'  # Runs at 00:00 UTC on Monday and Thursday
+    - cron: '30 8 * * *'
   workflow_dispatch:  # Allows manual triggers
 
 jobs:

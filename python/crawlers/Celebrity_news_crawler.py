@@ -1153,8 +1153,7 @@ async def main():
             "name_eng": "Kim Soo-hyun",
             "name_kr": "김수현",
             "sex": "Male",
-            "occupation": ["Actor", "Model"],
-            "primary_occupation": "Actor",
+            "occupation": ["Actor", "Model"]
         }
         processor = NewsProcessor(celebrity)
 
