@@ -94,12 +94,26 @@ async function getCelebrityData(celebrityId: string): Promise<CelebrityData> {
 
   const data = docSnap.data() as FirestoreCelebrityData;
 
-  // Only convert birthDate, leave all other fields as is
+  // Create a properly typed formatted data object
   const formattedData: CelebrityData = {
-    ...data,
-    birthDate: formatTimestamp(data.birthDate)
+    name: data.name,
+    koreanName: data.koreanName,
+    profilePic: data.profilePic,
+    birthDate: formatTimestamp(data.birthDate),
+    nationality: data.nationality,
+    company: data.company,
+    youtubeUrl: data.youtubeUrl,
+    instagramUrl: data.instagramUrl,
+    spotifyUrl: data.spotifyUrl,
+    school: data.school,
+    debutDate: data.debutDate,
+    occupation: data.occupation,
+    group: data.group,
+    zodiacSign: data.zodiacSign,
+    chineseZodiac: data.chineseZodiac
   };
 
+  // Validate required fields
   if (!formattedData.name ||
     !formattedData.koreanName ||
     !formattedData.profilePic ||

@@ -7,7 +7,7 @@ from rate_limiter import APIRateLimiter
 class ContentGenerationManager:
     def __init__(self, news_manager, celebrity_name: Optional[str] = None):
         self.news_manager = news_manager
-        self.collection_name = "celebrities"
+        self.collection_name = "generated_content"
         self.celebrity_name = celebrity_name
         self.rate_limiter = APIRateLimiter() 
         self.key_works_categories = {

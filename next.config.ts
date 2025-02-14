@@ -17,7 +17,27 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'img.yna.co.kr',
         pathname: '/**',
-      }
+      },
+      {
+        protocol: 'https',
+        hostname: 'image.genie.co.kr',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.scdn.co',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.namu.wiki',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+        pathname: '/**',
+      },
     ],
   },
 };

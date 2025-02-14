@@ -204,53 +204,80 @@ class NewsProcessor:
             return None
 
     async def crawl_korea_herald(self):
-        """Crawl articles from Korea Herald"""
+        """Crawl articles from Korea Herald with improved error handling and retry logic"""
         print(f"Starting Korea Herald crawl for {self.celebrity['name_eng']}...")
         articles = []
         current_page = 1
         empty_pages = 0
         max_empty_pages = 3
+        max_retries = 3
         keyword = self.celebrity["name_eng"].replace(" ", "+")
         base_url = f"https://www.koreaherald.com/search/detail?q={keyword}&stype=NEWS"
 
         async with async_playwright() as playwright:
             browser = await playwright.chromium.launch(headless=True)
-            context = await browser.new_context()
-            page = await context.new_page()
-
+            context = await browser.new_context(
+                viewport={"width": 1920, "height": 1080},
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+            )
+            
             try:
                 while empty_pages < max_empty_pages:
-                    page_url = (
-                        base_url
-                        if current_page == 1
-                        else f"{base_url}&page={current_page}"
-                    )
+                    page = await context.new_page()
+                    page_url = base_url if current_page == 1 else f"{base_url}&page={current_page}"
                     print(f"Processing KH page {current_page}")
 
+                    # Implement retry logic for page loading
+                    for attempt in range(max_retries):
+                        try:
+                            # Use a shorter initial timeout
+                            await page.goto(page_url, timeout=15000)
+                            
+                            # Wait for content with progressive timeouts
+                            try:
+                                await page.wait_for_selector(".news_list", timeout=5000)
+                            except:
+                                # If quick load fails, try waiting longer
+                                await page.wait_for_selector(".news_list", timeout=20000)
+                            
+                            # Add small delay for content to stabilize
+                            await page.wait_for_timeout(1000)
+                            break
+                            
+                        except Exception as e:
+                            print(f"Attempt {attempt + 1} failed: {str(e)}")
+                            if attempt < max_retries - 1:
+                                # Exponential backoff between retries
+                                wait_time = (2 ** attempt) + random.uniform(1, 3)
+                                print(f"Waiting {wait_time:.2f} seconds before retry...")
+                                await asyncio.sleep(wait_time)
+                                continue
+                            else:
+                                print(f"Failed to load page {current_page} after {max_retries} attempts")
+                                empty_pages += 1
+                                break
+
                     try:
-                        await page.goto(page_url, wait_until="networkidle")
-                        await page.wait_for_selector(".news_list", timeout=10000)
-                    except Exception as e:
-                        print(f"Page load error: {str(e)}")
-                        empty_pages += 1
-                        continue
+                        article_elements = await page.query_selector_all(".news_list li")
+                        if not article_elements:
+                            empty_pages += 1
+                            await page.close()
+                            current_page += 1
+                            continue
 
-                    article_elements = await page.query_selector_all(".news_list li")
-                    if not article_elements:
-                        empty_pages += 1
+                        for article in article_elements:
+                            article_data = await self.parse_koreaherald_article(article)
+                            if article_data:
+                                articles.append(article_data)
+
+                        print(f"Found {len(article_elements)} articles on page {current_page}")
+                        
+                        # Add random delay between pages to avoid rate limiting
+                        await asyncio.sleep(random.uniform(2, 4))
                         current_page += 1
-                        continue
-
-                    for article in article_elements:
-                        article_data = await self.parse_koreaherald_article(article)
-                        if article_data:
-                            articles.append(article_data)
-
-                    print(
-                        f"Found {len(article_elements)} articles on page {current_page}"
-                    )
-                    current_page += 1
-                    await asyncio.sleep(2)
+                        
+                    finally:
+                        await page.close()  # Close page after processing
 
             finally:
                 await context.close()
