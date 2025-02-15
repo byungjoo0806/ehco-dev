@@ -13,21 +13,16 @@ interface SlidingMenuProps {
 
 export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
     const { celebrities } = useAllCelebrities();
-    // console.log(celebrities);
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const [isNavigating, setIsNavigating] = useState(false);
 
-    // Track navigation state
     useEffect(() => {
         setIsNavigating(false);
     }, [pathname, searchParams]);
 
     const handleClick = (celebrityId: string) => {
-        // Get the current celebrity ID from the pathname
         const currentCelebrityId = pathname.split('/')[1];
-        
-        // Only set loading state if we're actually changing pages
         if (currentCelebrityId !== celebrityId) {
             setIsNavigating(true);
         }
@@ -36,7 +31,6 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
 
     return (
         <>
-            {/* Navigation Loading Overlay */}
             {isNavigating && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
                     <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
@@ -46,42 +40,53 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                 </div>
             )}
 
-            {/* Overlay */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-40"
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40 backdrop-blur-sm"
                     onClick={onClose}
                 />
             )}
 
-            {/* Sliding Menu */}
             <div
-                className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-500 shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+                className={`fixed top-0 left-0 h-full w-72 bg-white dark:bg-slate-800 shadow-xl z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
             >
-                <div className='w-full h-16 px-8 flex justify-start items-center border-b border-b-black dark:border-b-white'>
-                    <p className='text-xl font-bold text-black dark:text-white'>Celebrities</p>
+                <div className="h-16 px-6 flex items-center bg-slate-50 dark:bg-slate-700">
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Celebrities</h2>
                 </div>
-                <div className="p-6">
-                    <nav>
+
+                <div className="p-4 overflow-y-auto max-h-[calc(100vh-4rem)]">
+                    <nav className="space-y-3">
                         {celebrities.map((celebrity) => (
-                            <Link key={celebrity.id} href={{
-                                pathname: `/${celebrity.id}`,
-                                query: {
-                                    category: 'All',
-                                    sort: 'newest',
-                                    page: '1'
-                                }
-                            }} onClick={() => handleClick(celebrity.id)} >
-                                <div key={celebrity.name} className="flex items-center py-2 space-x-3 cursor-pointer border-b border-dashed border-b-black dark:border-b-white hover:bg-slate-200 dark:hover:bg-slate-600">
-                                    <img
-                                        src={celebrity.profilePic}
-                                        alt={celebrity.name}
-                                        className="w-12 h-12 rounded-full object-cover"
-                                    />
-                                    <div>
-                                        <p className="font-medium text-black dark:text-white">{celebrity.name}</p>
-                                        <p className="text-sm text-gray-600 dark:text-white">{celebrity.koreanName}</p>
+                            <Link
+                                key={celebrity.id}
+                                href={{
+                                    pathname: `/${celebrity.id}`,
+                                    query: {
+                                        category: 'All',
+                                        sort: 'newest',
+                                        page: '1'
+                                    }
+                                }}
+                                onClick={() => handleClick(celebrity.id)}
+                            >
+                                <div className="group p-3 rounded-lg transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700 hover:shadow-md">
+                                    <div className="flex items-center space-x-4">
+                                        <div className="relative">
+                                            <img
+                                                src={celebrity.profilePic}
+                                                alt={celebrity.name}
+                                                className="w-14 h-14 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-600 group-hover:ring-slate-300 dark:group-hover:ring-slate-500 transition-all duration-200"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className="font-semibold text-slate-800 dark:text-white group-hover:text-slate-900 dark:group-hover:text-slate-200 transition-colors">
+                                                {celebrity.name}
+                                            </h3>
+                                            <p className="text-sm text-slate-500 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300">
+                                                {celebrity.koreanName}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             </Link>
