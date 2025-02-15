@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import _ from 'lodash';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface KeyWork {
     description: string;
@@ -72,62 +73,63 @@ const CATEGORY_ORDER = [
     'Controversy'
 ] as const;
 
-const LoadingState = () => {
-    return (
-        <div className="w-full max-w-[100vw] min-h-screen">
-            <div className="w-full max-w-7xl mx-auto px-4 mt-5 flex justify-center">
-                <div className="w-[90%] md:w-[80%] relative flex flex-col lg:flex-row gap-8 min-h-screen">
-                    {/* Loading Controller - Left Side */}
-                    <div className="hidden lg:block w-64 sticky top-16 h-screen">
-                        <div className="bg-white rounded-lg shadow-lg p-6 flex flex-col h-3/4">
-                            <div className="h-6 bg-gray-200 rounded w-1/2 mb-6 animate-pulse" />
-                            <div className="space-y-4">
-                                {[...Array(6)].map((_, i) => (
-                                    <div key={i} className="space-y-2">
-                                        <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
-                                        <div className="ml-4 space-y-2">
-                                            {[...Array(3)].map((_, j) => (
-                                                <div key={j} className="h-3 bg-gray-200 rounded w-2/3 animate-pulse" />
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
+const SourcesList: React.FC<{ sources: string[] }> = ({ sources }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
 
-                    {/* Loading Content - Right Side */}
-                    <div className="flex-1 min-w-0 mt-5 space-y-16">
-                        {[...Array(4)].map((_, sectionIndex) => (
-                            <div key={sectionIndex} className="mb-16">
-                                <div className="h-8 bg-gray-200 rounded w-1/3 mb-8 animate-pulse" />
-                                {sectionIndex === 0 ? (
-                                    // Overview section loading
-                                    <div className="space-y-4">
-                                        {[...Array(3)].map((_, i) => (
-                                            <div key={i} className="h-4 bg-gray-200 rounded w-full animate-pulse" />
-                                        ))}
-                                    </div>
-                                ) : (
-                                    // Other sections loading
-                                    <div className="space-y-12">
-                                        {[...Array(3)].map((_, subIndex) => (
-                                            <div key={subIndex} className="mb-8">
-                                                <div className="h-6 bg-gray-200 rounded w-1/4 mb-6 animate-pulse" />
-                                                <div className="space-y-4">
-                                                    {[...Array(4)].map((_, i) => (
-                                                        <div key={i} className="h-4 bg-gray-200 rounded w-full animate-pulse" />
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
+    if (sources.length === 0) return null;
+
+    // If there's only one source, render a simple version without dropdown
+    if (sources.length === 1) {
+        return (
+            <div className="mt-4">
+                <h4 className="font-medium mb-2">Sources</h4>
+                <ul className="list-disc pl-6">
+                    <li className="break-all">
+                        <a href={sources[0]} className="text-blue-500 hover:underline">{sources[0]}</a>
+                    </li>
+                </ul>
             </div>
+        );
+    }
+
+    // For multiple sources, render the collapsible version
+    return (
+        <div className="mt-4">
+            <div
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-md"
+            >
+                <h4 className="font-medium">Sources</h4>
+                {isExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-gray-500" />
+                ) : (
+                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                )}
+            </div>
+
+            <ul className="list-disc pl-6 mt-2">
+                {/* Always show the first source */}
+                <li key={0} className="break-all">
+                    <a href={sources[0]} className="text-blue-500 hover:underline">{sources[0]}</a>
+                </li>
+
+                {/* Show remaining sources only when expanded */}
+                {isExpanded && sources.slice(1).map((source, index) => (
+                    <li
+                        key={index + 1}
+                        className="break-all mt-2"
+                    >
+                        <a href={source} className="text-blue-500 hover:underline">{source}</a>
+                    </li>
+                ))}
+
+                {/* Show count of hidden sources when collapsed */}
+                {!isExpanded && sources.length > 1 && (
+                    <li className="text-gray-500 mt-1 italic">
+                        +{sources.length - 1} more sources
+                    </li>
+                )}
+            </ul>
         </div>
     );
 };
@@ -141,6 +143,7 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
     const [activeSubcategory, setActiveSubcategory] = useState<string>('');
     const controllerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
+    const navRef = useRef<HTMLElement>(null);
 
     const formatCategoryName = (category: string) => {
         return category
@@ -168,6 +171,30 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
             return aIndex - bIndex;
         });
 
+    const scrollActiveIntoView = useCallback(() => {
+        if (!navRef.current) return;
+
+        const activeElement = navRef.current.querySelector('.bg-gray-100');
+        if (activeElement) {
+            // Calculate the scroll position to center the active element
+            const container = navRef.current;
+            const containerRect = container.getBoundingClientRect();
+            const elementRect = activeElement.getBoundingClientRect();
+
+            // Calculate the ideal scroll position that would center the element
+            const idealScrollTop = (
+                container.scrollTop + // Current scroll position
+                (elementRect.top - containerRect.top) - // Distance from container top to element
+                (containerRect.height / 2 - elementRect.height / 2) // Center offset
+            );
+
+            container.scrollTo({
+                top: idealScrollTop,
+                behavior: 'smooth'
+            });
+        }
+    }, []);
+
     const handleScroll = useCallback(() => {
         if (!contentRef.current) return;
 
@@ -175,14 +202,12 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
         const scrollPosition = -contentRect.top;
         const headerOffset = 100;
 
-        // Get all section and subcategory elements within the content area
         const sectionElements = contentRef.current.querySelectorAll<HTMLElement>('[data-section]');
         const subcategoryElements = contentRef.current.querySelectorAll<HTMLElement>('[data-subcategory]');
 
         let currentSection = '';
         let currentSubcategory = '';
 
-        // Check sections
         sectionElements.forEach((section) => {
             const sectionRect = section.getBoundingClientRect();
             const sectionTop = sectionRect.top - contentRect.top;
@@ -193,7 +218,6 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
             }
         });
 
-        // Check subcategories
         subcategoryElements.forEach((subcategory) => {
             const subcategoryRect = subcategory.getBoundingClientRect();
             const subcategoryTop = subcategoryRect.top - contentRect.top;
@@ -211,6 +235,11 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
             setActiveSubcategory(currentSubcategory);
         }
     }, [activeSection, activeSubcategory]);
+
+    // Add effect to trigger scroll into view when active section/subcategory changes
+    useEffect(() => {
+        scrollActiveIntoView();
+    }, [activeSection, activeSubcategory, scrollActiveIntoView]);
 
     useEffect(() => {
         const debouncedHandleScroll = _.debounce(handleScroll, 100);
@@ -285,7 +314,7 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
                     >
                         <div className="bg-white rounded-lg shadow-lg p-6 flex flex-col h-3/4">
                             <h3 className="text-lg font-semibold mb-4">Contents</h3>
-                            <nav className="space-y-2 overflow-y-auto flex-1">
+                            <nav ref={navRef} className="space-y-2 overflow-y-auto flex-1">
                                 {orderedSections.map(([mainCategory, subcategories]) => (
                                     <div key={mainCategory} className="space-y-1">
                                         <button
@@ -296,7 +325,6 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
                                             {mainCategory}
                                         </button>
                                         {mainCategory === 'Career' ? (
-                                            // Show Key Works categories for Career
                                             <div className="ml-4 space-y-1 border-l-2 border-gray-200">
                                                 {Object.entries(specialContent.key_works).map(([category]) => (
                                                     <button
@@ -372,18 +400,7 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
                                                                 <h4 className="font-medium mb-2">Chronological Developments</h4>
                                                                 <p className="text-gray-600 break-words">{content.chronological_developments}</p>
                                                             </div>
-                                                            {content.source_articles.length > 0 && (
-                                                                <div className="mt-4">
-                                                                    <h4 className="font-medium mb-2">Sources</h4>
-                                                                    <ul className="list-disc pl-6">
-                                                                        {content.source_articles.map((source, index) => (
-                                                                            <li key={index} className="break-all">
-                                                                                <a href={source} className="text-blue-500">{source}</a>
-                                                                            </li>
-                                                                        ))}
-                                                                    </ul>
-                                                                </div>
-                                                            )}
+                                                            <SourcesList sources={content.source_articles} />
                                                         </div>
                                                     )}
                                                 </div>
