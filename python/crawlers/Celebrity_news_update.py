@@ -144,6 +144,7 @@ class IncrementalNewsProcessor:
             print(f"Error checking article relevance: {str(e)}")
             return False
     
+    
     # fetch necessary data from firebase
     @staticmethod
     async def fetch_all_celebrities(db) -> list:
