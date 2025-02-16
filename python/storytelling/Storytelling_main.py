@@ -3,6 +3,7 @@
 import asyncio
 import argparse
 from Storytelling_fetch_firebase import NewsManager
+from Storytelling_fetch_TEST_firebase import TestNewsManager
 from Storytelling_generation import ContentGenerationManager
 from Storytelling_update import IncrementalContentManager
 
@@ -18,7 +19,7 @@ async def main():
     
     # Initialize NewsManager (handles Firebase and Anthropic setup)
     print("\nInitializing NewsManager...")
-    news_manager = NewsManager()
+    news_manager = TestNewsManager()
     print("✓ NewsManager initialized successfully")
     
     if args.mode == 'full':

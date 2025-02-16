@@ -2,10 +2,9 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 from dotenv import load_dotenv
 import os
-from typing import List
 from anthropic import Anthropic
 
-class NewsManager:
+class TestNewsManager:
     def __init__(self):
         self.db = self.setup_firebase()
         self.setup_anthropic()
@@ -22,45 +21,55 @@ class NewsManager:
     # Your existing setup_firebase method here
     def setup_firebase(self):
         """Initialize Firebase with environment variables and proper error handling"""
+        print("Setting up Firebase connection...")
         # Load environment variables
         load_dotenv()
-        
+
         try:
             # Get configuration from environment variables
-            config_path = os.getenv('FIREBASE_CONFIG_PATH')
-            database_url = os.getenv('FIREBASE_DEFAULT_DATABASE_URL')
-            
+            config_path = os.getenv("FIREBASE_CONFIG_PATH")
+            database_url = os.getenv("FIREBASE_TEST_DATABASE_URL")
+
             if not config_path:
-                raise ValueError("FIREBASE_CONFIG_PATH not found in environment variables")
+                raise ValueError(
+                    "FIREBASE_CONFIG_PATH not found in environment variables"
+                )
             if not database_url:
-                raise ValueError("FIREBASE_DATABASE_URL not found in environment variables")
+                raise ValueError(
+                    "FIREBASE_TEST_DATABASE_URL not found in environment variables"
+                )
             if not os.path.exists(config_path):
-                raise FileNotFoundError(f"Service account key not found at: {config_path}")
-            
+                raise FileNotFoundError(
+                    f"Service account key not found at: {config_path}"
+                )
+
             try:
-                # Try to initialize with specific database
+                # Initialize with specific project
                 cred = credentials.Certificate(config_path)
+                project_id = "crawling-test-1"  # Your test project ID
+                
                 firebase_admin.initialize_app(cred, {
-                    'databaseURL': database_url
+                    'projectId': project_id
                 })
-                print("Firebase initialized successfully with specific database")
+                print(f"Firebase initialized successfully for project: {project_id}")
             except ValueError as e:
                 if "The default Firebase app already exists" in str(e):
                     print("Using existing Firebase app")
                 else:
                     raise e
-            
+
             try:
                 # Get client with specific database
                 db = firestore.Client.from_service_account_json(
-                    config_path
+                    config_path,
+                    database='crawling-test-1'
                 )
                 print("Firestore client connected successfully to specified database")
                 return db
             except Exception as e:
                 print(f"Failed to get Firestore client: {e}")
                 raise
-                
+
         except Exception as e:
             print(f"Failed to initialize Firebase: {e}")
             raise
@@ -83,33 +92,4 @@ class NewsManager:
         
         except Exception as e:
             print(f"Error fetching fields {field_names} from news: {e}")
-            raise
-
-    # end connections to firebase and anthropic
-    async def close(self):
-        """Clean up resources and close connections"""
-        try:
-            # Clean up Firebase Admin resources
-            try:
-                firebase_admin.delete_app(firebase_admin.get_app())
-                print("Firebase app deleted successfully")
-            except ValueError as e:
-                if "No Firebase app" in str(e):
-                    print("No Firebase app to delete")
-                else:
-                    print(f"Error deleting Firebase app: {e}")
-            
-            # Clean up Anthropic client if needed
-            if hasattr(self, 'client') and hasattr(self.client, 'close'):
-                await self.client.close()
-                print("Anthropic client closed successfully")
-            
-            # Clear instance variables
-            self.db = None
-            self.client = None
-            
-            print("All resources cleaned up successfully")
-            
-        except Exception as e:
-            print(f"Error during cleanup: {e}")
             raise

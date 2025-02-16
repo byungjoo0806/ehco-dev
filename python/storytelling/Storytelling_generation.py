@@ -3,11 +3,13 @@ from datetime import datetime
 from typing import List, Dict, Optional
 from collections import defaultdict
 from rate_limiter import APIRateLimiter
+from Storytelling_fetch_TEST_firebase import TestNewsManager
+from Storytelling_fetch_firebase import NewsManager
 
 class ContentGenerationManager:
     def __init__(self, news_manager, celebrity_name: Optional[str] = None):
         self.news_manager = news_manager
-        self.collection_name = "generated_content"
+        self.collection_name = "celebrities"
         self.celebrity_name = celebrity_name
         self.rate_limiter = APIRateLimiter() 
         self.key_works_categories = {
@@ -23,6 +25,26 @@ class ContentGenerationManager:
             "Music Awards": "music_awards",
         }
 
+    @staticmethod
+    async def fetch_celebrity_names(db):
+        """Fetch all celebrity names from the celebrities collection"""
+        try:
+            # Query the celebrities collection
+            celebrities_ref = db.collection("celebrities")
+            docs = celebrities_ref.get()
+            
+            # Extract celebrity names from the documents
+            celebrity_names = []
+            for doc in docs:
+                data = doc.to_dict()
+                if "name" in data:  # Make sure the field exists
+                    celebrity_names.append(data["name"])
+            
+            return celebrity_names
+        except Exception as e:
+            print(f"Error fetching celebrity names: {e}")
+            return []
+
     def get_celebrity_doc_id(self):
         """Generate a consistent document ID for a celebrity"""
         if not self.celebrity_name:
@@ -32,6 +54,8 @@ class ContentGenerationManager:
         # Convert celebrity name to lowercase and replace spaces with underscores
         return self.celebrity_name.lower().replace(" ", "").replace("-", "")
 
+
+    # content generation prompt
     def create_overall_prompt(self, all_articles: List[Dict]) -> str:
         """Create a prompt for generating overall summary across all articles"""
         celebrity_context = (
@@ -147,6 +171,20 @@ Here are the articles to analyze:
             prompt += f"\nContent: {article.get('content')}\n"
 
         return prompt
+
+    @staticmethod
+    async def process_celebrity(news_manager, celebrity_name):
+        """Process content generation for a single celebrity"""
+        try:
+            content_generator = ContentGenerationManager(news_manager, celebrity_name)
+            print(f"\nStarting content generation for {celebrity_name}")
+            num_generated, doc_id = await content_generator.generate_and_store_content()
+            print(f"Successfully generated {num_generated} content pieces for {celebrity_name}")
+            print(f"Document ID: {doc_id}")
+            return True
+        except Exception as e:
+            print(f"Error processing {celebrity_name}: {e}")
+            return False
 
     async def process_overall_summary(self, all_articles: List[Dict]) -> Dict:
         """Generate overall summary across all articles"""
@@ -275,16 +313,16 @@ Here are the articles to analyze:
             # Reference to the content subcollection
             content_collection_ref = celebrity_doc_ref.collection("content")
 
-            # Store metadata at the celebrity document level
-            print("Storing celebrity metadata")
-            celebrity_doc_ref.set(
-                {
-                    "celebrity_name": self.celebrity_name,
-                    "last_updated": datetime.now().isoformat(),
-                    "content_available": True,
-                },
-                merge=True,
-            )  # Use merge to preserve any existing metadata
+            # # Store metadata at the celebrity document level
+            # print("Storing celebrity metadata")
+            # celebrity_doc_ref.set(
+            #     {
+            #         "celebrity_name": self.celebrity_name,
+            #         "last_updated": datetime.now().isoformat(),
+            #         "content_available": True,
+            #     },
+            #     merge=True,
+            # )  # Use merge to preserve any existing metadata
 
             # Initialize combined key_works dictionary
             all_key_works = {}
@@ -443,3 +481,45 @@ Here are the articles to analyze:
         except Exception as e:
             print(f"Error in generate_and_store_content: {e}")
             raise
+        
+
+
+async def main():
+    # Initialize NewsManager
+    news_manager = NewsManager()
+    
+    try:
+        # Fetch all celebrity names from Firebase
+        print("Fetching existing celebrity names from Firebase...")
+        celebrity_names = await ContentGenerationManager.fetch_celebrity_names(news_manager.db)
+        print(f"Found {len(celebrity_names)} celebrities")
+        
+        if not celebrity_names:
+            print("No celebrities found in the database")
+            return
+        
+        # Process each celebrity
+        successful = 0
+        failed = 0
+        
+        for celebrity_name in celebrity_names:
+            result = await ContentGenerationManager.process_celebrity(news_manager, celebrity_name)
+            if result:
+                successful += 1
+            else:
+                failed += 1
+        
+        # Print summary
+        print("\nProcessing Complete!")
+        print(f"Successfully processed: {successful} celebrities")
+        print(f"Failed to process: {failed} celebrities")
+        
+    except Exception as e:
+        print(f"Error during main execution: {e}")
+    finally:
+        # Clean up resources
+        await news_manager.close()  # Assuming you have a close method
+
+if __name__ == "__main__":
+    # Run the async main function
+    asyncio.run(main())
