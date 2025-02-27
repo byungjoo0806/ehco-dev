@@ -55,7 +55,7 @@ class BasicInfoCrawler:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not found")
         self.client = Anthropic(api_key=api_key)
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = "cclaude-3-7-sonnet-20250219"
         print("Anthropic API setup complete")
         
     def setup_firebase(self):

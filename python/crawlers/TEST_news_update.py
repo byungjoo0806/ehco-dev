@@ -59,7 +59,7 @@ class IncrementalNewsProcessor:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not found")
         self.client = Anthropic(api_key=api_key)
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = "claude-3-7-sonnet-20250219"
         
     def setup_firebase(self):
         """Initialize Firebase with environment variables and proper error handling"""

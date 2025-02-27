@@ -7,6 +7,7 @@ import { headers } from 'next/headers';
 import { Loader2 } from 'lucide-react';
 import ProfileInfo from '@/components/ProfileInfo';
 import CelebrityWiki from '@/components/CelebrityWiki';
+import JsonLd from '@/components/JsonLd';
 
 interface CelebrityPageProps {
   params: Promise<{
@@ -35,6 +36,7 @@ interface SpecialContent {
     [key: string]: Array<KeyWork>;
   };
   overall_overview?: string;
+  sources?: string[];
 }
 
 interface CelebrityContentData {
@@ -247,6 +249,9 @@ function processContentData(data: CelebrityContentData) {
     )
   ];
 
+  // Get the overall_summary document and extract sources
+  const overallSummaryDoc = specialContent.find(item => item.id === 'overall_summary');
+
   // Ensure key_works matches the KeyWork interface
   const processedSpecialContent = {
     key_works: Object.entries(
@@ -259,8 +264,8 @@ function processContentData(data: CelebrityContentData) {
         source: work.source || ''
       }))
     }), {} as Record<string, KeyWork[]>),
-    overall_overview: specialContent.find(item =>
-      item.id === 'overall_summary')?.overall_overview || ''
+    overall_overview: overallSummaryDoc?.overall_overview || '',
+    overall_sources: overallSummaryDoc?.sources || []
   };
 
   return {
@@ -280,6 +285,23 @@ async function CelebrityPageContent({ celebrityId }: { celebrityId: string }) {
 
   const { sections, modifiedRegularContent, processedSpecialContent } = processContentData(contentData);
 
+  const celebritySchema = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": celebrityData.name,
+    "alternateName": celebrityData.koreanName,
+    "birthDate": celebrityData.birthDate,
+    "nationality": celebrityData.nationality,
+    "affiliation": celebrityData.company,
+    "image": celebrityData.profilePic,
+    "url": `https://ehco.ai/${celebrityId}`,
+    "sameAs": [
+      celebrityData.instagramUrl,
+      celebrityData.youtubeUrl,
+      celebrityData.spotifyUrl
+    ].filter(Boolean)
+  };
+
   return (
     <div className="w-full">
       <ProfileInfo celebrityData={celebrityData} />
@@ -288,6 +310,7 @@ async function CelebrityPageContent({ celebrityId }: { celebrityId: string }) {
         regularContent={modifiedRegularContent}
         specialContent={processedSpecialContent}
       />
+      <JsonLd data={celebritySchema} />
     </div>
   );
 }

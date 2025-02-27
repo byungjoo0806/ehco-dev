@@ -16,7 +16,7 @@ export async function GET(
         // Reference to the subcollection
         const contentCollectionRef = collection(
             db,
-            'generated_content',
+            'celebrities',
             id,
             'content'
         );

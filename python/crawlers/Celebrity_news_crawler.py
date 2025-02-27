@@ -73,7 +73,7 @@ class NewsProcessor:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not found")
         self.client = Anthropic(api_key=api_key)
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = "claude-3-7-sonnet-20250219"
 
     def setup_firebase(self):
         """Initialize Firebase with environment variables and proper error handling"""
@@ -861,43 +861,6 @@ class NewsProcessor:
             print(f"Error saving CSV: {str(e)}")
 
         return df
-
-    # def filter_recent_articles(self, df: pd.DataFrame, days: int = 30) -> pd.DataFrame:
-    #     """
-    #     Filter recent articles with validation for YYYY-MM-DD format
-    #     Args:
-    #         df (pd.DataFrame): DataFrame containing articles with 'date' column
-    #         days (int): Number of days to look back from current date
-    #     Returns:
-    #         pd.DataFrame: Filtered DataFrame containing only recent articles
-    #     """
-    #     if df.empty:
-    #         print("No articles to filter")
-    #         return df
-
-    #     try:
-    #         # Convert string dates to datetime objects with consistent timezone handling
-    #         df['date'] = pd.to_datetime(df['date'], format='%Y-%m-%d')
-
-    #         # Create cutoff date in the same format
-    #         cutoff_date = pd.Timestamp.now().normalize() - pd.Timedelta(days=days)
-
-    #         # Filter and sort
-    #         recent_df = df[df['date'] >= cutoff_date].copy()
-    #         recent_df = recent_df.sort_values('date', ascending=False)
-
-    #         # Convert dates to string format just once before saving
-    #         recent_df['date'] = recent_df['date'].dt.strftime('%Y-%m-%d')
-
-    #         # Save filtered results
-    #         output_file = self.output_dir / f'{self.celebrity_id}_recent_articles.csv'
-    #         recent_df.to_csv(output_file, index=False)
-
-    #         return recent_df
-
-    #     except Exception as e:
-    #         print(f"Error filtering articles: {str(e)}")
-    #         return pd.DataFrame()
 
     async def generate_headlines(self, df: pd.DataFrame) -> pd.DataFrame:
         """Generate headlines and subheadings using Claude API (Step 5)"""

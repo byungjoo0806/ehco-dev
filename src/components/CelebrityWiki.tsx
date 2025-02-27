@@ -24,6 +24,7 @@ interface CelebrityWikiProps {
     specialContent: {
         key_works: Record<string, KeyWork[]>;
         overall_overview: string;
+        overall_sources?: string[];
     };
 }
 
@@ -326,16 +327,18 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
                                         </button>
                                         {mainCategory === 'Career' ? (
                                             <div className="ml-4 space-y-1 border-l-2 border-gray-200">
-                                                {Object.entries(specialContent.key_works).map(([category]) => (
-                                                    <button
-                                                        key={category}
-                                                        onClick={() => scrollToSection(mainCategory, formatCategoryName(category))}
-                                                        className={`w-full text-left px-2 py-1 text-sm transition-colors duration-200 hover:bg-gray-100 rounded
+                                                {Object.entries(specialContent.key_works)
+                                                    .filter(([_, works]) => works && works.length > 0) // Only show categories with works
+                                                    .map(([category]) => (
+                                                        <button
+                                                            key={category}
+                                                            onClick={() => scrollToSection(mainCategory, formatCategoryName(category))}
+                                                            className={`w-full text-left px-2 py-1 text-sm transition-colors duration-200 hover:bg-gray-100 rounded
                                                         ${activeSubcategory === formatCategoryName(category) ? 'bg-gray-100 font-medium' : ''}`}
-                                                    >
-                                                        {formatCategoryName(category)}
-                                                    </button>
-                                                ))}
+                                                        >
+                                                            {formatCategoryName(category)}
+                                                        </button>
+                                                    ))}
                                             </div>
                                         ) : subcategories.length > 0 && mainCategory !== 'Overview' ? (
                                             <div className="ml-4 space-y-1 border-l-2 border-gray-200">
@@ -363,28 +366,35 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
                             <div key={mainCategory} data-section={mainCategory} className="mb-16">
                                 <h2 className="text-2xl lg:text-3xl font-bold mb-6 break-words">{mainCategory}</h2>
                                 {mainCategory === 'Overview' ? (
-                                    <p className="text-gray-600 break-words">{specialContent.overall_overview}</p>
+                                    <div>
+                                        <p className="text-gray-600 break-words">{specialContent.overall_overview}</p>
+                                        {specialContent.overall_sources && specialContent.overall_sources.length > 0 && (
+                                            <SourcesList sources={specialContent.overall_sources} />
+                                        )}
+                                    </div>
                                 ) : mainCategory === 'Career' ? (
                                     <div className="space-y-4">
-                                        {Object.entries(specialContent.key_works).map(([category, works]) => (
-                                            <div key={category} data-subcategory={formatCategoryName(category)} className="mb-6">
-                                                <h3 className="text-lg lg:text-xl font-semibold mb-3 break-words">
-                                                    {formatCategoryName(category)}
-                                                </h3>
-                                                <ul className="list-none space-y-4">
-                                                    {sortWorksByYear(works).map((work, index) => (
-                                                        <li key={index} className="text-gray-600">
-                                                            <div className="mb-1 break-words">
-                                                                <span className="font-medium">{work.year}</span> - {work.description}
-                                                            </div>
-                                                            <div className="text-sm text-gray-500 break-all">
-                                                                source: <a href={work.source} className="hover:underline text-blue-500" target="_blank" rel="noopener noreferrer">{work.source}</a>
-                                                            </div>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        ))}
+                                        {Object.entries(specialContent.key_works)
+                                            .filter(([_, works]) => works && works.length > 0) // Only render categories with works
+                                            .map(([category, works]) => (
+                                                <div key={category} data-subcategory={formatCategoryName(category)} className="mb-6">
+                                                    <h3 className="text-lg lg:text-xl font-semibold mb-3 break-words">
+                                                        {formatCategoryName(category)}
+                                                    </h3>
+                                                    <ul className="list-none space-y-4">
+                                                        {sortWorksByYear(works).map((work, index) => (
+                                                            <li key={index} className="text-gray-600">
+                                                                <div className="mb-1 break-words">
+                                                                    <span className="font-medium">{work.year}</span> - {work.description}
+                                                                </div>
+                                                                <div className="text-sm text-gray-500 break-all">
+                                                                    source: <a href={work.source} className="hover:underline text-blue-500" target="_blank" rel="noopener noreferrer">{work.source}</a>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            ))}
                                     </div>
                                 ) : (
                                     <div className="space-y-8">

@@ -64,44 +64,51 @@ class ContentGenerationManager:
             else ""
         )
 
-        prompt = f"""You are a professional wiki content writer. Analyze ALL the provided articles and generate a comprehensive overview that synthesizes the main themes, developments, and significance across all content {celebrity_context}. Include source citations in the format [Source URL] (YYYY.MM.DD).
+        prompt = f"""You are a professional wiki content writer. Analyze ALL the provided articles and generate a comprehensive overview that synthesizes the main themes, developments, and significance across all content {celebrity_context}. DO NOT include source citations within the text. Instead, provide sources separately as requested below.
 
-Please generate your response in the following structure:
+    Please generate your response in the following structure:
 
-<overall_overview>
-Write a comprehensive overview (3-4 paragraphs) that:
-- Identifies the main themes and developments across all content{' related to ' + self.celebrity_name if self.celebrity_name else ''}
-- Highlights key patterns or trends{' involving ' + self.celebrity_name if self.celebrity_name else ''}
-- Summarizes the broader significance or impact{' of ' + self.celebrity_name + "'s involvement" if self.celebrity_name else ''}
-</overall_overview>
+    <overall_overview>
+    Write a comprehensive overview (3-4 paragraphs) that:
+    - Identifies the main themes and developments across all content{' related to ' + self.celebrity_name if self.celebrity_name else ''}
+    - Highlights key patterns or trends{' involving ' + self.celebrity_name if self.celebrity_name else ''}
+    - Summarizes the broader significance or impact{' of ' + self.celebrity_name + "'s involvement" if self.celebrity_name else ''}
+    DO NOT include source citations within this text.
+    </overall_overview>
 
-<key_findings>
-List 5-7 major findings or conclusions{' about ' + self.celebrity_name if self.celebrity_name else ''} drawn from analyzing all content.
-</key_findings>
+    <sources>
+    List all sources used in your analysis in a simple array format. Each source should be just the URL, e.g.:
+    ["https://example.com/article1", "https://example.com/article2", ...]
+    Include only the URLs that you directly referenced when creating the overview.
+    </sources>
 
-<key_works>
-If the content mentions any of the following, list them chronologically with years:
-- Drama series appearances
-- Film roles
-- OTT/streaming content
-- Award wins and nominations
-- Variety show appearances
-- Album releases
-- Musical collaborations
-- Notable performances
-- Tours and concerts
-Format each entry as: "YYYY - Title/Description [Source URL]"
-</key_works>
+    <key_findings>
+    List 5-7 major findings or conclusions{' about ' + self.celebrity_name if self.celebrity_name else ''} drawn from analyzing all content.
+    </key_findings>
 
-Remember to:
-1. Maintain neutral, objective tone
-2. Include source citations for key facts
-3. Note any significant conflicting information
-4. {f'Focus specifically on content involving or relating to {self.celebrity_name}' if self.celebrity_name else 'Focus on synthesizing information across all sources'}
-5. If mentioned information involves others, explain their connection to {self.celebrity_name if self.celebrity_name else 'the main subject'}
+    <key_works>
+    If the content mentions any of the following, list them chronologically with years:
+    - Drama series appearances
+    - Film roles
+    - OTT/streaming content
+    - Award wins and nominations
+    - Variety show appearances
+    - Album releases
+    - Musical collaborations
+    - Notable performances
+    - Tours and concerts
+    Format each entry as: "YYYY - Title/Description [Source URL]"
+    </key_works>
 
-Here are all the articles to analyze:
-"""
+    Remember to:
+    1. Maintain neutral, objective tone
+    2. IMPORTANT: Keep the overview text free of citations - all sources should be in the separate <sources> section
+    3. Note any significant conflicting information
+    4. {f'Focus specifically on content involving or relating to {self.celebrity_name}' if self.celebrity_name else 'Focus on synthesizing information across all sources'}
+    5. If mentioned information involves others, explain their connection to {self.celebrity_name if self.celebrity_name else 'the main subject'}
+
+    Here are all the articles to analyze:
+    """
         for article in all_articles:
             prompt += f"\nURL: {article.get('url')}"
             prompt += f"\nDate: {article.get('formatted_date')}"
@@ -144,11 +151,13 @@ Please generate your response in the following structure:
 
 <subcategory_overview>
 Write a focused overview (2-3 paragraphs) specific to {f"{self.celebrity_name}'s involvement in" if self.celebrity_name else ''} this subcategory's developments and significance.
+DO NOT include source citations within this text.
 </subcategory_overview>
 
 <chronological_developments>
 Present a detailed, chronological analysis of all major developments, events, or changes within this subcategory{f' involving {self.celebrity_name}' if self.celebrity_name else ''}.
 Organize by date and include specific details.
+DO NOT include source citations within this text.
 </chronological_developments>
 
 <key_implications>
@@ -158,7 +167,7 @@ Analyze the implications or impact of these developments{f' on {self.celebrity_n
 
 Remember to:
 1. Maintain neutral, objective tone
-2. Include source citations for EVERY fact
+2. IMPORTANT: Keep the overview text free of citations - all sources should be in the separate <sources> section
 3. Note any conflicting information
 4. {f'Focus specifically on {self.celebrity_name} involvement in this subcategory' if self.celebrity_name else 'Focus specifically on content relevant to this subcategory'}
 5. If other individuals are mentioned, explain their relationship to {self.celebrity_name if self.celebrity_name else 'the main subject'}
@@ -190,116 +199,150 @@ Here are the articles to analyze:
         """Generate overall summary across all articles"""
         prompt = self.create_overall_prompt(all_articles)
 
-        try:
-            await self.rate_limiter.wait_for_tokens(prompt)
-            
-            response = self.news_manager.client.messages.create(
-                model=self.news_manager.model,
-                max_tokens=4096,
-                messages=[{"role": "user", "content": prompt}],
-            )
+        # Add retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                await self.rate_limiter.wait_for_tokens(prompt)
+                
+                response = self.news_manager.client.messages.create(
+                    model=self.news_manager.model,
+                    max_tokens=4096,
+                    messages=[{"role": "user", "content": prompt}],
+                )
 
-            content = (
-                response.content[0].text
-                if isinstance(response.content, list)
-                else response.content
-            )
+                content = (
+                    response.content[0].text
+                    if isinstance(response.content, list)
+                    else response.content
+                )
 
-            def extract_section(content, tag):
-                import re
+                def extract_section(content, tag):
+                    import re
 
-                pattern = f"<{tag}>(.*?)</{tag}>"
-                match = re.search(pattern, content, re.DOTALL)
-                return match.group(1).strip() if match else ""
+                    pattern = f"<{tag}>(.*?)</{tag}>"
+                    match = re.search(pattern, content, re.DOTALL)
+                    return match.group(1).strip() if match else ""
+                
+                # Extract sources and convert to a proper list
+                sources_text = extract_section(content, "sources")
+                sources = []
+                if sources_text:
+                    import json
+                    try:
+                        # Try to parse as JSON array first
+                        sources = json.loads(sources_text)
+                    except json.JSONDecodeError:
+                        # Fall back to parsing line by line
+                        sources = [line.strip().strip('"') for line in sources_text.split('\n') 
+                                if line.strip() and not line.strip().startswith('[') and not line.strip().startswith(']')]
 
-            return {
-                "overall_overview": extract_section(content, "overall_overview"),
-                "key_findings": extract_section(content, "key_findings"),
-                "key_works": extract_section(content, "key_works"),
-                "raw_content": content,
-                "generation_date": datetime.now().isoformat(),
-                "celebrity_focus": self.celebrity_name,
-            }
-        except Exception as e:
-            print(f"Error processing overall summary: {e}")
-            return None
+                return {
+                    "overall_overview": extract_section(content, "overall_overview"),
+                    "sources": sources,  # Add the sources as a separate field
+                    "key_findings": extract_section(content, "key_findings"),
+                    "key_works": extract_section(content, "key_works"),
+                    "raw_content": content,
+                    "generation_date": datetime.now().isoformat(),
+                    "celebrity_focus": self.celebrity_name,
+                }
+                
+            except Exception as e:
+                if "rate_limit_error" in str(e) and attempt < max_retries - 1:
+                    # Calculate exponential backoff
+                    wait_time = 5 * (2 ** attempt)  # 5, 10, 20 seconds
+                    print(f"Rate limit hit for Overview. Retrying in {wait_time} seconds... (Attempt {attempt+1}/{max_retries})")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"Error processing overall summary: {e}")
+                    return None
 
     async def process_subcategory(self, subcategory: str, articles: List[Dict]) -> Dict:
         """Process articles for a specific subcategory"""
         print(f"\nProcessing subcategory: {subcategory} ({len(articles)} articles)")
         prompt = self.create_subcategory_prompt(subcategory, articles)
 
-        try:
-            await self.rate_limiter.wait_for_tokens(prompt)
-            print(f"Generating content for {subcategory}...")
-            
-            response = self.news_manager.client.messages.create(
-                model=self.news_manager.model,
-                max_tokens=4096,
-                messages=[{"role": "user", "content": prompt}],
-            )
+        # Add retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # Wait for rate limiter to allow the request
+                await self.rate_limiter.wait_for_tokens(prompt)
+                print(f"Generating content for {subcategory}...")
+                
+                response = self.news_manager.client.messages.create(
+                    model=self.news_manager.model,
+                    max_tokens=4096,
+                    messages=[{"role": "user", "content": prompt}],
+                )
 
-            content = (
-                response.content[0].text
-                if isinstance(response.content, list)
-                else response.content
-            )
-            print(f"✓ Content generated for {subcategory}")
+                content = (
+                    response.content[0].text
+                    if isinstance(response.content, list)
+                    else response.content
+                )
+                print(f"✓ Content generated for {subcategory}")
 
-            def extract_section(content, tag):
-                import re
-
-                pattern = f"<{tag}>(.*?)</{tag}>"
-                match = re.search(pattern, content, re.DOTALL)
-                return match.group(1).strip() if match else ""
-
-            result = {
-                "subcategory": subcategory,
-                "subcategory_overview": extract_section(
-                    content, "subcategory_overview"
-                ),
-                "chronological_developments": extract_section(
-                    content, "chronological_developments"
-                ),
-                "key_implications": extract_section(content, "key_implications"),
-                "raw_content": content,
-                "source_articles": [article["url"] for article in articles],
-                "generation_date": datetime.now().isoformat(),
-                "celebrity_focus": self.celebrity_name,
-            }
-
-            # Add key_works if this is a relevant subcategory
-            if subcategory in self.key_works_categories:
-                key_works = extract_section(content, "key_works")
-                if key_works:
-                    # Parse the key works into a structured format
+                def extract_section(content, tag):
                     import re
 
-                    works_list = []
-                    for line in key_works.split("\n"):
-                        line = line.strip()
-                        if line and "-" in line:
-                            # Match pattern: "YYYY - Description [Source]"
-                            match = re.match(
-                                r"(\d{4})\s*-\s*([^\[]+)(?:\[([^\]]+)\])?", line
-                            )
-                            if match:
-                                year, description, source = match.groups()
-                                works_list.append(
-                                    {
-                                        "year": year.strip(),
-                                        "description": description.strip(),
-                                        "source": source.strip() if source else None,
-                                    }
+                    pattern = f"<{tag}>(.*?)</{tag}>"
+                    match = re.search(pattern, content, re.DOTALL)
+                    return match.group(1).strip() if match else ""
+
+                result = {
+                    "subcategory": subcategory,
+                    "subcategory_overview": extract_section(
+                        content, "subcategory_overview"
+                    ),
+                    "chronological_developments": extract_section(
+                        content, "chronological_developments"
+                    ),
+                    "key_implications": extract_section(content, "key_implications"),
+                    "raw_content": content,
+                    "source_articles": [article["url"] for article in articles],
+                    "generation_date": datetime.now().isoformat(),
+                    "celebrity_focus": self.celebrity_name,
+                }
+
+                # Add key_works if this is a relevant subcategory
+                if subcategory in self.key_works_categories:
+                    key_works = extract_section(content, "key_works")
+                    if key_works:
+                        # Parse the key works into a structured format
+                        import re
+
+                        works_list = []
+                        for line in key_works.split("\n"):
+                            line = line.strip()
+                            if line and "-" in line:
+                                # Match pattern: "YYYY - Description [Source]"
+                                match = re.match(
+                                    r"(\d{4})\s*-\s*([^\[]+)(?:\[([^\]]+)\])?", line
                                 )
+                                if match:
+                                    year, description, source = match.groups()
+                                    works_list.append(
+                                        {
+                                            "year": year.strip(),
+                                            "description": description.strip(),
+                                            "source": source.strip() if source else None,
+                                        }
+                                    )
 
-                    result[self.key_works_categories[subcategory]] = works_list
+                        result[self.key_works_categories[subcategory]] = works_list
 
-            return result
+                return result
 
-        except Exception as e:
-            print(f"Error processing subcategory {subcategory}: {e}")
-            return None
+            except Exception as e:
+                if "rate_limit_error" in str(e) and attempt < max_retries - 1:
+                    # Calculate exponential backoff
+                    wait_time = 5 * (2 ** attempt)  # 5, 10, 20 seconds
+                    print(f"Rate limit hit for {subcategory}. Retrying in {wait_time} seconds... (Attempt {attempt+1}/{max_retries})")
+                    await asyncio.sleep(wait_time)
+                else:
+                    print(f"Error processing subcategory {subcategory}: {e}")
+                    return None
 
     async def store_generated_content(self, overall_summary, subcategory_results):
         """Store or update generated content in Firebase"""
@@ -313,17 +356,6 @@ Here are the articles to analyze:
             # Reference to the content subcollection
             content_collection_ref = celebrity_doc_ref.collection("content")
 
-            # # Store metadata at the celebrity document level
-            # print("Storing celebrity metadata")
-            # celebrity_doc_ref.set(
-            #     {
-            #         "celebrity_name": self.celebrity_name,
-            #         "last_updated": datetime.now().isoformat(),
-            #         "content_available": True,
-            #     },
-            #     merge=True,
-            # )  # Use merge to preserve any existing metadata
-
             # Initialize combined key_works dictionary
             all_key_works = {}
 
@@ -333,9 +365,12 @@ Here are the articles to analyze:
                 content_collection_ref.document("overall_summary").set(
                     {
                         "type": "overall_summary",
-                        **{
-                            k: v for k, v in overall_summary.items() if k != "key_works"
-                        },
+                        "overall_overview": overall_summary.get("overall_overview", ""),
+                        "sources": overall_summary.get("sources", []),  # Store the sources field
+                        "key_findings": overall_summary.get("key_findings", ""),
+                        "raw_content": overall_summary.get("raw_content", ""),
+                        "generation_date": overall_summary.get("generation_date", datetime.now().isoformat()),
+                        "celebrity_focus": overall_summary.get("celebrity_focus", self.celebrity_name),
                         "last_updated": datetime.now().isoformat(),
                     }
                 )
@@ -391,7 +426,7 @@ Here are the articles to analyze:
                                 "generated_content_ref": f"{self.collection_name}/{celebrity_doc_id}/content/{safe_subcategory_id}"
                             },
                         )
-                batch.commit()
+                    batch.commit()
 
             # Store all key_works in a separate document
             if all_key_works:
@@ -450,13 +485,30 @@ Here are the articles to analyze:
                 print(f"  - {subcategory}: {len(articles)} articles")
             
             print("\nStarting subcategory processing...")
-            subcategory_tasks = [
-                self.process_subcategory(subcategory, subcategory_articles)
-                for subcategory, subcategory_articles in grouped_articles.items()
-            ]
-            subcategory_results = await asyncio.gather(
-                *subcategory_tasks, return_exceptions=True
-            )
+            subcategory_results = []
+
+            # Process subcategories sequentially to avoid overwhelming the API
+            for subcategory, subcategory_articles in grouped_articles.items():
+                print(f"Processing {subcategory} with {len(subcategory_articles)} articles...")
+                
+                # Optional: Limit articles per subcategory if there are too many
+                if len(subcategory_articles) > 15:
+                    print(f"Limiting {subcategory} from {len(subcategory_articles)} to 15 articles")
+                    subcategory_articles = sorted(
+                        subcategory_articles, 
+                        key=lambda x: x.get('formatted_date', ''),
+                        reverse=True
+                    )[:15]
+                
+                result = await self.process_subcategory(subcategory, subcategory_articles)
+                if result is not None:
+                    subcategory_results.append(result)
+                    print(f"✓ Successfully processed {subcategory}")
+                else:
+                    print(f"❌ Failed to process {subcategory}")
+                
+                # Add a short delay between subcategories
+                await asyncio.sleep(2)
 
             # Filter out None results
             successful_results = [

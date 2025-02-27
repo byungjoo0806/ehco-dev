@@ -5,6 +5,7 @@ import './globals.css'
 import Header from '@/components/Header'
 import { Analytics } from '@vercel/analytics/next'
 import AnalyticsProvider from './AnalyticsProvider'
+import JsonLd from '@/components/JsonLd'
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -90,6 +91,18 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  const websiteSchema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "EHCO - K-Entertainment Facts & Timeline",
+    "url": "https://ehco.ai",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://ehco.ai/search?q={search_term_string}",
+      "query-input": "required name=search_term_string"
+    }
+  };
+
   return (
     <html lang="en">
       <head>
@@ -103,6 +116,7 @@ export default function RootLayout({
         </div>
         <main className="min-h-screen pt-16">
           {children}
+          <JsonLd data={websiteSchema} />
         </main>
         <Analytics />
         <AnalyticsProvider />

@@ -6,8 +6,61 @@ import os
 import asyncio
 import json
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 import aiohttp
+
+class PolicyCompliance:
+    """Class to handle EHCO copyright and attribution policy compliance"""
+    
+    POLICY_VERSION = "February 26, 2025"
+    
+    @staticmethod
+    def get_policy_acknowledgment() -> str:
+        """Return the policy acknowledgment text"""
+        return f"""
+EHCO Copyright and Attribution Policy Acknowledgment
+Version: {PolicyCompliance.POLICY_VERSION}
+
+This crawler acknowledges and operates in compliance with EHCO's Copyright and Attribution Policy:
+- Content is gathered for informational purposes only under fair use principles
+- All information is properly attributed to original sources
+- Content usage respects intellectual property rights
+- AI-assisted data collection is disclosed appropriately
+- No defamatory content is intentionally collected
+"""
+    
+    @staticmethod
+    def log_policy_compliance():
+        """Log policy compliance to console"""
+        print("\n" + "="*80)
+        print(PolicyCompliance.get_policy_acknowledgment())
+        print("="*80 + "\n")
+
+class SourceTracker:
+    """Tracks and manages attribution for information sources"""
+    
+    def __init__(self):
+        self.sources: List[Dict[str, str]] = []
+        
+    def add_source(self, name: str, url: str, access_date: datetime = None):
+        """Add a source with attribution information"""
+        if not access_date:
+            access_date = datetime.utcnow()
+            
+        self.sources.append({
+            "name": name,
+            "url": url,
+            "accessDate": access_date.isoformat(),
+            "usageContext": "Celebrity information aggregation"
+        })
+        
+    def get_sources_json(self) -> str:
+        """Get sources in JSON format"""
+        return json.dumps(self.sources, indent=2)
+    
+    def get_sources_list(self) -> List[Dict[str, str]]:
+        """Get sources as a list of dictionaries"""
+        return self.sources
 
 class ImageValidator:
     def __init__(self):
@@ -44,8 +97,12 @@ class ImageValidator:
 class BasicInfoCrawler:
     def __init__(self):
         print("Initializing crawler...")
+        # Log policy compliance at initialization
+        PolicyCompliance.log_policy_compliance()
+        
         self.setup_anthropic()
         self.db = self.setup_firebase()
+        self.source_tracker = SourceTracker()
         print("Crawler initialized successfully!")
     
     def setup_anthropic(self):
@@ -55,7 +112,7 @@ class BasicInfoCrawler:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not found")
         self.client = Anthropic(api_key=api_key)
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = "claude-3-7-sonnet-20250219"
         print("Anthropic API setup complete")
         
     def setup_firebase(self):
@@ -126,7 +183,16 @@ class BasicInfoCrawler:
                 model=self.model,
                 max_tokens=1024,
                 temperature=0,
-                system="You are a helpful assistant that provides accurate information about celebrities. Always respond in the exact JSON format requested, with null for unknown values. Do not include explanations or additional text.",
+                system="""You are a helpful assistant that provides accurate information about celebrities. Always respond in the exact JSON format requested, with empty strings for unknown values.
+
+Important policy compliance:
+1. Only provide factual, publicly available information from reputable sources
+2. Avoid any potentially defamatory content or unverified claims
+3. Focus on neutral presentation of information
+4. Do not generate original claims or speculative content
+5. Respect rights of public figures while providing newsworthy information
+
+Do not include explanations or additional text beyond the requested JSON.""",
                 messages=[
                     {
                         "role": "user",
@@ -136,12 +202,30 @@ class BasicInfoCrawler:
             )
             print("Response received from Claude API")
             
+            # Track this API call as a source
+            self.source_tracker.add_source(
+                name="Anthropic Claude API", 
+                url="https://claude.ai/", 
+                access_date=datetime.utcnow()
+            )
+            
             # Parse and validate the response
             data = self._parse_celebrity_response(response.content[0].text)
             
             # Ensure sex field is included from input if not provided by Claude
             if data and not data.get('gender'):
                 data['gender'] = celebrity.get('gender', '')
+                
+            # Add attribution and policy metadata
+            if data:
+                data['metadata'] = {
+                    "policyCompliance": True,
+                    "policyVersion": PolicyCompliance.POLICY_VERSION,
+                    "attributionInfo": self.source_tracker.get_sources_list(),
+                    "aiAssisted": True,
+                    "aiDisclosure": "Information organized and structured with AI assistance in compliance with EHCO's Copyright and Attribution Policy",
+                    "lastUpdated": datetime.utcnow().isoformat()
+                }
                 
             return data
             
@@ -165,6 +249,13 @@ class BasicInfoCrawler:
             if info.get('profilePic'):
                 is_valid = await validator.validate_image_url(info['profilePic'])
                 if is_valid:
+                    # Track the image source if valid
+                    self.source_tracker.add_source(
+                        name=f"Profile Image for {celebrity['name_eng']}", 
+                        url=info['profilePic'], 
+                        access_date=datetime.utcnow()
+                    )
+                    info['metadata']['attributionInfo'] = self.source_tracker.get_sources_list()
                     return info
 
             # Retry with explicit requests for new images
@@ -181,7 +272,16 @@ class BasicInfoCrawler:
                         model=self.model,
                         max_tokens=1024,
                         temperature=0,
-                        system="You are a helpful assistant that provides accurate information about celebrities. Always respond in the exact JSON format requested, with null for unknown values. Do not include explanations or additional text.",
+                        system="""You are a helpful assistant that provides accurate information about celebrities. Always respond in the exact JSON format requested, with empty strings for unknown values.
+
+Important policy compliance:
+1. Only provide factual, publicly available information from reputable sources
+2. Avoid any potentially defamatory content or unverified claims
+3. Focus on neutral presentation of information
+4. Do not generate original claims or speculative content
+5. Respect rights of public figures while providing newsworthy information
+
+Do not include explanations or additional text beyond the requested JSON.""",
                         messages=[
                             {
                                 "role": "user",
@@ -198,8 +298,17 @@ class BasicInfoCrawler:
                     if new_info.get('profilePic'):
                         is_valid = await validator.validate_image_url(new_info['profilePic'])
                         if is_valid:
+                            # Track the image source if valid
+                            self.source_tracker.add_source(
+                                name=f"Profile Image for {celebrity['name_eng']}", 
+                                url=new_info['profilePic'], 
+                                access_date=datetime.utcnow()
+                            )
+                            
                             # Merge new valid image URL with original data
                             info['profilePic'] = new_info['profilePic']
+                            # Update attribution info
+                            info['metadata']['attributionInfo'] = self.source_tracker.get_sources_list()
                             print("✅ Found valid alternative profile picture")
                             return info
                     
@@ -217,12 +326,19 @@ class BasicInfoCrawler:
         """
         Create a structured prompt for getting celebrity information
         """
-        base_prompt = f"""Please provide detailed information about the celebrity below in JSON format.
-        
+        base_prompt = f"""Please provide detailed information about the celebrity below in JSON format, following EHCO's Copyright and Attribution Policy guidelines:
+
 Celebrity Details:
 - English Name: {celebrity['name_eng']}
 - Korean Name: {celebrity['name_kr']}
 - Gender: {celebrity['gender']}
+
+IMPORTANT POLICY GUIDELINES:
+1. Only provide factually accurate, publicly available information
+2. Information should be neutral and verifiable
+3. Avoid any sensationalism or potentially defamatory content
+4. Use reputable sources only
+5. Respect the individual's privacy and publicity rights
 
 Return the information in the following JSON format, using empty strings ("") for any unknown values:
 {{
@@ -247,13 +363,15 @@ Return the information in the following JSON format, using empty strings ("") fo
 
         if request_new_image:
             base_prompt += """
-IMPORTANT: Please provide a different profile picture URL than previously provided. 
+IMPORTANT: Please provide a different profile picture URL than previously provided.
 The URL should be to a high-quality, official or professional headshot of the celebrity.
 Preferred sources include:
 - Official agency websites
 - Official social media accounts
 - Professional photo agencies
 - Recent press photos
+
+When providing images, ensure they comply with fair use principles and proper attribution standards.
 """
 
         base_prompt += """
@@ -356,6 +474,16 @@ Only return the JSON object, no additional text or explanation."""
             if not celebrity_data.get('debutDate'):
                 celebrity_data['debutDate'] = ""
             
+            # Ensure policy compliance is recorded in metadata
+            if 'metadata' not in celebrity_data:
+                celebrity_data['metadata'] = {}
+                
+            celebrity_data['metadata'].update({
+                "policyCompliance": True,
+                "policyVersion": PolicyCompliance.POLICY_VERSION,
+                "lastUpdated": datetime.utcnow()
+            })
+            
             collection = self.db.collection('celebrities')
             doc_ref = collection.document(doc_id)
             
@@ -376,9 +504,9 @@ async def main():
     
     # Example celebrity
     celebrity = {
-        "name_eng": "Cha Eun-woo",
-        "name_kr": "차은우",
-        "gender": "Male"
+        "name_eng": "IU",
+        "name_kr": "아이유",
+        "gender": "Female"
     }
     
     # Get and save celebrity info with image retry logic

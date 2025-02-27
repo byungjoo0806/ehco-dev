@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 from typing import List
 from anthropic import Anthropic
+import asyncio
 
 class NewsManager:
     def __init__(self):
@@ -17,7 +18,7 @@ class NewsManager:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not found")
         self.client = Anthropic(api_key=api_key)
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = "claude-3-7-sonnet-20250219"
     
     # Your existing setup_firebase method here
     def setup_firebase(self):
@@ -87,29 +88,14 @@ class NewsManager:
 
     # end connections to firebase and anthropic
     async def close(self):
-        """Clean up resources and close connections"""
+        """Properly close any resources"""
         try:
-            # Clean up Firebase Admin resources
-            try:
-                firebase_admin.delete_app(firebase_admin.get_app())
-                print("Firebase app deleted successfully")
-            except ValueError as e:
-                if "No Firebase app" in str(e):
-                    print("No Firebase app to delete")
-                else:
-                    print(f"Error deleting Firebase app: {e}")
-            
-            # Clean up Anthropic client if needed
-            if hasattr(self, 'client') and hasattr(self.client, 'close'):
+            # If client has a close method and it's an async method
+            if hasattr(self.client, 'close') and asyncio.iscoroutinefunction(self.client.close):
                 await self.client.close()
-                print("Anthropic client closed successfully")
-            
-            # Clear instance variables
-            self.db = None
-            self.client = None
-            
-            print("All resources cleaned up successfully")
-            
+            # If client has a close method but it's not async
+            elif hasattr(self.client, 'close'):
+                self.client.close()
+            # Otherwise do nothing
         except Exception as e:
-            print(f"Error during cleanup: {e}")
-            raise
+            print(f"Warning: Error while closing client: {e}")

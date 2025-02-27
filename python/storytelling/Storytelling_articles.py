@@ -20,7 +20,7 @@ class NewsManager:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not found")
         self.client = Anthropic(api_key=api_key)
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = "claude-3-7-sonnet-20250219"
     
     # Your existing setup_firebase method here
     def setup_firebase(self):
@@ -176,7 +176,7 @@ Here are the articles to analyze:
             raise
         
         
- class ContentGenerationManager:
+class ContentGenerationManager:
     def __init__(self, news_manager):
         self.news_manager = news_manager
         self.batch_size = 5  # Number of articles to process in each batch

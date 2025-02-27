@@ -36,6 +36,67 @@ class ArticleSchema:
     category: str = ""
     subcategory: str = ""
     category_reason: str = ""
+    # Add attribution field
+    attribution: dict = None
+    
+class PolicyCompliance:
+    """Class to handle EHCO copyright and attribution policy compliance"""
+    
+    POLICY_VERSION = "February 26, 2025"
+    
+    @staticmethod
+    def get_policy_acknowledgment() -> str:
+        """Return the policy acknowledgment text"""
+        return f"""
+EHCO Copyright and Attribution Policy Acknowledgment
+Version: {PolicyCompliance.POLICY_VERSION}
+
+This crawler acknowledges and operates in compliance with EHCO's Copyright and Attribution Policy:
+- Content is gathered for informational purposes only under fair use principles
+- All information is properly attributed to original sources with publication dates
+- Content usage respects intellectual property rights and provides direct links to original sources
+- AI-assisted data collection is disclosed appropriately
+- No defamatory content is intentionally collected
+- Only excerpts of articles are stored, not full content
+- Content is presented in a neutral, factual manner
+"""
+    
+    @staticmethod
+    def log_policy_compliance():
+        """Log policy compliance to console"""
+        print("\n" + "="*80)
+        print(PolicyCompliance.get_policy_acknowledgment())
+        print("="*80 + "\n")
+    
+    @staticmethod
+    def create_attribution_metadata(article):
+        """Create attribution metadata for an article"""
+        return {
+            "originalSource": article.get("source", ""),
+            "originalUrl": article.get("url", ""),
+            "publicationDate": article.get("date", ""),
+            "accessDate": datetime.now().isoformat(),
+            "policyCompliance": True,
+            "policyVersion": PolicyCompliance.POLICY_VERSION,
+            "fairUseJustification": "Informational excerpt for historical timeline tracking",
+            "aiAssisted": True,
+            "aiDisclosure": "Information processed with AI assistance in compliance with EHCO's Copyright and Attribution Policy"
+        }
+    
+    @staticmethod
+    def ensure_fair_use_compliance(content, max_excerpt_length=300):
+        """Ensure content complies with fair use by limiting excerpt length"""
+        if len(content) <= max_excerpt_length:
+            return content
+        
+        # Try to truncate at a sentence ending
+        truncated = content[:max_excerpt_length]
+        last_period = truncated.rfind('.')
+        
+        if last_period > max_excerpt_length * 0.7:  # If we can get at least 70% of the allowed length
+            return truncated[:last_period+1]
+        
+        return truncated + "..."
 
 
 class NewsProcessor:
@@ -61,13 +122,18 @@ class NewsProcessor:
         self.seen_urls: Set[str] = set()
         self.total_tokens = 0
         self.raw_articles = []  # Initialize the raw_articles list
+        
+        # Initialize policy compliance
+        PolicyCompliance.log_policy_compliance()
+        
         self.setup_anthropic()
         self.db = self.setup_firebase()
-        self.rate_limiter = asyncio.Semaphore(
-            3
-        )  # Increased from 3 to 5 for larger batches
-        self.BATCH_SIZE = 20  # New class variable for batch size
-        self.REQUESTS_PER_MINUTE = 45  # Keep below the 50/minute limit to be safe
+        self.rate_limiter = asyncio.Semaphore(3)
+        self.BATCH_SIZE = 20
+        self.REQUESTS_PER_MINUTE = 45
+        
+        # Maximum excerpt length to comply with fair use (characters)
+        self.MAX_EXCERPT_LENGTH = 300
 
     def setup_anthropic(self):
         load_dotenv()
@@ -75,7 +141,7 @@ class NewsProcessor:
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY not found")
         self.client = Anthropic(api_key=api_key)
-        self.model = "claude-3-5-sonnet-20241022"
+        self.model = "claude-3-7-sonnet-20250219"
 
     @staticmethod
     def setup_firebase():
@@ -250,9 +316,20 @@ class NewsProcessor:
             # Ensure content exists
             if not article_data["content"]:
                 article_data["content"] = article_data["title"]
+                
+            # Apply fair use compliance - limit excerpt length
+            article_data["content"] = PolicyCompliance.ensure_fair_use_compliance(
+                article_data["content"], self.MAX_EXCERPT_LENGTH
+            )
 
             # Add celebrity ID
             article_data["celebrity"] = self.celebrity_id
+            
+            # Add source information for attribution
+            article_data["source"] = "Korea Herald"
+            
+            # Add attribution metadata
+            article_data["attribution"] = PolicyCompliance.create_attribution_metadata(article_data)
 
             # Add to raw articles list
             self.raw_articles.append(article_data)
@@ -354,6 +431,11 @@ class NewsProcessor:
 
             if not article_data or not article_data["url"] or not article_data["title"]:
                 return None
+            
+            # Check for duplicate URLs
+            if article_data["url"] in self.seen_urls:
+                return None
+            self.seen_urls.add(article_data["url"])
 
             # Format the date
             # Input format example: "15:46 Sep. 25"
@@ -376,19 +458,34 @@ class NewsProcessor:
                 formatted_date = datetime.strptime(date_str, "%b %d %Y").strftime(
                     "%Y-%m-%d"
                 )
+                
             except Exception as e:
                 print(f"Date parsing error: {e}")
                 formatted_date = datetime.now().strftime("%Y-%m-%d")
+                
+            # Apply fair use compliance - limit excerpt length
+            content = PolicyCompliance.ensure_fair_use_compliance(
+                article_data["content"], self.MAX_EXCERPT_LENGTH
+            )
 
-            return {
+            # Create full article data with policy compliance
+            result = {
                 "url": article_data["url"],
                 "title": article_data["title"],
-                "content": article_data["content"],
+                "content": content,
                 "thumbnail": article_data["thumbnail"],
                 "date": formatted_date,
                 "source": "Yonhap News",
                 "celebrity": self.celebrity_id,
+                # Add attribution metadata
+                "attribution": PolicyCompliance.create_attribution_metadata({
+                    "source": "Yonhap News",
+                    "url": article_data["url"],
+                    "date": formatted_date
+                })
             }
+            
+            return result
 
         except Exception as e:
             print(f"Error parsing Yonhap article: {str(e)}")
@@ -528,9 +625,19 @@ class NewsProcessor:
 
             if not article_data:
                 return None
+            
+            # Check for duplicate URL
+            if article_data["url"] in self.seen_urls:
+                return None
+            self.seen_urls.add(article_data["url"])
+            
+            # Apply fair use compliance - limit excerpt length
+            article_data["content"] = PolicyCompliance.ensure_fair_use_compliance(
+                article_data["content"], self.MAX_EXCERPT_LENGTH
+            )
 
             # Additional processing or validation if needed
-            return {
+            result = {
                 "title": article_data["title"],
                 "url": article_data["url"],
                 "date": article_data["date"],
@@ -538,7 +645,15 @@ class NewsProcessor:
                 "thumbnail": article_data["thumbnail"],
                 "source": "JoongAng Daily",
                 "celebrity": self.celebrity_id,
+                # Add attribution metadata
+                "attribution": PolicyCompliance.create_attribution_metadata({
+                    "source": "JoongAng Daily",
+                    "url": article_data["url"],
+                    "date": article_data["date"]
+                })
             }
+            
+            return result
 
         except Exception as e:
             print(f"Error parsing JoongAng article: {str(e)}")
@@ -961,11 +1076,23 @@ class NewsProcessor:
                         continue
 
                     doc_id = hashlib.md5(row["url"].encode()).hexdigest()
-                    doc_ref = self.db.collection("celebrities").document(self.celebrity_id).collection("news").document(doc_id)
+                    doc_ref = self.db.collection("news").document(doc_id)
+
+                    # Ensure content complies with fair use (double-check)
+                    content = PolicyCompliance.ensure_fair_use_compliance(
+                        row["content"], self.MAX_EXCERPT_LENGTH
+                    )
+                    
+                    # Create attribution metadata
+                    attribution = PolicyCompliance.create_attribution_metadata({
+                        "source": row.get("source", ""),
+                        "url": row["url"],
+                        "date": row["date"]
+                    })
 
                     doc_data = {
                         "title": row["title"],
-                        "content": row["content"],
+                        "content": content,
                         "url": row["url"],
                         "date": firestore.SERVER_TIMESTAMP,
                         "formatted_date": row["date"],
@@ -976,6 +1103,13 @@ class NewsProcessor:
                         "subcategory": row.get("subcategory", ""),
                         "relevance_score": float(row.get("relevance_score", 0)),
                         "created_at": firestore.SERVER_TIMESTAMP,
+                        # Policy compliance fields
+                        "attribution": attribution,
+                        "policyCompliance": True,
+                        "policyVersion": PolicyCompliance.POLICY_VERSION,
+                        "fairUseCompliant": True,
+                        "aiProcessed": True,
+                        "aiDisclosure": "Content processed with AI assistance according to EHCO's Copyright and Attribution Policy"
                     }
 
                     batch.set(doc_ref, doc_data)
@@ -1036,13 +1170,25 @@ class NewsProcessor:
                     # Add this request to our tracking
                     request_times.append(time.time())
 
-                    # Run the API call in a thread pool
+                    # Run the API call in a thread pool with policy compliance system message
+                    system_message = """You are a helpful assistant analyzing news articles according to EHCO's Copyright and Attribution Policy guidelines:
+1. Only provide factual, neutral information
+2. Avoid any potentially defamatory content
+3. Respect privacy and publicity rights of individuals
+4. Present information without sensationalism or bias
+5. Follow a journalistic standard of accuracy and fairness
+6. Do not create or imply unverified claims
+
+Your responses should strictly follow the format requested and adhere to these guidelines."""
+                    
                     response = await asyncio.to_thread(
                         self.client.messages.create,
                         model=self.model,
                         max_tokens=1000,
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.3,
+                        system=system_message  # Added policy-compliant system message
+
                     )
 
                     if not response.content:
@@ -1112,59 +1258,82 @@ class NewsProcessor:
     # Prompt creation methods
     def create_relevance_prompt(self, article: Dict) -> str:
         """
-        Enhanced relevance prompt that considers celebrity's sex and occupations
+        Enhanced relevance prompt that considers policy compliance
         """
         occupations_str = ", ".join(self.celebrity['occupation'])
         return f"""Analyze this article's relevance to {self.celebrity['name_eng']}, who is a {self.celebrity['sex']} {occupations_str}.
 
-Article: {article['title']}
-Content: {article['content']}
+    Article: {article['title']}
+    Content: {article['content']}
 
-Evaluation criteria:
-1. Does the article specifically mention {self.celebrity['name_eng']} or {self.celebrity['name_kr']}?
-2. Is the article's focus related to their work as {occupations_str}?
-3. Is this about the correct person, considering their sex and occupation?
-4. Does the context match what would be expected for someone in these roles: {occupations_str}?
+    IMPORTANT: Your analysis must follow EHCO's Copyright and Attribution Policy guidelines:
+    1. Maintain neutrality and focus on factual information only
+    2. Avoid any potential defamatory content
+    3. Respect privacy and publicity rights of all individuals mentioned
+    4. Only consider publicly available, verifiable information
 
-Return exactly:
-SCORE: (1-5, where 5 is most relevant)
-REASON: (brief explanation)"""
+    Evaluation criteria:
+    1. Does the article specifically mention {self.celebrity['name_eng']} or {self.celebrity['name_kr']}?
+    2. Is the article's focus related to their work as {occupations_str}?
+    3. Is this about the correct person, considering their sex and occupation?
+    4. Does the context match what would be expected for someone in these roles: {occupations_str}?
+
+    Return exactly:
+    SCORE: (1-5, where 5 is most relevant)
+    REASON: (brief, neutral explanation)"""
 
     def create_headline_prompt(self, article: Dict) -> str:
         """
-        Enhanced headline prompt that incorporates occupations
+        Enhanced headline prompt that incorporates policy compliance
         """
         occupations_str = ", ".join(self.celebrity['occupation'])
         return f"""Create a headline and subheading for this article about {self.celebrity['name_eng']}, who works as {occupations_str}.
     Content: {article['content']}
 
-Requirements:
-- Include "{self.celebrity['name_eng']}" in both the headline and subheading
-- Make the headline compelling and attention-grabbing
-- Make the subheading provide additional context
-- Keep the celebrity's name natural in the text, not forced
-- Consider their roles as {occupations_str} in the framing
+    IMPORTANT POLICY REQUIREMENTS:
+    - Follow EHCO's Copyright and Attribution Policy guidelines
+    - Present only factual, neutral information
+    - Avoid any potentially defamatory content
+    - Respect the individual's privacy and publicity rights
+    - Do not create sensationalized or misleading headlines
+    - Must be based solely on the provided article content
 
-Return exactly:
-HEADLINE: (compelling headline with {self.celebrity['name_eng']})
-SUBHEADING: (one clear sentence with {self.celebrity['name_eng']} and context)"""
+    Requirements:
+    - Include "{self.celebrity['name_eng']}" in both the headline and subheading
+    - Make the headline clear and informative
+    - Make the subheading provide additional context
+    - Keep the celebrity's name natural in the text, not forced
+    - Consider their roles as {occupations_str} in the framing
+
+    Return exactly:
+    HEADLINE: (clear, factual headline with {self.celebrity['name_eng']})
+    SUBHEADING: (one neutral sentence with {self.celebrity['name_eng']} and context)"""
 
     def create_category_prompt(self, article: Dict) -> str:
-        return f"""Categorize this article about {self.celebrity['name_eng']}.
-Headline: {article['headline']}
-Subheading: {article['subheading']}
+        """
+        Category prompt with policy compliance
+        """
+        return f"""Categorize this article about {self.celebrity['name_eng']} following EHCO's Copyright and Attribution Policy.
+    Headline: {article['headline']}
+    Subheading: {article['subheading']}
 
-Choose from categories:
-- Music (Album Release, Collaboration, Performance, Tour/concert, Music Awards)
-- Acting (Drama/Series, Film, OTT, Film/TV/drama Awards, Variety show)
-- Promotion (Fan meeting, Media appearance, Social media, Interviews, Brand activities)
-- Social (Donation, Helath/diet, Daily fasion, Airport fashion, Family, Friends/companion, Marriage/relationship, Pets, Company/representation, Political stance, Social Recognition, Real estate)
-- Controversy (Plagiarism, Romance, Political Controversy)
+    IMPORTANT POLICY GUIDELINES:
+    - Maintain strict neutrality in categorization
+    - Focus on factual aspects only
+    - Avoid any potential bias in classification
+    - Respect the individual's right to fair representation
 
-Return exactly:
-CATEGORY: (main category)
-SUBCATEGORY: (specific subcategory)
-REASON: (brief explanation)"""
+    Choose from categories:
+    - Music (Album Release, Collaboration, Performance, Tour/concert, Music Awards)
+    - Acting (Drama/Series, Film, OTT, Film/TV/drama Awards, Variety show)
+    - Promotion (Fan meeting, Media appearance, Social media, Interviews, Brand activities)
+    - Social (Donation, Health/diet, Daily fashion, Airport fashion, Family, Friends/companion, Marriage/relationship, Pets, Company/representation, Political stance, Social Recognition, Real estate)
+    - Controversy (Plagiarism, Romance, Political Controversy)
+
+    Return exactly:
+    CATEGORY: (main category)
+    SUBCATEGORY: (specific subcategory)
+    REASON: (brief, neutral explanation)"""
 
 
 async def main():
