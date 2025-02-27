@@ -1,6 +1,15 @@
 // src/lib/schema.ts
 import { CelebrityData, BreadcrumbSegment, PersonSchemaData } from '@/types';
 
+// For stricter types, define a union type of all your possible schema return types
+type WebsiteSchema = ReturnType<typeof generateWebsiteSchema>;
+type PersonSchema = ReturnType<typeof generatePersonSchema>;
+type BreadcrumbSchema = ReturnType<typeof generateBreadcrumbSchema>;
+type OrganizationSchema = ReturnType<typeof generateOrganizationSchema>;
+
+// Create a union type for all schema types
+type SchemaObject = WebsiteSchema | PersonSchema | BreadcrumbSchema | OrganizationSchema;
+
 /**
  * Generates a Schema.org WebSite schema
  */
@@ -104,6 +113,6 @@ export function generateOrganizationSchema(companyName: string) {
  * Combines multiple schema objects into a single array for JSON-LD
  * @param schemas - Array of schema objects to combine
  */
-export function combineSchemas(...schemas: any[]) {
+export function combineSchemas(...schemas: SchemaObject[]) {
     return schemas;
 }

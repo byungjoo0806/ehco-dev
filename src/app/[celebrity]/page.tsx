@@ -299,7 +299,7 @@ async function CelebrityPageContent({ celebrityId }: { celebrityId: string }) {
       celebrityData.instagramUrl,
       celebrityData.youtubeUrl,
       celebrityData.spotifyUrl
-    ].filter(Boolean)
+    ].filter((url): url is string => Boolean(url))
   };
 
   return (
