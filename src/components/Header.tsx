@@ -168,14 +168,15 @@ export default function Header() {
             </div> */}
 
             {/* Center section with logo */}
-            <div className="w-1/3 flex-1 flex justify-center items-center">
-              <Link
+            <div className="w-1/3 flex-1 flex justify-center items-center text-xl sm:text-2xl font-bold text-key-color">
+              {/* <Link
                 href="/"
                 onClick={handleLogoClick}
                 className="text-xl sm:text-2xl font-bold text-key-color"
               >
                 EHCO
-              </Link>
+              </Link> */}
+              EHCO
             </div>
 
             {/* Right section with search */}
