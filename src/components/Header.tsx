@@ -163,9 +163,9 @@ export default function Header() {
         <div className="w-[90%] md:w-[80%] mx-auto px-4 h-16 flex justify-center items-center">
           <div className="w-full h-full flex">
             {/* Left section with menu */}
-            <div className="flex justify-start items-center w-1/3 text-black dark:text-white">
+            {/* <div className="flex justify-start items-center w-1/3 text-black dark:text-white">
               <Menu onClick={() => setIsMenuOpen(!isMenuOpen)} className="cursor-pointer" />
-            </div>
+            </div> */}
 
             {/* Center section with logo */}
             <div className="w-1/3 flex-1 flex justify-center items-center">
@@ -179,9 +179,9 @@ export default function Header() {
             </div>
 
             {/* Right section with search */}
-            <div className="w-1/3 flex justify-end items-center">
+            {/* <div className="w-1/3 flex justify-end items-center"> */}
               {/* Desktop search with dropdown */}
-              <div className="hidden sm:block sm:w-2/3 relative" ref={searchRef}>
+              {/* <div className="hidden sm:block sm:w-2/3 relative" ref={searchRef}>
                 <div className="relative flex items-center">
                   <Search className="absolute left-2 text-gray-400" size={16} />
                   {searchQuery && (
@@ -202,10 +202,10 @@ export default function Header() {
                     placeholder="Search celebrities"
                     className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm"
                   />
-                </div>
+                </div> */}
 
                 {/* Search Results Dropdown */}
-                {isSearching ? (
+                {/* {isSearching ? (
                   <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 z-50">
                     <div className="px-3 py-3 text-sm text-gray-500 text-center">
                       Loading...
@@ -228,16 +228,16 @@ export default function Header() {
                     )}
                   </>
                 )}
-              </div>
+              </div> */}
 
               {/* Mobile search icon */}
-              <div className="sm:hidden">
+              {/* <div className="sm:hidden">
                 <Search
                   className="cursor-pointer"
                   onClick={() => setIsSearchOpen(true)}
                 />
-              </div>
-            </div>
+              </div> */}
+            {/* </div> */}
           </div>
         </div>
       </header>

@@ -92,24 +92,24 @@ export default function Home() {
               Track your favorite K-entertainment stars <br />
               with our comprehensive timeline of verified news from trusted sources.
             </p>
-            <div className="flex justify-center gap-4">
+            {/*} <div className="flex justify-center gap-4">
               <Link href="/explore" onClick={handleNavigate}>
                 <button className="bg-black text-white px-6 py-2 rounded-full text-sm md:text-base">
                   Start Exploring
                 </button>
               </Link>
-            </div>
+            </div> */}
           </div>
 
           {/* EHCO Experience Section */}
-          {/* <div className="bg-gray-50 p-8 rounded-lg mb-16">
+          <div className="bg-gray-50 p-8 rounded-lg mb-16">
           <h2 className="text-xl md:text-2xl font-bold text-center mb-2">The EHCO Experience</h2>
           <p className="text-center text-gray-600 mb-12 text-sm md:text-base">
             Follow your favorite public figures with clarity and context
-          </p> */}
+          </p>
 
           {/* Steps */}
-          {/* <div className="space-y-12">
+          <div className="space-y-12">
             <div className="text-center">
               <span className="text-2xl md:text-3xl text-red-500 font-bold">01</span>
               <h3 className="text-lg md:text-xl font-bold mt-2">Choose Your Focus</h3>
@@ -135,7 +135,7 @@ export default function Home() {
               </p>
             </div>
           </div>
-        </div> */}
+        </div>
         </div>
         {/* Stay Updated Section */}
         <div className="bg-black text-white p-8 text-center h-88 flex flex-col justify-center items-center">
