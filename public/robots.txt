@@ -11,4 +11,4 @@ Allow: /images/
 # Block access to API routes
 Disallow: /api/
 
-Sitemap: https://ehco.ai/sitemap.xml
+Sitemap: https://www.ehco.ai/sitemap.xml
