@@ -92,7 +92,7 @@ export default function Home() {
               Track your favorite K-entertainment stars <br />
               with our comprehensive timeline of verified news from trusted sources.
             </p>
-            {/*} <div className="flex justify-center gap-4">
+            {/* <div className="flex justify-center gap-4">
               <Link href="/explore" onClick={handleNavigate}>
                 <button className="bg-black text-white px-6 py-2 rounded-full text-sm md:text-base">
                   Start Exploring
