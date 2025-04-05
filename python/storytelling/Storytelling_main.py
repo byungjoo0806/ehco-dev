@@ -19,7 +19,7 @@ async def main():
     
     # Initialize NewsManager (handles Firebase and Anthropic setup)
     print("\nInitializing NewsManager...")
-    news_manager = TestNewsManager()
+    news_manager = NewsManager()
     print("✓ NewsManager initialized successfully")
     
     if args.mode == 'full':

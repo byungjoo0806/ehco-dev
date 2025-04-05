@@ -2,16 +2,17 @@ import asyncio
 from datetime import datetime
 from typing import List, Dict, Optional
 from collections import defaultdict
-from rate_limiter import APIRateLimiter
+from rate_limiter_deepseek import APIRateLimiter
 from Storytelling_fetch_TEST_firebase import TestNewsManager
-from Storytelling_fetch_firebase import NewsManager
+from Storytelling_fetch_firebase_deepseek import NewsManager
+
 
 class ContentGenerationManager:
     def __init__(self, news_manager, celebrity_name: Optional[str] = None):
         self.news_manager = news_manager
         self.collection_name = "celebrities-test"
         self.celebrity_name = celebrity_name
-        self.rate_limiter = APIRateLimiter() 
+        self.rate_limiter = APIRateLimiter()
         self.key_works_categories = {
             "Drama/Series": "drama_series",
             "Film": "films",
@@ -32,14 +33,14 @@ class ContentGenerationManager:
             # Query the celebrities collection
             celebrities_ref = db.collection("celebrities")
             docs = celebrities_ref.get()
-            
+
             # Extract celebrity names from the documents
             celebrity_names = []
             for doc in docs:
                 data = doc.to_dict()
                 if "name" in data:  # Make sure the field exists
                     celebrity_names.append(data["name"])
-            
+
             return celebrity_names
         except Exception as e:
             print(f"Error fetching celebrity names: {e}")
@@ -53,7 +54,6 @@ class ContentGenerationManager:
 
         # Convert celebrity name to lowercase and replace spaces with underscores
         return self.celebrity_name.lower().replace(" ", "").replace("-", "")
-
 
     # content generation prompt
     def create_overall_prompt(self, all_articles: List[Dict]) -> str:
@@ -188,7 +188,9 @@ Here are the articles to analyze:
             content_generator = ContentGenerationManager(news_manager, celebrity_name)
             print(f"\nStarting content generation for {celebrity_name}")
             num_generated, doc_id = await content_generator.generate_and_store_content()
-            print(f"Successfully generated {num_generated} content pieces for {celebrity_name}")
+            print(
+                f"Successfully generated {num_generated} content pieces for {celebrity_name}"
+            )
             print(f"Document ID: {doc_id}")
             return True
         except Exception as e:
@@ -199,23 +201,20 @@ Here are the articles to analyze:
         """Generate overall summary across all articles"""
         prompt = self.create_overall_prompt(all_articles)
 
-        # Add retry logic
         max_retries = 3
         for attempt in range(max_retries):
             try:
                 await self.rate_limiter.wait_for_tokens(prompt)
-                
-                response = self.news_manager.client.messages.create(
+
+                # DeepSeek API call
+                response = await self.news_manager.client.chat.completions.create(  # DeepSeek/OpenAI syntax
                     model=self.news_manager.model,
-                    max_tokens=4096,
                     messages=[{"role": "user", "content": prompt}],
+                    max_tokens=4096,
+                    temperature=0.7,  # Optional: Controls creativity (0.7 is balanced)
                 )
 
-                content = (
-                    response.content[0].text
-                    if isinstance(response.content, list)
-                    else response.content
-                )
+                content = response.choices[0].message.content
 
                 def extract_section(content, tag):
                     import re
@@ -223,35 +222,40 @@ Here are the articles to analyze:
                     pattern = f"<{tag}>(.*?)</{tag}>"
                     match = re.search(pattern, content, re.DOTALL)
                     return match.group(1).strip() if match else ""
-                
-                # Extract sources and convert to a proper list
+
+                # Rest of the extraction logic remains the same
                 sources_text = extract_section(content, "sources")
                 sources = []
                 if sources_text:
                     import json
+
                     try:
-                        # Try to parse as JSON array first
                         sources = json.loads(sources_text)
                     except json.JSONDecodeError:
-                        # Fall back to parsing line by line
-                        sources = [line.strip().strip('"') for line in sources_text.split('\n') 
-                                if line.strip() and not line.strip().startswith('[') and not line.strip().startswith(']')]
+                        sources = [
+                            line.strip().strip('"')
+                            for line in sources_text.split("\n")
+                            if line.strip()
+                            and not line.strip().startswith("[")
+                            and not line.strip().startswith("]")
+                        ]
 
                 return {
                     "overall_overview": extract_section(content, "overall_overview"),
-                    "sources": sources,  # Add the sources as a separate field
+                    "sources": sources,
                     "key_findings": extract_section(content, "key_findings"),
                     "key_works": extract_section(content, "key_works"),
                     "raw_content": content,
                     "generation_date": datetime.now().isoformat(),
                     "celebrity_focus": self.celebrity_name,
                 }
-                
+
             except Exception as e:
                 if "rate_limit_error" in str(e) and attempt < max_retries - 1:
-                    # Calculate exponential backoff
-                    wait_time = 5 * (2 ** attempt)  # 5, 10, 20 seconds
-                    print(f"Rate limit hit for Overview. Retrying in {wait_time} seconds... (Attempt {attempt+1}/{max_retries})")
+                    wait_time = 5 * (2**attempt)
+                    print(
+                        f"Rate limit hit for Overview. Retrying in {wait_time} seconds... (Attempt {attempt+1}/{max_retries})"
+                    )
                     await asyncio.sleep(wait_time)
                 else:
                     print(f"Error processing overall summary: {e}")
@@ -266,21 +270,18 @@ Here are the articles to analyze:
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                # Wait for rate limiter to allow the request
                 await self.rate_limiter.wait_for_tokens(prompt)
                 print(f"Generating content for {subcategory}...")
-                
-                response = self.news_manager.client.messages.create(
+
+                # DeepSeek API call
+                response = await self.news_manager.client.chat.completions.create(  # DeepSeek/OpenAI syntax
                     model=self.news_manager.model,
-                    max_tokens=4096,
                     messages=[{"role": "user", "content": prompt}],
+                    max_tokens=4096,
+                    temperature=0.7,  # Optional: Controls creativity (0.7 is balanced)
                 )
 
-                content = (
-                    response.content[0].text
-                    if isinstance(response.content, list)
-                    else response.content
-                )
+                content = response.choices[0].message.content
                 print(f"✓ Content generated for {subcategory}")
 
                 def extract_section(content, tag):
@@ -326,7 +327,9 @@ Here are the articles to analyze:
                                         {
                                             "year": year.strip(),
                                             "description": description.strip(),
-                                            "source": source.strip() if source else None,
+                                            "source": (
+                                                source.strip() if source else None
+                                            ),
                                         }
                                     )
 
@@ -337,8 +340,10 @@ Here are the articles to analyze:
             except Exception as e:
                 if "rate_limit_error" in str(e) and attempt < max_retries - 1:
                     # Calculate exponential backoff
-                    wait_time = 5 * (2 ** attempt)  # 5, 10, 20 seconds
-                    print(f"Rate limit hit for {subcategory}. Retrying in {wait_time} seconds... (Attempt {attempt+1}/{max_retries})")
+                    wait_time = 5 * (2**attempt)  # 5, 10, 20 seconds
+                    print(
+                        f"Rate limit hit for {subcategory}. Retrying in {wait_time} seconds... (Attempt {attempt+1}/{max_retries})"
+                    )
                     await asyncio.sleep(wait_time)
                 else:
                     print(f"Error processing subcategory {subcategory}: {e}")
@@ -351,7 +356,9 @@ Here are the articles to analyze:
             print(f"\nStoring content for {self.celebrity_name}")
 
             # Reference to the celebrity's document
-            celebrity_doc_ref = self.news_manager.db.collection(self.collection_name).document(celebrity_doc_id)
+            celebrity_doc_ref = self.news_manager.db.collection(
+                self.collection_name
+            ).document(celebrity_doc_id)
 
             # Reference to the content subcollection
             content_collection_ref = celebrity_doc_ref.collection("content")
@@ -366,11 +373,17 @@ Here are the articles to analyze:
                     {
                         "type": "overall_summary",
                         "overall_overview": overall_summary.get("overall_overview", ""),
-                        "sources": overall_summary.get("sources", []),  # Store the sources field
+                        "sources": overall_summary.get(
+                            "sources", []
+                        ),  # Store the sources field
                         "key_findings": overall_summary.get("key_findings", ""),
                         "raw_content": overall_summary.get("raw_content", ""),
-                        "generation_date": overall_summary.get("generation_date", datetime.now().isoformat()),
-                        "celebrity_focus": overall_summary.get("celebrity_focus", self.celebrity_name),
+                        "generation_date": overall_summary.get(
+                            "generation_date", datetime.now().isoformat()
+                        ),
+                        "celebrity_focus": overall_summary.get(
+                            "celebrity_focus", self.celebrity_name
+                        ),
                         "last_updated": datetime.now().isoformat(),
                     }
                 )
@@ -380,7 +393,7 @@ Here are the articles to analyze:
             for result in subcategory_results:
                 if result is None or isinstance(result, Exception):
                     continue
-                
+
                 subcategory = result["subcategory"]
                 print(f"Processing subcategory: {subcategory}")
 
@@ -458,10 +471,14 @@ Here are the articles to analyze:
                 "subcategory",
                 "formatted_date",
             ]
-            
-            celebrity_name_lower = self.celebrity_name.lower().replace(" ", "").replace("-", "")
-            
-            articles, total = self.news_manager.fetch_multiple_fields(fields_to_fetch,celebrity_name_lower)
+
+            celebrity_name_lower = (
+                self.celebrity_name.lower().replace(" ", "").replace("-", "")
+            )
+
+            articles, total = self.news_manager.fetch_multiple_fields(
+                fields_to_fetch, celebrity_name_lower
+            )
             print(f"✓ Found {total} articles to process")
 
             if not articles:
@@ -483,30 +500,36 @@ Here are the articles to analyze:
             print(f"Found {len(grouped_articles)} subcategories to process:")
             for subcategory, articles in grouped_articles.items():
                 print(f"  - {subcategory}: {len(articles)} articles")
-            
+
             print("\nStarting subcategory processing...")
             subcategory_results = []
 
             # Process subcategories sequentially to avoid overwhelming the API
             for subcategory, subcategory_articles in grouped_articles.items():
-                print(f"Processing {subcategory} with {len(subcategory_articles)} articles...")
-                
+                print(
+                    f"Processing {subcategory} with {len(subcategory_articles)} articles..."
+                )
+
                 # Optional: Limit articles per subcategory if there are too many
                 if len(subcategory_articles) > 15:
-                    print(f"Limiting {subcategory} from {len(subcategory_articles)} to 15 articles")
+                    print(
+                        f"Limiting {subcategory} from {len(subcategory_articles)} to 15 articles"
+                    )
                     subcategory_articles = sorted(
-                        subcategory_articles, 
-                        key=lambda x: x.get('formatted_date', ''),
-                        reverse=True
+                        subcategory_articles,
+                        key=lambda x: x.get("formatted_date", ""),
+                        reverse=True,
                     )[:15]
-                
-                result = await self.process_subcategory(subcategory, subcategory_articles)
+
+                result = await self.process_subcategory(
+                    subcategory, subcategory_articles
+                )
                 if result is not None:
                     subcategory_results.append(result)
                     print(f"✓ Successfully processed {subcategory}")
                 else:
                     print(f"❌ Failed to process {subcategory}")
-                
+
                 # Add a short delay between subcategories
                 await asyncio.sleep(2)
 
@@ -533,56 +556,58 @@ Here are the articles to analyze:
         except Exception as e:
             print(f"Error in generate_and_store_content: {e}")
             raise
-        
 
 
 async def main():
     # Initialize NewsManager
     news_manager = NewsManager()
-    
+
     try:
         # Fetch all celebrity names from Firebase
         # print("Fetching existing celebrity names from Firebase...")
         # celebrity_names = await ContentGenerationManager.fetch_celebrity_names(news_manager.db)
         # print(f"Found {len(celebrity_names)} celebrities")
-        
+
         # if not celebrity_names:
         #     print("No celebrities found in the database")
         #     return
-        
+
         # # Process each celebrity
         # successful = 0
         # failed = 0
-        
+
         # for celebrity_name in celebrity_names:
         #     result = await ContentGenerationManager.process_celebrity(news_manager, celebrity_name)
         #     if result:
         #         successful += 1
         #     else:
         #         failed += 1
-        
+
         # Print summary
         # print("\nProcessing Complete!")
         # print(f"Successfully processed: {successful} celebrities")
         # print(f"Failed to process: {failed} celebrities")
-        
+
         # Instead of fetching celebrities, hardcode the one you want
         celebrity_name = "IU"  # Hardcode the celebrity name here
         print(f"Processing celebrity: {celebrity_name}")
-        
+
         # Process just this one celebrity
-        result = await ContentGenerationManager.process_celebrity(news_manager, celebrity_name)
-        
+        result = await ContentGenerationManager.process_celebrity(
+            news_manager, celebrity_name
+        )
+
         if result:
             print(f"Successfully processed {celebrity_name}")
         else:
             print(f"Failed to process {celebrity_name}")
-        
+
     except Exception as e:
         print(f"Error during main execution: {e}")
     finally:
         # Clean up resources
         await news_manager.close()  # Assuming you have a close method
+
 
 if __name__ == "__main__":
     # Run the async main function
