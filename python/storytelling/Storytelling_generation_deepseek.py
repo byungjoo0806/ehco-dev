@@ -207,7 +207,7 @@ Here are the articles to analyze:
                 await self.rate_limiter.wait_for_tokens(prompt)
 
                 # DeepSeek API call
-                response = await self.news_manager.client.chat.completions.create(  # DeepSeek/OpenAI syntax
+                response = self.news_manager.client.chat.completions.create(  # DeepSeek/OpenAI syntax
                     model=self.news_manager.model,
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=4096,
@@ -274,7 +274,7 @@ Here are the articles to analyze:
                 print(f"Generating content for {subcategory}...")
 
                 # DeepSeek API call
-                response = await self.news_manager.client.chat.completions.create(  # DeepSeek/OpenAI syntax
+                response = self.news_manager.client.chat.completions.create(  # DeepSeek/OpenAI syntax
                     model=self.news_manager.model,
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=4096,
