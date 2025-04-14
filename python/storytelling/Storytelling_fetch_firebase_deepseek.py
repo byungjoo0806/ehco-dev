@@ -90,7 +90,7 @@ class NewsManager:
     def fetch_multiple_fields(self, field_names, celebrity_name):
         """Fetch specific fields from all documents in the news collection"""
         try:
-            news_ref = self.db.collection('news')
+            news_ref = self.db.collection('news-test')
             docs = news_ref.where('celebrity', '==', celebrity_name).stream()
             
             documents = []

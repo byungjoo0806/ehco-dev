@@ -12,7 +12,12 @@ class ContentGenerationManager:
         self.news_manager = news_manager
         self.collection_name = "celebrities-test"
         self.celebrity_name = celebrity_name
-        self.rate_limiter = APIRateLimiter()
+        self.rate_limiter = APIRateLimiter(
+            requests_per_minute=60,
+            tokens_per_minute=150000,
+            max_wait_time=30.0,  # 30 second maximum wait
+            max_prompt_tokens=10000  # Reject prompts >10k tokens
+        )
         self.key_works_categories = {
             "Drama/Series": "drama_series",
             "Film": "films",
@@ -199,12 +204,32 @@ Here are the articles to analyze:
 
     async def process_overall_summary(self, all_articles: List[Dict]) -> Dict:
         """Generate overall summary across all articles"""
-        prompt = self.create_overall_prompt(all_articles)
+        # First create a truncated version of articles if they're too large
+        max_articles = 10  # Example limit
+        truncated_articles = all_articles[:max_articles] if len(all_articles) > max_articles else all_articles
+        
+        prompt = self.create_overall_prompt(truncated_articles)
+        
+        # Check if prompt is too large before proceeding
+        prompt_tokens = len(prompt.split())  # Simple approximation
+        max_supported_tokens = 4000  # Adjust based on your API limits
+        
+        if prompt_tokens > max_supported_tokens:
+            print(f"Warning: Truncating prompt from {prompt_tokens} tokens")
+            # Implement your truncation logic here
 
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                await self.rate_limiter.wait_for_tokens(prompt)
+                # Add timeout to wait_for_tokens
+                try:
+                    await asyncio.wait_for(
+                        self.rate_limiter.wait_for_tokens(prompt),
+                        timeout=30.0  # Don't wait more than 30 seconds
+                    )
+                except asyncio.TimeoutError:
+                    print("Timeout waiting for rate limiter")
+                    return None
 
                 # DeepSeek API call
                 response = self.news_manager.client.chat.completions.create(  # DeepSeek/OpenAI syntax
