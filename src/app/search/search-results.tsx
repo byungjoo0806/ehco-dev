@@ -14,11 +14,13 @@ const searchClient = algoliasearch(
 
 const ITEMS_PER_PAGE = 10;
 
-type CelebrityResult = {
+type PublicFigureResult = {
     objectID: string;
     name?: string;
-    koreanName?: string;
+    name_kr?: string;
     profilePic?: string;
+    nationality?: string;
+    occupation?: string[];
     _highlightResult?: {
         name?: {
             value: string;
@@ -31,18 +33,17 @@ type CelebrityResult = {
 
 type ArticleResult = {
     objectID: string;
-    title?: string;
-    content?: string;
-    thumbnail?: string;
+    subTitle?: string;
+    body?: string;
+    imageUrls?: string[];
     source?: string;
-    formatted_date?: string;
-    mainCategory?: string;
-    url?: string;
+    sendDate?: string;
+    link?: string;
     _highlightResult?: {
-        title?: {
+        subTitle?: {
             value: string;
         };
-        content?: {
+        body?: {
             value: string;
         };
     };
@@ -52,17 +53,32 @@ export default function SearchResults() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const query = searchParams.get('q') || '';
-    const [celebrities, setCelebrities] = useState<CelebrityResult[]>([]);
+    const [profiles, setProfiles] = useState<PublicFigureResult[]>([]);
     const [articles, setArticles] = useState<ArticleResult[]>([]);
     const [totalArticleHits, setTotalArticleHits] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState('');
     const [currentPage, setCurrentPage] = useState(0);
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Check for mobile viewport
+    useEffect(() => {
+        const checkIsMobile = () => {
+            setIsMobile(window.innerWidth < 640);
+        };
+
+        checkIsMobile();
+        window.addEventListener('resize', checkIsMobile);
+
+        return () => {
+            window.removeEventListener('resize', checkIsMobile);
+        };
+    }, []);
 
     useEffect(() => {
         const fetchResults = async () => {
             if (!query) {
-                setCelebrities([]);
+                setProfiles([]);
                 setArticles([]);
                 setIsLoading(false);
                 return;
@@ -70,23 +86,23 @@ export default function SearchResults() {
 
             try {
                 setIsLoading(true);
-                const [celebrityResponse, articleResponse] = await Promise.all([
-                    searchClient.initIndex('celebrities_name_asc').search(query, {
+                const [profileResponse, articleResponse] = await Promise.all([
+                    searchClient.initIndex('selected-figures').search(query, {
                         hitsPerPage: 5,
-                        attributesToHighlight: ['name', 'koreanName'],
+                        attributesToHighlight: ['name', 'name_kr'],
                         highlightPreTag: '<mark class="bg-yellow-200">',
                         highlightPostTag: '</mark>',
                     }),
-                    searchClient.initIndex('news').search(query, {
+                    searchClient.initIndex('articles').search(query, {
                         page: currentPage,
                         hitsPerPage: ITEMS_PER_PAGE,
-                        attributesToHighlight: ['title', 'content'],
+                        attributesToHighlight: ['subTitle', 'body'],
                         highlightPreTag: '<mark class="bg-yellow-200">',
                         highlightPostTag: '</mark>'
                     })
                 ]);
 
-                setCelebrities(celebrityResponse.hits as CelebrityResult[]);
+                setProfiles(profileResponse.hits as PublicFigureResult[]);
                 setArticles(articleResponse.hits as ArticleResult[]);
                 setTotalArticleHits(articleResponse.nbHits);
             } catch (err) {
@@ -100,8 +116,8 @@ export default function SearchResults() {
     }, [query, currentPage]);
 
     const handleArticleClick = (article: ArticleResult) => {
-        if (article.url) {
-            window.open(article.url, '_blank', 'noopener,noreferrer');
+        if (article.link) {
+            window.open(article.link, '_blank', 'noopener,noreferrer');
         }
     };
 
@@ -110,6 +126,32 @@ export default function SearchResults() {
     const handlePageChange = (pageNumber: number) => {
         setCurrentPage(pageNumber);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // Function to determine which page numbers to show
+    const getPageNumbers = () => {
+        const pageNumbers: number[] = [];
+
+        if (totalPages <= (isMobile ? 3 : 5)) {
+            // If there are only a few pages, show all
+            for (let i = 0; i < totalPages; i++) {
+                pageNumbers.push(i);
+            }
+        } else {
+            // Always include current page
+            pageNumbers.push(currentPage);
+
+            // Add one or two pages before current page if they exist
+            if (currentPage - 1 >= 0) pageNumbers.push(currentPage - 1);
+            if (currentPage - 2 >= 0 && !isMobile) pageNumbers.push(currentPage - 2);
+
+            // Add one or two pages after current page if they exist
+            if (currentPage + 1 < totalPages) pageNumbers.push(currentPage + 1);
+            if (currentPage + 2 < totalPages && !isMobile) pageNumbers.push(currentPage + 2);
+        }
+
+        // Sort the page numbers
+        return pageNumbers.sort((a, b) => a - b);
     };
 
     const renderHighlightedText = (text?: string) => {
@@ -136,166 +178,192 @@ export default function SearchResults() {
         );
     }
 
-    const totalResults = celebrities.length + totalArticleHits;
+    const totalResults = profiles.length + totalArticleHits;
 
     return (
         <div className="w-full py-8 flex flex-col items-center">
-            <h1 className="w-[90%] md:w-[75%] lg:w-[60%] text-2xl font-bold mb-6 px-4">
-                Search Results for &quot;{query}&quot;
-                <span className="hidden md:inline text-gray-500 text-lg ml-2">
-                    ({totalResults} results)
-                </span>
-                <span className="block md:hidden text-gray-500 text-lg mt-1">
-                    ({totalResults} results)
-                </span>
-            </h1>
+            <div className="w-[90%] md:w-[75%] lg:w-[60%] px-4">
+                <h1 className="text-2xl font-bold mb-2">Search Results</h1>
+                <p className="text-gray-600 mb-8">Showing results for: &ldquo;{query}&rdquo;</p>
 
-            {totalResults === 0 ? (
-                <div className="w-[90%] md:w-[75%] lg:w-[60%] text-center text-gray-500 py-12 px-4">
-                    No results found for &quot;{query}&quot;
-                </div>
-            ) : (
-                <div className="w-[90%] md:w-[75%] lg:w-[60%] space-y-8 px-4">
-                    {/* Celebrity Results */}
-                    {celebrities.length > 0 && (
-                        <div>
-                            <h2 className="text-lg font-semibold mb-4">Celebrities</h2>
-                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                {celebrities.map((celebrity) => (
-                                    <Link
-                                        key={celebrity.objectID}
-                                        href={`/${celebrity.objectID}`}
-                                        className="flex items-center p-4 border border-slate-200 rounded-lg hover:shadow-md transition-shadow"
-                                    >
-                                        {celebrity.profilePic && (
-                                            <img
-                                                src={celebrity.profilePic}
-                                                alt={celebrity.name}
-                                                className="w-16 h-16 rounded-full object-cover"
-                                            />
-                                        )}
-                                        <div className="ml-4">
-                                            <div className="font-medium">
-                                                {celebrity._highlightResult?.name
-                                                    ? renderHighlightedText(celebrity._highlightResult.name.value)
-                                                    : celebrity.name}
+                {totalResults === 0 ? (
+                    <div className="text-center text-gray-500 py-12">
+                        No results found for &ldquo;{query}&rdquo;
+                    </div>
+                ) : (
+                    <div className="space-y-8">
+                        {/* Profile Results */}
+                        {profiles.length > 0 && (
+                            <div className='w-full'>
+                                <h2 className="text-2xl font-bold mb-6">Profiles</h2>
+                                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 max-w-3xl">
+                                    {profiles.map((profile) => (
+                                        <Link
+                                            key={profile.objectID}
+                                            href={`/${profile.objectID}`}
+                                            className="block"
+                                        >
+                                            <div className="flex flex-col sm:flex-row border border-[#E4287C] rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
+                                                {profile.profilePic ? (
+                                                    <div className="flex-shrink-0 flex justify-center mb-4 sm:mb-0">
+                                                        <div className="text-center">
+                                                            <img
+                                                                src={profile.profilePic}
+                                                                alt={profile.name || "Profile picture"}
+                                                                className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full object-cover mx-auto"
+                                                            />
+                                                            <p className="text-center mt-2 font-medium">
+                                                                {profile.name || "Profile"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex-shrink-0 flex justify-center mb-4 sm:mb-0">
+                                                        <div className="text-center">
+                                                            <img
+                                                                src={"/images/default-profile.png"}
+                                                                alt={profile.name || "Profile picture"}
+                                                                className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full object-cover mx-auto"
+                                                            />
+                                                            <p className="text-center mt-2 font-medium">
+                                                                {profile.name || "Profile"}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                <div className="sm:ml-6 md:ml-8 flex-grow">
+                                                    <div className="mb-3">
+                                                        <p className="font-semibold text-gray-600">Nationality</p>
+                                                        <p>{profile.nationality || "Korean"}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold text-gray-600">Occupation</p>
+                                                        <p>{profile.occupation && profile.occupation.join(', ')}</p>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            {celebrity.koreanName && (
-                                                <div className="text-sm text-gray-500">
-                                                    {celebrity._highlightResult?.koreanName
-                                                        ? renderHighlightedText(celebrity._highlightResult.koreanName.value)
-                                                        : celebrity.koreanName}
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Article Results */}
+                        {articles.length > 0 && (
+                            <div className="w-full mt-8">
+                                <h2 className="text-2xl font-bold mb-6">Articles</h2>
+                                <div className="grid gap-6 w-full">
+                                    {articles.map((article) => (
+                                        <div
+                                            key={article.objectID}
+                                            onClick={() => handleArticleClick(article)}
+                                            className="w-full overflow-hidden flex flex-col md:flex-row md:items-center gap-4 p-4 cursor-pointer border border-[#E4287C] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+                                        >
+                                            {article.imageUrls && (
+                                                <div className="w-full md:w-32 flex-shrink-0">
+                                                    <img
+                                                        src={article.imageUrls[0]}
+                                                        alt={article.subTitle || 'Article thumbnail'}
+                                                        className="w-full md:w-32 h-48 md:h-24 object-cover rounded-lg flex-shrink-0"
+                                                    />
                                                 </div>
                                             )}
-                                        </div>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Article Results */}
-                    {articles.length > 0 && (
-                        <div className='w-full'>
-                            <h2 className="text-lg font-semibold mb-4">Articles</h2>
-                            <div className="grid gap-6 w-full">
-                                {articles.map((article) => (
-                                    <div
-                                        key={article.objectID}
-                                        onClick={() => handleArticleClick(article)}
-                                        className="w-full overflow-hidden flex flex-col md:flex-row md:items-center gap-4 p-4 cursor-pointer border border-slate-200 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
-                                    >
-                                        {article.thumbnail && (
-                                            <div className='w-full md:w-32 flex-shrink-0'>
-                                                <img
-                                                    src={article.thumbnail}
-                                                    alt={article.title || 'Article thumbnail'}
-                                                    className="w-full md:w-32 h-48 md:h-24 object-cover rounded-lg flex-shrink-0"
-                                                />
-                                            </div>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-medium mb-1 text-lg hover:text-blue-600 transition-colors">
-                                                {article._highlightResult?.title
-                                                    ? renderHighlightedText(article._highlightResult.title.value)
-                                                    : article.title}
-                                            </h4>
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <p className="text-sm text-gray-600">
-                                                    {article.source} • {article.formatted_date}
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-medium mb-1 text-lg hover:text-blue-600 transition-colors">
+                                                    {article._highlightResult?.subTitle
+                                                        ? renderHighlightedText(article._highlightResult.subTitle.value)
+                                                        : article.subTitle}
+                                                </h4>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <p className="text-sm text-gray-600">
+                                                        {article.source} • {article.sendDate ? `${article.sendDate.substring(0, 4)}-${article.sendDate.substring(4, 6)}-${article.sendDate.substring(6, 8)}` : ''}
+                                                    </p>
+                                                </div>
+                                                <p className="text-sm text-gray-700 mt-2 line-clamp-2">
+                                                    {article._highlightResult?.body
+                                                        ? renderHighlightedText(article._highlightResult.body.value)
+                                                        : article.body}
                                                 </p>
-                                                {article.mainCategory && (
-                                                    <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-600">
-                                                        {article.mainCategory}
-                                                    </span>
-                                                )}
                                             </div>
-                                            <p className="text-sm text-gray-700 mt-2 line-clamp-2">
-                                                {article._highlightResult?.content
-                                                    ? renderHighlightedText(article._highlightResult.content.value)
-                                                    : article.content}
-                                            </p>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
 
-                            {/* Pagination */}
-                            {totalPages > 1 && (
-                                <div className="mt-8 flex items-center justify-center gap-2">
-                                    {currentPage > 0 && (
+                                {/* Pagination */}
+                                {totalPages > 1 && (
+                                    <div className="mt-8 flex justify-center items-center gap-1 sm:gap-2 flex-wrap">
+                                        <button
+                                            onClick={() => handlePageChange(0)}
+                                            disabled={currentPage === 0}
+                                            className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400 disabled:opacity-50"
+                                            aria-label="First page"
+                                        >
+                                            «
+                                        </button>
                                         <button
                                             onClick={() => handlePageChange(currentPage - 1)}
-                                            className="p-2 rounded hover:bg-gray-50"
+                                            disabled={currentPage === 0}
+                                            className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400 disabled:opacity-50"
                                             aria-label="Previous page"
                                         >
-                                            <ChevronLeft size={16} />
+                                            ‹
                                         </button>
-                                    )}
 
-                                    <div className="flex items-center gap-1">
-                                        {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                                            let pageNumber;
-                                            if (totalPages <= 5) {
-                                                pageNumber = i;
-                                            } else if (currentPage < 2) {
-                                                pageNumber = i;
-                                            } else if (currentPage > totalPages - 3) {
-                                                pageNumber = totalPages - 5 + i;
-                                            } else {
-                                                pageNumber = currentPage - 2 + i;
-                                            }
+                                        {/* Page Numbers */}
+                                        {getPageNumbers().map(page => (
+                                            <button
+                                                key={page}
+                                                onClick={() => handlePageChange(page)}
+                                                className={`px-2 sm:px-3 py-1 rounded-full ${currentPage === page
+                                                    ? 'bg-[#E4287C] text-white'
+                                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                    }`}
+                                                aria-label={`Page ${page + 1}`}
+                                                aria-current={currentPage === page ? 'page' : undefined}
+                                            >
+                                                {page + 1}
+                                            </button>
+                                        ))}
 
-                                            return (
-                                                <button
-                                                    key={pageNumber}
-                                                    onClick={() => handlePageChange(pageNumber)}
-                                                    className={`px-3 py-1 rounded ${currentPage === pageNumber
-                                                        ? 'bg-blue-600 text-white'
-                                                        : 'border border-gray-300 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    {pageNumber + 1}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                        {/* Ellipsis and Last Page for larger page counts */}
+                                        {totalPages > (isMobile ? 3 : 5) && currentPage < totalPages - (isMobile ? 1 : 2) && (
+                                            <span className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400">...</span>
+                                        )}
+                                        {totalPages > (isMobile ? 3 : 5) && currentPage < totalPages - (isMobile ? 1 : 2) && (
+                                            <button
+                                                onClick={() => handlePageChange(totalPages - 1)}
+                                                className={`px-2 sm:px-3 py-1 rounded-full ${currentPage === totalPages - 1
+                                                    ? 'bg-[#E4287C] text-white'
+                                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                                aria-label={`Page ${totalPages}`}
+                                            >
+                                                {totalPages}
+                                            </button>
+                                        )}
 
-                                    {currentPage < totalPages - 1 && (
                                         <button
                                             onClick={() => handlePageChange(currentPage + 1)}
-                                            className="p-2 rounded hover:bg-gray-50"
+                                            disabled={currentPage === totalPages - 1}
+                                            className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400 disabled:opacity-50"
                                             aria-label="Next page"
                                         >
-                                            <ChevronRight size={16} />
+                                            ›
                                         </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
+                                        <button
+                                            onClick={() => handlePageChange(totalPages - 1)}
+                                            disabled={currentPage === totalPages - 1}
+                                            className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400 disabled:opacity-50"
+                                            aria-label="Last page"
+                                        >
+                                            »
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

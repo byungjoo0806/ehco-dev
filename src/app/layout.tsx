@@ -1,11 +1,12 @@
 // src/app/layout.tsx
-import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import Header from '@/components/Header'
-import { Analytics } from '@vercel/analytics/next'
-import AnalyticsProvider from './AnalyticsProvider'
-import JsonLd from '@/components/JsonLd'
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import Header from '@/components/Header';
+import { Analytics } from '@vercel/analytics/next';
+import AnalyticsProvider from './AnalyticsProvider';
+import JsonLd from '@/components/JsonLd';
+import Link from 'next/link';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -47,6 +48,9 @@ export const metadata: Metadata = {
   authors: [{ name: 'EHCO' }],
   creator: 'EHCO',
   publisher: 'EHCO',
+  icons:{
+    icon: "/ehco_branding_bi_fin_ehcio_bi_color-6.png"
+  },
   formatDetection: {
     email: false,
     address: false,
@@ -109,6 +113,7 @@ export default function RootLayout({
         <meta name="google-adsense-account" content="ca-pub-1708240738390806" />
         {/* <link rel="icon" type="image/x-icon" href="/favicon.ico"></link>
         <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico"></link> */}
+        <meta name="referrer" content="no-referrer" />
       </head>
       <body className={inter.className}>
         <div className="fixed top-0 left-0 right-0 z-50 shadow-md">
@@ -118,6 +123,45 @@ export default function RootLayout({
           {children}
           <JsonLd data={websiteSchema} />
         </main>
+
+        {/* Footer - white background with only copyright and links */}
+        <footer className="mt-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-gray-700 py-8">
+          <div className="w-[90%] md:w-[80%] mx-auto px-4">
+            <div className="text-center">
+              <p className="text-xs md:text-sm mb-4 text-gray-600 dark:text-gray-300">© 2025 EHCO. All rights reserved.</p>
+              <div className="flex flex-wrap justify-center items-center gap-3 md:gap-4 text-xs md:text-sm text-gray-600 dark:text-gray-300">
+                <Link
+                  href="/about-ehco"
+                  className='hover:underline'
+                >
+                  About Ehco
+                </Link>
+                <span>|</span>
+                <Link
+                  href="/contact-us"
+                  className='hover:underline'
+                >
+                  Contact Us
+                </Link>
+                <span>|</span>
+                <Link
+                  href="/terms-of-service"
+                  className='hover:underline'
+                >
+                  Terms of Service
+                </Link>
+                <span>|</span>
+                <Link
+                  href="/privacy-policy"
+                  className='hover:underline'
+                >
+                  Privacy Policy
+                </Link>
+              </div>
+            </div>
+          </div>
+        </footer>
+
         <Analytics />
         <AnalyticsProvider />
       </body>

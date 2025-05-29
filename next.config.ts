@@ -38,6 +38,31 @@ const nextConfig: NextConfig = {
         hostname: 'upload.wikimedia.org',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'image.url',
+        pathname: '/**'
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.instagram.com',
+        pathname: '/**'
+      },
+      {
+        protocol: 'https',
+        hostname: 'ibighit.com',
+        pathname: '/**'
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.billieeilish.com',
+        pathname: '/**'
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
+        pathname: '/**'
+      },
     ],
   },
 };

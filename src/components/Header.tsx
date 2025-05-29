@@ -6,29 +6,30 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import SlidingMenu from './SlidingMenu';
 import SearchSlider from './SearchSlider';
 import algoliasearch from 'algoliasearch';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 const searchClient = algoliasearch(
   "B1QF6MLIU5",
   "ef0535bdd12e549ffa7c9541395432a1"
 );
 
-type Celebrity = {
+type PublicFigure = {
   objectID: string;
   name?: string;
-  koreanName?: string;
+  name_kr?: string;
   profilePic?: string;
   _highlightResult?: {
-      name?: {
-          value: string;
-          matchLevel: string;
-          matchedWords: string[];
-      };
-      koreanName?: {
-          value: string;
-          matchLevel: string;
-          matchedWords: string[];
-      };
+    name?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    };
+    name_kr?: {
+      value: string;
+      matchLevel: string;
+      matchedWords: string[];
+    };
   };
 }
 
@@ -46,11 +47,16 @@ export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showResults, setShowResults] = useState(false);
-  const [searchResults, setSearchResults] = useState<Celebrity[]>([]);
+  const [searchResults, setSearchResults] = useState<PublicFigure[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Check if current page is home page
+  const isHomePage = pathname === '/';
+  const isAllFiguresPage = pathname === '/all-figures';
 
   // Handle clicks outside of search results
   useEffect(() => {
@@ -74,9 +80,9 @@ export default function Header() {
     setIsSearching(true);
 
     try {
-      const { hits } = await searchClient.initIndex('celebrities_name_asc').search<Celebrity>(query, {
+      const { hits } = await searchClient.initIndex('selected-figures').search<PublicFigure>(query, {
         hitsPerPage: 5,
-        attributesToHighlight: ['name', 'koreanName'],
+        attributesToHighlight: ['name', 'name_kr'],
         highlightPreTag: '<mark class="bg-yellow-200">',
         highlightPostTag: '</mark>',
         queryType: 'prefixAll',
@@ -99,13 +105,26 @@ export default function Header() {
     performSearch(query);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchQuery.trim()) {
+      e.preventDefault();
+      setShowResults(false);
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim()) {
+      setShowResults(false);
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   const handleLogoClick = (e: React.MouseEvent) => {
     e.preventDefault();
     setIsLoading(true);
     router.push('/');
 
-    // Since App Router's push() doesn't return a promise,
-    // we'll use a small timeout to remove the loading state
     setTimeout(() => {
       setIsLoading(false);
     }, 500);
@@ -115,7 +134,7 @@ export default function Header() {
     return <span dangerouslySetInnerHTML={{ __html: text }} />;
   };
 
-  const renderSearchResult = (result: Celebrity) => (
+  const renderSearchResult = (result: PublicFigure) => (
     <Link
       key={result.objectID}
       href={`/${result.objectID}`}
@@ -127,7 +146,6 @@ export default function Header() {
         setIsLoading(true);
         router.push(`/${result.objectID}`);
 
-        // Remove loading state after a short delay
         setTimeout(() => {
           setIsLoading(false);
         }, 500);
@@ -146,11 +164,11 @@ export default function Header() {
             renderHighlightedText(result._highlightResult.name.value) :
             result.name}
         </div>
-        {result.koreanName && (
+        {result.name_kr && (
           <div className="text-sm text-gray-500">
-            {result._highlightResult?.koreanName ?
-              renderHighlightedText(result._highlightResult.koreanName.value) :
-              result.koreanName}
+            {result._highlightResult?.name_kr ?
+              renderHighlightedText(result._highlightResult.name_kr.value) :
+              result.name_kr}
           </div>
         )}
       </div>
@@ -163,82 +181,105 @@ export default function Header() {
         <div className="w-[90%] md:w-[80%] mx-auto px-4 h-16 flex justify-center items-center">
           <div className="w-full h-full flex">
             {/* Left section with menu */}
-            {/* <div className="flex justify-start items-center w-1/3 text-black dark:text-white">
+            <div className="flex justify-start items-center w-1/3 text-black dark:text-white">
               <Menu onClick={() => setIsMenuOpen(!isMenuOpen)} className="cursor-pointer" />
-            </div> */}
-
-            {/* Center section with logo */}
-            <div className="w-1/3 flex-1 flex justify-center items-center text-xl sm:text-2xl font-bold text-key-color">
-              {/* <Link
-                href="/"
-                onClick={handleLogoClick}
-                className="text-xl sm:text-2xl font-bold text-key-color"
-              >
-                EHCO
-              </Link> */}
-              EHCO
             </div>
 
-            {/* Right section with search */}
-            {/* <div className="w-1/3 flex justify-end items-center"> */}
-              {/* Desktop search with dropdown */}
-              {/* <div className="hidden sm:block sm:w-2/3 relative" ref={searchRef}>
-                <div className="relative flex items-center">
-                  <Search className="absolute left-2 text-gray-400" size={16} />
-                  {searchQuery && (
-                    <X
-                      className="absolute right-2 text-gray-400 cursor-pointer"
-                      size={16}
-                      onClick={() => {
-                        setSearchQuery('');
-                        setSearchResults([]);
-                        setShowResults(false);
-                      }}
-                    />
-                  )}
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={handleInputChange}
-                    placeholder="Search celebrities"
-                    className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm"
-                  />
-                </div> */}
+            {/* Center section with logo */}
+            <div className="w-1/3 flex-1 flex justify-center items-center">
+              <Link
+                href="/"
+                onClick={handleLogoClick}
+                className='w-24 h-full'
+              >
+                {/* <Image src='/ehco_branding_bi_fin_ehcio_bi_color-6.png' alt='EHCO logo' width={100} height={80} className='h-full object-contain' priority /> */}
+                <img
+                  src="/ehco_branding_bi_fin_ehcio_bi_color-6.png"
+                  alt="EHCO logo"
+                  className="object-cover w-24 h-full"
+                />
+              </Link>
+            </div>
 
-                {/* Search Results Dropdown */}
-                {/* {isSearching ? (
-                  <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 z-50">
-                    <div className="px-3 py-3 text-sm text-gray-500 text-center">
-                      Loading...
+            {/* Right section with search (only show if not on home page) */}
+            <div className="w-1/3 flex justify-end items-center">
+              {!isHomePage && !isAllFiguresPage && (
+                <>
+                  {/* Desktop search with dropdown */}
+                  <div className="hidden sm:block sm:w-2/3 relative" ref={searchRef}>
+                    <div className="relative flex items-center">
+                      {searchQuery ? (
+                        <X
+                          className="absolute right-3 text-gray-400 cursor-pointer"
+                          size={16}
+                          onClick={() => {
+                            setSearchQuery('');
+                            setSearchResults([]);
+                            setShowResults(false);
+                          }}
+                        />
+                      ) : (
+                        <Search
+                          className="absolute right-3 text-gray-400 cursor-pointer"
+                          size={16}
+                          onClick={handleSearchSubmit}
+                        />
+                      )}
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={handleInputChange}
+                        onKeyDown={handleKeyDown}
+                        placeholder="Search public figures"
+                        className="pl-4 pr-8 py-1.5 border border-[#E4287C] rounded-full w-full text-sm"
+                      />
                     </div>
-                  </div>
-                ) : (
-                  <>
-                    {showResults && searchResults.length > 0 && (
-                      <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto z-50">
-                        {searchResults.map(renderSearchResult)}
-                      </div>
-                    )}
 
-                    {showResults && searchQuery && searchResults.length === 0 && (
+                    {/* Search Results Dropdown */}
+                    {isSearching ? (
                       <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 z-50">
                         <div className="px-3 py-3 text-sm text-gray-500 text-center">
-                          No results found
+                          Loading...
                         </div>
                       </div>
-                    )}
-                  </>
-                )}
-              </div> */}
+                    ) : (
+                      <>
+                        {showResults && searchResults.length > 0 && (
+                          <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto z-50">
+                            {searchResults.map(renderSearchResult)}
+                            <div className="border-t border-gray-200 px-3 py-2 text-center">
+                              <Link
+                                href={`/search?q=${encodeURIComponent(searchQuery)}`}
+                                className="text-[#E4287C] text-sm font-medium hover:underline"
+                                onClick={() => setShowResults(false)}
+                              >
+                                See all results
+                              </Link>
+                            </div>
+                          </div>
+                        )}
 
-              {/* Mobile search icon */}
-              {/* <div className="sm:hidden">
-                <Search
-                  className="cursor-pointer"
-                  onClick={() => setIsSearchOpen(true)}
-                />
-              </div> */}
-            {/* </div> */}
+                        {showResults && searchQuery && searchResults.length === 0 && (
+                          <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 z-50">
+                            <div className="px-3 py-3 text-sm text-gray-500 text-center">
+                              No results found
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Mobile search icon */}
+                  <div className="sm:hidden">
+                    <Search
+                      className="cursor-pointer"
+                      onClick={() => setIsSearchOpen(true)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>

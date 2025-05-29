@@ -1,430 +1,294 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import _ from 'lodash';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Navigation } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/navigation';
+import 'swiper/css/pagination';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Timeline from './Timeline';
 
-interface KeyWork {
-    description: string;
-    year: string;
-    source: string;
-}
-
-interface RegularContent {
+interface WikiContentItem {
     id: string;
-    subcategory: string;
-    subcategory_overview: string;
-    source_articles: string[];
-    chronological_developments: string;
+    category: string;
+    subcategory?: string;
+    content: string;
+    articleIds: string[];
 }
 
-interface CelebrityWikiProps {
+interface ArticleData {
+    id: string;
+    subTitle: string;
+    body: string;
+    source: string;
+    link: string;
+    imageUrls: string[];
+    imageCaptions: string[];
+    sendDate: string;
+}
+
+interface ArticleSummaryData {
+    id: string;
+    event_contents?: Record<string, string>;
+    subCategory?: string;
+    category?: string;
+    content?: string;
+    title?: string;
+}
+
+interface PublicFigureWikiProps {
     availableSections: string[];
-    regularContent: RegularContent[];
-    specialContent: {
-        key_works: Record<string, KeyWork[]>;
-        overall_overview: string;
-        overall_sources?: string[];
+    categories: string[]; // Add this
+    subcategories: string[]; // Add this
+    categoryContent: WikiContentItem[];
+    mainOverview: {
+        id: string;
+        content: string;
+        articleIds: string[];
     };
+    articles?: ArticleData[];
+    articleSummaries?: ArticleSummaryData[];
 }
 
-const CATEGORY_MAPPING = {
-    'Overall Summary': 'Overview',
-    'Key Works': 'Career',
-    'Album Release': 'Music',
-    'Collaboration': 'Music',
-    'Performance': 'Music',
-    'Tour/concert': 'Music',
-    'Music Awards': 'Music',
-    'Drama/Series': 'Acting',
-    'Film': 'Acting',
-    'OTT': 'Acting',
-    'Film/TV/Drama Awards': 'Acting',
-    'Variety show': 'Acting',
-    'Fan meeting': 'Promotion',
-    'Media appearance': 'Promotion',
-    'Social media': 'Promotion',
-    'Interviews': 'Promotion',
-    'Brand activities': 'Promotion',
-    'Donation': 'Social',
-    'Health/diet': 'Social',
-    'Daily fashion': 'Social',
-    'Airport fashion': 'Social',
-    'Family': 'Social',
-    'Friends/companion': 'Social',
-    'Marriage/relationship': 'Social',
-    'Pets': 'Social',
-    'Company/representation': 'Social',
-    'Political stance': 'Social',
-    'Social Recognition': 'Social',
-    'Real estate': 'Social',
-    'Plagiarism': 'Controversy',
-    'Romance': 'Controversy',
-    'Political Controversy': 'Controversy',
-    'Social Controversy': 'Controversy'
-} as const;
 
-const CATEGORY_ORDER = [
-    'Overview',
-    'Career',
-    'Music',
-    'Acting',
-    'Promotion',
-    'Social',
-    'Controversy'
-] as const;
 
-const SourcesList: React.FC<{ sources: string[] }> = ({ sources }) => {
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    if (sources.length === 0) return null;
-
-    // If there's only one source, render a simple version without dropdown
-    if (sources.length === 1) {
-        return (
-            <div className="mt-4">
-                <h4 className="font-medium mb-2">Sources</h4>
-                <ul className="list-disc pl-6">
-                    <li className="break-all">
-                        <a href={sources[0]} className="text-blue-500 hover:underline">{sources[0]}</a>
-                    </li>
-                </ul>
-            </div>
-        );
-    }
-
-    // For multiple sources, render the collapsible version
-    return (
-        <div className="mt-4">
-            <div
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-md"
-            >
-                <h4 className="font-medium">Sources</h4>
-                {isExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-gray-500" />
-                ) : (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
-                )}
-            </div>
-
-            <ul className="list-disc pl-6 mt-2">
-                {/* Always show the first source */}
-                <li key={0} className="break-all">
-                    <a href={sources[0]} className="text-blue-500 hover:underline">{sources[0]}</a>
-                </li>
-
-                {/* Show remaining sources only when expanded */}
-                {isExpanded && sources.slice(1).map((source, index) => (
-                    <li
-                        key={index + 1}
-                        className="break-all mt-2"
-                    >
-                        <a href={source} className="text-blue-500 hover:underline">{source}</a>
-                    </li>
-                ))}
-
-                {/* Show count of hidden sources when collapsed */}
-                {!isExpanded && sources.length > 1 && (
-                    <li className="text-gray-500 mt-1 italic">
-                        +{sources.length - 1} more sources
-                    </li>
-                )}
-            </ul>
-        </div>
-    );
-};
-
-const CelebrityWiki: React.FC<CelebrityWikiProps> = ({
-    availableSections = [],
-    regularContent = [],
-    specialContent
+const PublicFigureWiki: React.FC<PublicFigureWikiProps> = ({
+    categoryContent = [],
+    mainOverview,
+    articles = [],
+    articleSummaries = []
 }) => {
-    const [activeSection, setActiveSection] = useState<string>('');
-    const [activeSubcategory, setActiveSubcategory] = useState<string>('');
-    const controllerRef = useRef<HTMLDivElement>(null);
-    const contentRef = useRef<HTMLDivElement>(null);
-    const navRef = useRef<HTMLElement>(null);
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const [activeCategory, setActiveCategory] = useState<string>('');
+    const [activeSubcategories, setActiveSubcategories] = useState<string[]>([]);
 
-    const formatCategoryName = (category: string) => {
-        return category
-            .split('_')
-            .map(word => word.toLowerCase() === 'ott' ? 'OTT' : word.charAt(0).toUpperCase() + word.slice(1))
-            .join(' ');
+
+    // Initialize from URL on component mount
+    useEffect(() => {
+        const category = searchParams.get('category') || '';
+        const subcategoriesString = searchParams.get('subcategories') || '';
+
+        setActiveCategory(category);
+        if (subcategoriesString) {
+            setActiveSubcategories(subcategoriesString.split(','));
+        } else {
+            setActiveSubcategories([]);
+        }
+    }, [searchParams]);
+
+    // Update URL when category/subcategory changes
+    useEffect(() => {
+        const params = new URLSearchParams();
+
+        if (activeCategory) {
+            params.set('category', activeCategory);
+        }
+
+        if (activeSubcategories.length > 0) {
+            params.set('subcategories', activeSubcategories.join(','));
+        }
+
+        router.replace(`?${params.toString()}`, { scroll: false });
+    }, [activeCategory, activeSubcategories, router]);
+
+    // Get all unique main categories from content
+    const availableMainCategories = Array.from(
+        new Set(
+            categoryContent
+                .map(item => item.category)
+        )
+    );
+
+    // Ordered categories - just the main categories without 'Overview'
+    const orderedCategories = availableMainCategories;
+
+    // Get subcategories for active category
+    const availableSubcategories = activeCategory
+        ? Array.from(
+            new Set(
+                categoryContent
+                    .filter(item =>
+                        item?.category === activeCategory &&
+                        item?.subcategory &&
+                        !orderedCategories.includes(item.subcategory))
+                    .map(item => item.subcategory as string)
+                    .filter(Boolean)
+            )
+        )
+        : [];
+
+    // Handle category change
+    const handleCategoryChange = (category: string) => {
+        setActiveCategory(category);
+        setActiveSubcategories([]); // Reset subcategories when changing main category
     };
 
-    const groupedSections = availableSections.reduce((acc, section) => {
-        const mainCategory = CATEGORY_MAPPING[section as keyof typeof CATEGORY_MAPPING];
-        if (!mainCategory) return acc;
-        if (!acc[mainCategory]) {
-            acc[mainCategory] = [];
-        }
-        if (mainCategory !== 'Overview' && mainCategory !== 'Career') {
-            acc[mainCategory].push(section);
-        }
-        return acc;
-    }, {} as Record<string, string[]>);
-
-    const orderedSections = Object.entries(groupedSections)
-        .sort(([a], [b]) => {
-            const aIndex = CATEGORY_ORDER.indexOf(a as typeof CATEGORY_ORDER[number]);
-            const bIndex = CATEGORY_ORDER.indexOf(b as typeof CATEGORY_ORDER[number]);
-            return aIndex - bIndex;
+    // Handle subcategory change with multiple selection
+    const handleSubcategoryChange = (subcategory: string) => {
+        setActiveSubcategories(prev => {
+            const index = prev.indexOf(subcategory);
+            if (index > -1) {
+                // Remove if already selected
+                return prev.filter(item => item !== subcategory);
+            } else {
+                // Add if not selected
+                return [...prev, subcategory];
+            }
         });
+    };
 
-    const scrollActiveIntoView = useCallback(() => {
-        if (!navRef.current) return;
+    // Check if all subcategories are selected
+    const areAllSubcategoriesSelected = availableSubcategories.length > 0 &&
+        availableSubcategories.every(sub => activeSubcategories.includes(sub));
 
-        const activeElement = navRef.current.querySelector('.bg-gray-100');
-        if (activeElement) {
-            // Calculate the scroll position to center the active element
-            const container = navRef.current;
-            const containerRect = container.getBoundingClientRect();
-            const elementRect = activeElement.getBoundingClientRect();
+    // Handle select/deselect all subcategories
+    const handleToggleAllSubcategories = () => {
+        if (areAllSubcategoriesSelected) {
+            setActiveSubcategories([]);
+        } else {
+            setActiveSubcategories(availableSubcategories);
+        }
+    };
 
-            // Calculate the ideal scroll position that would center the element
-            const idealScrollTop = (
-                container.scrollTop + // Current scroll position
-                (elementRect.top - containerRect.top) - // Distance from container top to element
-                (containerRect.height / 2 - elementRect.height / 2) // Center offset
+    // Get the content to display - either main category content or selected subcategory contents
+    const getCurrentCategoryContent = () => {
+        if (activeSubcategories.length > 0) {
+            return categoryContent.filter(content =>
+                content.category === activeCategory &&
+                content.subcategory &&
+                activeSubcategories.includes(content.subcategory)
             );
-
-            container.scrollTo({
-                top: idealScrollTop,
-                behavior: 'smooth'
-            });
+        } else {
+            // Show main category content when no subcategories selected
+            const mainContent = categoryContent.find(content =>
+                content.category === activeCategory && !content.subcategory
+            );
+            return mainContent ? [mainContent] : [];
         }
-    }, []);
+    };
 
-    const handleScroll = useCallback(() => {
-        if (!contentRef.current) return;
+    const currentContents = getCurrentCategoryContent();
 
-        const contentRect = contentRef.current.getBoundingClientRect();
-        const scrollPosition = -contentRect.top;
-        const headerOffset = 100;
+    // Get relevant articles for current content
+    const getCurrentArticles = () => {
+        const currentArticleIds = new Set<string>();
 
-        const sectionElements = contentRef.current.querySelectorAll<HTMLElement>('[data-section]');
-        const subcategoryElements = contentRef.current.querySelectorAll<HTMLElement>('[data-subcategory]');
-
-        let currentSection = '';
-        let currentSubcategory = '';
-
-        sectionElements.forEach((section) => {
-            const sectionRect = section.getBoundingClientRect();
-            const sectionTop = sectionRect.top - contentRect.top;
-
-            if (scrollPosition + headerOffset >= sectionTop &&
-                scrollPosition + headerOffset <= sectionTop + sectionRect.height) {
-                currentSection = section.getAttribute('data-section') || '';
-            }
+        currentContents.forEach(content => {
+            content.articleIds?.forEach(id => currentArticleIds.add(id));
         });
 
-        subcategoryElements.forEach((subcategory) => {
-            const subcategoryRect = subcategory.getBoundingClientRect();
-            const subcategoryTop = subcategoryRect.top - contentRect.top;
-
-            if (scrollPosition + headerOffset >= subcategoryTop &&
-                scrollPosition + headerOffset <= subcategoryTop + subcategoryRect.height) {
-                currentSubcategory = subcategory.getAttribute('data-subcategory') || '';
-            }
-        });
-
-        if (currentSection !== activeSection) {
-            setActiveSection(currentSection);
-        }
-        if (currentSubcategory !== activeSubcategory) {
-            setActiveSubcategory(currentSubcategory);
-        }
-    }, [activeSection, activeSubcategory]);
-
-    // Add effect to trigger scroll into view when active section/subcategory changes
-    useEffect(() => {
-        scrollActiveIntoView();
-    }, [activeSection, activeSubcategory, scrollActiveIntoView]);
-
-    useEffect(() => {
-        const debouncedHandleScroll = _.debounce(handleScroll, 100);
-        window.addEventListener('scroll', debouncedHandleScroll, { passive: true });
-        handleScroll();
-        return () => {
-            window.removeEventListener('scroll', debouncedHandleScroll);
-        };
-    }, [handleScroll]);
-
-    const scrollToSection = (sectionId: string, subcategoryId?: string) => {
-        console.log(sectionId, subcategoryId);
-        const selector = subcategoryId
-            ? `[data-subcategory="${subcategoryId}"]`
-            : `[data-section="${sectionId}"]`;
-
-        const element = contentRef.current?.querySelector(selector);
-        if (element) {
-            const headerOffset = 100;
-            const elementPosition = element.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-
-            window.scrollTo({
-                top: offsetPosition,
-                behavior: 'smooth'
-            });
-        }
+        return articles.filter(article => currentArticleIds.has(article.id));
     };
 
-    const normalizeSection = (section: string) => {
-        return section
-            .toLowerCase()
-            .replace(/\s*,\s*/g, '')
-            .replace(/\//g, '')
-            .replace(/\s+/g, '')
-            .trim();
-    };
-
-    const getContentForSection = (sectionName: string) => {
-        if (sectionName === 'Overall Summary') {
-            return specialContent.overall_overview;
-        }
-        if (sectionName === 'Key Works') {
-            return specialContent.key_works;
-        }
-        return regularContent.find(
-            item => normalizeSection(item.subcategory) === normalizeSection(sectionName)
-        );
-    };
-
-    const sortWorksByYear = (works: KeyWork[]) => {
-        return [...works].sort((a, b) => {
-            const yearA = a.year.match(/\d{4}/)?.[0] || "0";
-            const yearB = b.year.match(/\d{4}/)?.[0] || "0";
-            if (yearA === yearB) {
-                const monthA = new Date(a.year).getMonth();
-                const monthB = new Date(b.year).getMonth();
-                return isNaN(monthA) || isNaN(monthB) ? 0 : monthB - monthA;
-            }
-            return parseInt(yearB) - parseInt(yearA);
-        });
-    };
+    const currentArticles = getCurrentArticles();
 
     return (
-        <div className="w-full max-w-[100vw] min-h-screen">
-            <div className="w-full max-w-7xl mx-auto px-4 mt-5 flex justify-center">
-                <div className="w-[90%] md:w-[80%] relative flex flex-col lg:flex-row gap-8 min-h-screen">
-                    {/* Controller - Left Side */}
-                    <div
-                        ref={controllerRef}
-                        className="hidden lg:block w-64 sticky top-16 h-screen"
-                    >
-                        <div className="bg-white rounded-lg shadow-lg p-6 flex flex-col h-3/4">
-                            <h3 className="text-lg font-semibold mb-4">Contents</h3>
-                            <nav ref={navRef} className="space-y-2 overflow-y-auto flex-1">
-                                {orderedSections.map(([mainCategory, subcategories]) => (
-                                    <div key={mainCategory} className="space-y-1">
-                                        <button
-                                            onClick={() => scrollToSection(mainCategory)}
-                                            className={`w-full text-left px-2 py-1 rounded transition-colors duration-200 hover:bg-gray-100 
-                                                ${activeSection === mainCategory ? 'bg-gray-100 font-medium' : ''}`}
-                                        >
-                                            {mainCategory}
-                                        </button>
-                                        {mainCategory === 'Career' ? (
-                                            <div className="ml-4 space-y-1 border-l-2 border-gray-200">
-                                                {Object.entries(specialContent.key_works)
-                                                    .filter(([_, works]) => works && works.length > 0) // Only show categories with works
-                                                    .map(([category]) => (
-                                                        <button
-                                                            key={category}
-                                                            onClick={() => scrollToSection(mainCategory, formatCategoryName(category))}
-                                                            className={`w-full text-left px-2 py-1 text-sm transition-colors duration-200 hover:bg-gray-100 rounded
-                                                        ${activeSubcategory === formatCategoryName(category) ? 'bg-gray-100 font-medium' : ''}`}
-                                                        >
-                                                            {formatCategoryName(category)}
-                                                        </button>
-                                                    ))}
-                                            </div>
-                                        ) : subcategories.length > 0 && mainCategory !== 'Overview' ? (
-                                            <div className="ml-4 space-y-1 border-l-2 border-gray-200">
-                                                {subcategories.map((subcategory) => (
-                                                    <button
-                                                        key={subcategory}
-                                                        onClick={() => scrollToSection(mainCategory, subcategory)}
-                                                        className={`w-full text-left px-2 py-1 text-sm transition-colors duration-200 hover:bg-gray-100 rounded
-                                                                ${activeSubcategory === subcategory ? 'bg-gray-100 font-medium' : ''}`}
-                                                    >
-                                                        {subcategory}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        ) : null}
-                                    </div>
-                                ))}
-                            </nav>
-                        </div>
-                    </div>
-
-                    {/* Main Content */}
-                    <div ref={contentRef} className="flex-1 min-w-0 mt-5">
-                        {orderedSections.map(([mainCategory, subcategories]) => (
-                            <div key={mainCategory} data-section={mainCategory} className="mb-16">
-                                <h2 className="text-2xl lg:text-3xl font-bold mb-6 break-words">{mainCategory}</h2>
-                                {mainCategory === 'Overview' ? (
-                                    <div>
-                                        <p className="text-gray-600 break-words">{specialContent.overall_overview}</p>
-                                        {specialContent.overall_sources && specialContent.overall_sources.length > 0 && (
-                                            <SourcesList sources={specialContent.overall_sources} />
-                                        )}
-                                    </div>
-                                ) : mainCategory === 'Career' ? (
-                                    <div className="space-y-4">
-                                        {Object.entries(specialContent.key_works)
-                                            .filter(([_, works]) => works && works.length > 0) // Only render categories with works
-                                            .map(([category, works]) => (
-                                                <div key={category} data-subcategory={formatCategoryName(category)} className="mb-6">
-                                                    <h3 className="text-lg lg:text-xl font-semibold mb-3 break-words">
-                                                        {formatCategoryName(category)}
-                                                    </h3>
-                                                    <ul className="list-none space-y-4">
-                                                        {sortWorksByYear(works).map((work, index) => (
-                                                            <li key={index} className="text-gray-600">
-                                                                <div className="mb-1 break-words">
-                                                                    <span className="font-medium">{work.year}</span> - {work.description}
-                                                                </div>
-                                                                <div className="text-sm text-gray-500 break-all">
-                                                                    source: <a href={work.source} className="hover:underline text-blue-500" target="_blank" rel="noopener noreferrer">{work.source}</a>
-                                                                </div>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            ))}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-8">
-                                        {subcategories.map((subcategory) => {
-                                            const content = getContentForSection(subcategory) as RegularContent;
-                                            return (
-                                                <div key={subcategory} data-subcategory={subcategory} className="mb-8">
-                                                    <h3 className="text-lg lg:text-xl font-semibold mb-4 break-words">{subcategory}</h3>
-                                                    {content && (
-                                                        <div className="space-y-4">
-                                                            <p className="text-gray-600 break-words">{content.subcategory_overview}</p>
-                                                            <div className="mt-4">
-                                                                <h4 className="font-medium mb-2">Chronological Developments</h4>
-                                                                <p className="text-gray-600 break-words">{content.chronological_developments}</p>
-                                                            </div>
-                                                            <SourcesList sources={content.source_articles} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
+        <div className="w-full max-w-[100vw] flex flex-row justify-evenly">
+            <div className='w-[50%]'>
+                {/* Main Category Tabs */}
+                <div className="mt-3 mb-6">
+                    <div className="flex overflow-x-auto space-x-2 pb-2 hide-scrollbar">
+                        {orderedCategories.map(category => (
+                            <button
+                                key={category}
+                                onClick={() => handleCategoryChange(category)}
+                                className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors 
+                  ${activeCategory === category
+                                        ? 'text-red-500 border-b-2 border-red-500'
+                                        : 'text-gray-500 hover:text-gray-800'
+                                    }`}
+                            >
+                                {category}
+                            </button>
                         ))}
                     </div>
                 </div>
+
+                {/* Content Display */}
+                <div className="pb-12">
+                    {currentContents.length > 0 && (
+                        <>
+                            {/* Show main category content if no subcategories selected */}
+                            {activeSubcategories.length === 0 && (
+                                <>
+                                    <p className="text-gray-600 break-words mb-4">
+                                        {currentContents[0].content.replaceAll("*", "'")}
+                                    </p>
+                                </>
+                            )}
+
+                            {/* Show selected subcategory contents with labels */}
+                            {activeSubcategories.length > 0 && currentContents
+                                .filter((content): content is WikiContentItem & { subcategory: string } =>
+                                    'subcategory' in content && content.subcategory !== undefined)
+                                .map((content, index) => (
+                                    <div key={content.id} className={index > 0 ? 'mt-8' : 'mb-6'}>
+                                        <h2 className="text-lg font-semibold mb-3 text-gray-800">
+                                            {content.subcategory}
+                                        </h2>
+                                        <p className="text-gray-600 break-words mb-4">
+                                            {content.content.replaceAll("*", "'")}
+                                        </p>
+                                    </div>
+                                ))}
+
+                            {/* Subcategory Tabs */}
+                            {availableSubcategories.length > 0 && (
+                                <div className="mb-6">
+                                    <div className="flex flex-wrap gap-3 pb-2">
+                                        {/* Select/Deselect All button */}
+                                        <button
+                                            onClick={handleToggleAllSubcategories}
+                                            className={`px-3 py-1 text-sm rounded-md shadow-lg whitespace-nowrap transition-colors
+                                            ${areAllSubcategoriesSelected
+                                                    ? 'bg-red-500 text-white hover:bg-red-300'
+                                                    : 'bg-white text-red-500 border border-gray-200 rounded-md hover:bg-red-100'
+                                                }`}
+                                        >
+                                            {areAllSubcategoriesSelected ? 'All' : 'All'}
+                                        </button>
+                                        {availableSubcategories.map(subcategory => (
+                                            <button
+                                                key={subcategory}
+                                                onClick={() => handleSubcategoryChange(subcategory)}
+                                                className={`px-3 py-1 text-sm rounded-md shadow-lg whitespace-nowrap transition-colors
+                                                ${activeSubcategories.includes(subcategory)
+                                                        ? 'bg-red-500 text-white hover:bg-red-300'
+                                                        : 'bg-white text-red-500 border border-gray-200 rounded-md hover:bg-red-100'
+                                                    }`}
+                                            >
+                                                {subcategory}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Commented out Sources
+                            <SourcesSwiper articles={currentArticles} />
+                            */}
+                        </>
+                    )}
+
+                    {/* Timeline placed below subcategory tabs (will show for categories with subcategory tabs) */}
+                    {activeCategory && availableSubcategories.length > 0 && (
+                        <Timeline
+                            articleSummaries={articleSummaries}
+                            categoryContent={categoryContent}
+                            selectedCategory={activeCategory}
+                            selectedSubcategories={activeSubcategories}
+                            articles={articles}
+                        />
+                    )}
+                </div>
             </div>
+
+            {/* Right sidebar placeholder (unchanged) */}
+            <div className='w-[20%] border border-b mt-10 rounded-md'></div>
         </div>
     );
 };
 
-export default CelebrityWiki;
+export default PublicFigureWiki;

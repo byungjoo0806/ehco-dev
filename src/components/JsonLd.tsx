@@ -2,11 +2,11 @@
 import React from 'react';
 
 // JSON-LD value can be any of these types or arrays of these types
-type JsonLdPrimitive = string | number | boolean | null;
-type JsonLdArray = Array<JsonLdValue>;
+export type JsonLdPrimitive = string | number | boolean | null;
+export type JsonLdArray = Array<JsonLdValue>;
 // Using a recursive type definition for nested objects
-type JsonLdObject = { [key: string]: JsonLdValue };
-type JsonLdValue = JsonLdPrimitive | JsonLdObject | JsonLdArray;
+export type JsonLdObject = { [key: string]: JsonLdValue };
+export type JsonLdValue = JsonLdPrimitive | JsonLdObject | JsonLdArray;
 
 interface JsonLdProps {
     data: JsonLdObject;

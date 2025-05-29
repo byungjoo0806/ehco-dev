@@ -1,5 +1,5 @@
 pandas
-firebase-admin
+firebase_admin
 anthropic
 playwright
 python-dotenv

@@ -69,7 +69,7 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
         setIsSearching(true);
 
         try {
-            const { hits } = await searchClient.initIndex('celebrities_name_asc').search<Celebrity>(query, {
+            const { hits } = await searchClient.initIndex('selected-figures').search<Celebrity>(query, {
                 hitsPerPage: 5,
                 attributesToHighlight: ['name', 'koreanName'],
                 highlightPreTag: '<mark class="bg-yellow-200">',

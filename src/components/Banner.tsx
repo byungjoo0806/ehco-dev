@@ -6,20 +6,18 @@ import { Autoplay, Pagination } from 'swiper/modules';
 import { useRouter } from 'next/navigation';
 import 'swiper/css';
 import 'swiper/css/pagination';
-import { Loader2 } from 'lucide-react';
+import { Loader2, User } from 'lucide-react';
 
-interface Celebrity {
+interface PublicFigure {
     id: string;
     name: string;
-    profilePic: string;
+    gender: string;
     nationality: string;
-    koreanName: string;
-    birthDate: string;
-    company: string;
+    occupation: string[];
 }
 
 interface BannerProps {
-    celebrities: Celebrity[];
+    publicFigures: PublicFigure[];
 }
 
 const LoadingOverlay = () => (
@@ -31,14 +29,14 @@ const LoadingOverlay = () => (
     </div>
 );
 
-const Banner = ({ celebrities }: BannerProps) => {
+const Banner = ({ publicFigures }: BannerProps) => {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
-    const featuredCelebrities = celebrities.slice(0, 5); // Get first 5 celebrities
+    const featuredFigures = publicFigures.slice(0, 5); // Get first 5 public figures
 
-    const handleCelebrityClick = (celebrityId: string) => {
+    const handleFigureClick = (figureId: string) => {
         setIsLoading(true);
-        router.push(`/${celebrityId}?category=All&sort=newest&page=1`);
+        router.push(`/${figureId}`);
     };
 
     return (
@@ -57,44 +55,39 @@ const Banner = ({ celebrities }: BannerProps) => {
                     loop={true}
                     className="w-full h-full rounded-lg"
                 >
-                    {featuredCelebrities.map((celebrity) => (
-                        <SwiperSlide key={celebrity.id}>
+                    {featuredFigures.map((figure) => (
+                        <SwiperSlide key={figure.id}>
                             <div
                                 className="relative w-full h-full cursor-pointer transition-transform hover:scale-[1.01]"
-                                onClick={() => handleCelebrityClick(celebrity.id)}
+                                onClick={() => handleFigureClick(figure.id)}
                             >
-                                {/* Blurred Background */}
+                                {/* Background */}
                                 <div
-                                    className="absolute inset-0 bg-cover bg-center blur-xl scale-110"
-                                    style={{
-                                        backgroundImage: `url(${celebrity.profilePic || '/api/placeholder/1200/400'})`,
-                                    }}
+                                    className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 blur-sm scale-110"
                                 />
 
                                 {/* Darkening Overlay */}
-                                <div className="absolute inset-0 bg-black/30" />
+                                <div className="absolute inset-0 bg-black/20" />
 
                                 {/* Main Content Container */}
                                 <div className="relative h-full flex items-center justify-center px-4">
-                                    {/* Main Sharp Image */}
+                                    {/* Profile Icon */}
                                     <div className="flex gap-8 items-center">
-                                        <img
-                                            src={celebrity.profilePic || '/api/placeholder/400/400'}
-                                            alt={celebrity.name}
-                                            className="w-40 h-40 object-cover rounded-lg shadow-lg"
-                                        />
+                                        <div className="w-40 h-40 flex items-center justify-center bg-white/20 rounded-lg shadow-lg">
+                                            <User size={64} className="text-white" />
+                                        </div>
 
                                         {/* Text Content */}
                                         <div className="text-white">
                                             <h2 className="text-3xl font-bold mb-2">
-                                                {celebrity.name}
+                                                {figure.name}
                                             </h2>
                                             <div className="flex flex-col gap-1">
                                                 <p className="text-xl">
-                                                    {celebrity.koreanName}
+                                                    {figure.nationality}
                                                 </p>
                                                 <p className="text-sm opacity-90">
-                                                    {celebrity.company}
+                                                    {figure.occupation.join(', ')}
                                                 </p>
                                             </div>
                                         </div>

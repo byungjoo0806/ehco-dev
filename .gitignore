@@ -42,6 +42,11 @@ next-env.d.ts
 
 # firebase
 /firebase
+.firebaserc
+firebase.json
+firestore.indexes.json
+firestore.rules
+/functions
 
 # venv
 /crawler_env
