@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { Search, X, Loader2, CheckSquare, Square } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import algoliasearch from 'algoliasearch';
 
 // Setup Algolia client - same as in page.tsx
@@ -64,33 +64,38 @@ export default function AllFiguresPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>(['All']); // Default to 'All'
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
-    const [sortBy, setSortBy] = useState('A-Z');
     const [isMobile, setIsMobile] = useState(false);
     const [isSearchMode, setIsSearchMode] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(false);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
+    const searchParams = useSearchParams();
 
     // Categories from the API
     const categories = [
-        'All', 'Singer', 'Female', 'Male', 'Korean', 'Actor', 'Celebrity',
-        'K-pop', 'Music', 'Actress', 'Entertainment', 'Fashion', 'Sports',
-        'Beauty', 'Dance', 'Artist', 'Comedy', 'Model', 'Performance',
-        'Talent Show', 'Rapper', 'Vocalist', 'Film', 'Television', 'DJ'
+        'All', 'Male', 'Female', 'Group', 'Singer', 'Singer-Songwriter',
+        'Film Director', 'Rapper', 'Actor', 'Actress', 'South Korean'
+    ];
+
+    const CATEGORY_ORDER = [
+        'Male', 'Female', 'Group', 'South Korean', 'Singer', 'Singer-Songwriter',
+        'Film Director', 'Rapper', 'Actor', 'Actress'
     ];
 
     // Map category selections to search fields
     // This helps translate user-facing categories to backend fields
     const categoryToFieldMap: Record<string, { field: string, value: string }[]> = {
-        'Female': [{ field: 'gender', value: 'Female' }, { field: 'occupation', value: 'Girl Group' }],
-        'Male': [{ field: 'gender', value: 'Male' }, { field: 'occupation', value: 'Boy Group' }],
-        'Singer': [{ field: 'categories', value: 'Singer' }],
-        'Korean': [{ field: 'categories', value: 'Korean' }],
-        'Actor': [{ field: 'categories', value: 'Actor' }],
-        'Actress': [{ field: 'categories', value: 'Actress' }],
-        'K-pop': [{ field: 'categories', value: 'K-pop' }],
-        // Add mappings for other categories...
+        'Male': [{ field: 'gender', value: 'Male' }],
+        'Female': [{ field: 'gender', value: 'Female' }],
+        'Group': [{ field: 'gender', value: 'Group' }],
+        'Singer': [{ field: 'occupation', value: 'Singer' }],
+        'Singer-Songwriter': [{ field: 'occupation', value: 'Singer-Songwriter' }],
+        'Film Director': [{ field: 'occupation', value: 'Film Director' }],
+        'Rapper': [{ field: 'occupation', value: 'Rapper' }],
+        'Actor': [{ field: 'occupation', value: 'Actor' }],
+        'Actress': [{ field: 'occupation', value: 'Actress' }],
+        'South Korean': [{ field: 'nationality', value: 'South Korean' }]
     };
 
     const itemsPerPage = 18;
@@ -129,7 +134,113 @@ export default function AllFiguresPage() {
         if (!isSearchMode) {
             fetchFigures(1);
         }
-    }, [selectedCategories, sortBy, isSearchMode]); // Refetch when categories or sort changes
+    }, [selectedCategories, isSearchMode]); // Refetch when categories or sort changes
+
+    // For URL order
+    const sortCategoriesForURL = (categories: string[]) => {
+        return categories.sort((a, b) => {
+            const indexA = CATEGORY_ORDER.indexOf(a);
+            const indexB = CATEGORY_ORDER.indexOf(b);
+
+            // If both categories are in the order array, sort by their position
+            if (indexA !== -1 && indexB !== -1) {
+                return indexA - indexB;
+            }
+
+            // If only one is in the array, prioritize it
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+
+            // If neither is in the array, sort alphabetically
+            return a.localeCompare(b);
+        });
+    };
+
+    // Function to update URL with current filters
+    const updateURL = useCallback((newCategories: string[], newSearchQuery: string = '', newPage: number = 1) => {
+        console.log('updateURL called with:', { newCategories, newSearchQuery, newPage });
+
+        const params = new URLSearchParams();
+
+        // Add categories to URL (skip 'All' as it's default)
+        if (newCategories.length > 0 && !newCategories.includes('All')) {
+            // Sort categories for consistent URL order
+            const sortedCategories = sortCategoriesForURL(newCategories);
+            sortedCategories.forEach(category => {
+                params.append('category', category);
+            });
+        }
+
+        // Add search query if present
+        if (newSearchQuery.trim()) {
+            params.set('search', newSearchQuery);
+        }
+
+        // Add page if it's not 1
+        if (newPage > 1) {
+            params.set('page', newPage.toString());
+        }
+
+        // Build the new URL
+        const queryString = params.toString();
+        const newURL = queryString ? `?${queryString}` : '';
+        const fullURL = `/all-figures${newURL}`;
+
+        console.log('Attempting to update URL to:', fullURL);
+
+        // Force URL update using multiple methods
+        const currentURL = window.location.pathname + window.location.search;
+        const targetURL = fullURL;
+
+        if (currentURL !== targetURL) {
+            console.log('URL needs to change from', currentURL, 'to', targetURL);
+
+            // Method 1: Use window.history.pushState first, then replace
+            window.history.pushState({}, '', targetURL);
+
+            // Method 2: Then use router.replace to ensure Next.js knows about the change
+            setTimeout(() => {
+                router.replace(targetURL, { scroll: false });
+            }, 0);
+
+            console.log('URL update attempted via window.history.pushState');
+        } else {
+            console.log('URL is already correct, no update needed');
+        }
+    }, [router]);
+
+    // Function to read initial state from URL
+    const getInitialStateFromURL = useCallback(() => {
+        const categories = searchParams.getAll('category');
+        const search = searchParams.get('search') || '';
+        const page = parseInt(searchParams.get('page') || '1');
+
+        return {
+            categories: categories.length > 0 ? categories : ['All'],
+            search,
+            page
+        };
+    }, [searchParams]);
+
+    // Initialize state from URL on component mount
+    useEffect(() => {
+        const urlState = getInitialStateFromURL();
+
+        // Only update state if URL has parameters (avoid overriding defaults on first load)
+        if (searchParams.toString()) {
+            setSelectedCategories(urlState.categories);
+            setSearchQuery(urlState.search);
+            setCurrentPage(urlState.page);
+        }
+    }, []); // Run only on mount
+
+    // Update URL whenever filters change
+    // useEffect(() => {
+    //     // Skip URL update on initial load or when in search mode with Algolia
+    //     if (!isSearchMode) {
+    //         updateURL(selectedCategories, searchQuery, currentPage);
+    //     }
+    // }, [selectedCategories, currentPage, updateURL, isSearchMode]);
 
     // Helper function to build category filters for the API
     const buildCategoryParams = (params: URLSearchParams) => {
@@ -144,14 +255,10 @@ export default function AllFiguresPage() {
                         if (!fieldFilters[mapping.field]) {
                             fieldFilters[mapping.field] = [];
                         }
-                        fieldFilters[mapping.field].push(mapping.value);
+                        if (!fieldFilters[mapping.field].includes(mapping.value)) {
+                            fieldFilters[mapping.field].push(mapping.value);
+                        }
                     });
-                } else {
-                    // Fallback for categories without explicit mapping
-                    if (!fieldFilters['categories']) {
-                        fieldFilters['categories'] = [];
-                    }
-                    fieldFilters['categories'].push(category);
                 }
             });
 
@@ -180,7 +287,9 @@ export default function AllFiguresPage() {
                 params.append('search', searchQuery);
             }
 
-            params.append('sort', sortBy.toLowerCase().replace('-', ''));
+            // DEBUG: Log the URL being called
+            console.log('Fetching with URL:', `/api/public-figures?${params}`);
+            console.log('Selected categories:', selectedCategories);
 
             const response = await fetch(`/api/public-figures?${params}`);
 
@@ -300,12 +409,13 @@ export default function AllFiguresPage() {
         const query = e.target.value;
         setSearchQuery(query);
 
-        // Clear timeout if it exists
         if (searchTimeoutRef.current) {
             clearTimeout(searchTimeoutRef.current);
         }
 
-        // Debounce search to avoid too many requests
+        // Update URL immediately for search (remove sortBy parameter)
+        updateURL(selectedCategories, query, 1);
+
         searchTimeoutRef.current = setTimeout(() => {
             performSearchForGrid(query);
         }, 300);
@@ -322,11 +432,13 @@ export default function AllFiguresPage() {
         if (newPage >= 1 && newPage <= totalPages && !loading) {
             setCurrentPage(newPage);
 
+            // Update URL with new page
+            updateURL(selectedCategories, searchQuery, newPage);
+
             if (isSearchMode && searchQuery) {
                 // For Algolia pagination
                 setLoading(true);
 
-                // Create filter string for categories
                 const filterString = buildAlgoliaFilterString();
 
                 searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(searchQuery, {
@@ -358,61 +470,109 @@ export default function AllFiguresPage() {
     };
 
     // Handle category checkbox change
-    const handleCategoryChange = (category: string) => {
-        if (category === 'All') {
-            // If "All" is selected, clear all other selections
-            setSelectedCategories(['All']);
-        } else {
-            // If any other category is selected, remove "All" if it exists
-            setSelectedCategories(prev => {
-                const newCategories = prev.filter(c => c !== 'All');
+    const handleCategoryChange = (category: string, forceRemove: boolean = false) => {
+        console.log('handleCategoryChange called:', { category, forceRemove, currentCategories: selectedCategories });
 
-                // Toggle the selected category
-                if (newCategories.includes(category)) {
-                    // If no categories would be left, select "All"
-                    if (newCategories.length === 1) {
-                        return ['All'];
+        let newCategories: string[];
+
+        if (forceRemove) {
+            // This is called from removeCategory (X button click)
+            newCategories = selectedCategories.filter(c => c !== category);
+            newCategories = newCategories.length === 0 ? ['All'] : newCategories;
+        } else {
+            // This is called from dropdown toggle
+            if (category === 'All') {
+                newCategories = ['All'];
+            } else {
+                const currentCategories = selectedCategories.filter(c => c !== 'All');
+
+                if (currentCategories.includes(category)) {
+                    if (currentCategories.length === 1) {
+                        newCategories = ['All'];
+                    } else {
+                        newCategories = currentCategories.filter(c => c !== category);
                     }
-                    // Otherwise remove this category
-                    return newCategories.filter(c => c !== category);
                 } else {
-                    // Add the category
-                    return [...newCategories, category];
+                    newCategories = [...currentCategories, category];
                 }
-            });
+            }
         }
 
+        console.log('handleCategoryChange - calculated new categories:', newCategories);
+
+        // Update state first
+        setSelectedCategories(newCategories);
         setCurrentPage(1);
+
+        // Update URL immediately - use setTimeout to ensure state has updated
+        setTimeout(() => {
+            console.log('About to call updateURL with:', newCategories);
+            updateURL(newCategories, searchQuery, 1);
+        }, 0);
 
         // If in search mode, refresh the search with new categories
         if (isSearchMode && searchQuery) {
-            // Use setTimeout to ensure state is updated before search
             setTimeout(() => {
                 performSearchForGrid(searchQuery);
-            }, 0);
+            }, 10);
         }
     };
 
     // Remove a category when clicked in the selected categories display
     const removeCategory = (category: string) => {
-        setSelectedCategories(prev => {
-            const filtered = prev.filter(c => c !== category);
-            // If no categories left, default to "All"
-            return filtered.length === 0 ? ['All'] : filtered;
-        });
+        handleCategoryChange(category, true);
     };
 
-    const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setSortBy(e.target.value);
+    // const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    //     setCurrentPage(1);
+
+    //     // If in search mode with Algolia, we might need to handle sorting differently
+    //     // This depends on how your Algolia index is configured
+    //     if (isSearchMode) {
+    //         // Reset to normal mode if sorting changes while in search
+    //         setIsSearchMode(false);
+    //     }
+    // };
+
+    const clearAllFilters = () => {
+        console.log('clearAllFilters called');
+
+        setSelectedCategories(['All']);
+        setSearchQuery('');
         setCurrentPage(1);
+        setIsSearchMode(false);
 
-        // If in search mode with Algolia, we might need to handle sorting differently
-        // This depends on how your Algolia index is configured
-        if (isSearchMode) {
-            // Reset to normal mode if sorting changes while in search
-            setIsSearchMode(false);
-        }
+        // Force URL clear with multiple approaches
+        setTimeout(() => {
+            console.log('Clearing URL...');
+
+            // Method 1: Use router.replace
+            try {
+                router.replace('/all-figures', { scroll: false });
+                console.log('Router.replace to base URL successful');
+            } catch (error) {
+                console.error('Router.replace failed:', error);
+
+                // Method 2: Use window.history as fallback
+                window.history.replaceState({}, '', '/all-figures');
+                console.log('Used window.history fallback');
+            }
+
+            // Method 3: Also call updateURL as backup
+            updateURL(['All'], '', 1);
+        }, 0);
     };
+
+    // Add this useEffect to monitor URL changes and log them:
+    useEffect(() => {
+        console.log('Current URL:', window.location.href);
+        console.log('Current searchParams:', searchParams.toString());
+    }, [searchParams]);
+
+    // Also add this debugging useEffect to see when selectedCategories changes:
+    useEffect(() => {
+        console.log('selectedCategories changed to:', selectedCategories);
+    }, [selectedCategories]);
 
     const getPageNumbers = () => {
         const pages = [];
@@ -466,7 +626,7 @@ export default function AllFiguresPage() {
                 </div>
 
                 {/* Category and Sort Filters */}
-                <div className="flex flex-col sm:flex-row justify-center items-center gap-4 sm:gap-8 mb-6 sm:mb-8">
+                <div className="flex justify-center items-center mb-6 sm:mb-8">
                     {/* Category Filter - Now with multiple selection dropdown */}
                     <div className="flex items-center gap-2 w-full sm:w-auto relative" ref={categoryDropdownRef}>
                         <label className="text-gray-700 dark:text-gray-300 whitespace-nowrap">Categories :</label>
@@ -513,7 +673,7 @@ export default function AllFiguresPage() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {/* <div className="flex items-center gap-2 w-full sm:w-auto">
                         <label className="text-gray-700 dark:text-gray-300 whitespace-nowrap">Sort By :</label>
                         <div className="relative flex-1 sm:flex-auto">
                             <select
@@ -533,7 +693,7 @@ export default function AllFiguresPage() {
                                 </svg>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Selected Categories Display with removal functionality */}
@@ -564,6 +724,18 @@ export default function AllFiguresPage() {
                         </div>
                     ))}
                 </div>
+
+                {/* Clear Filters */}
+                {(selectedCategories.length > 0 && !selectedCategories.includes('All')) || searchQuery ? (
+                    <div className="flex justify-center mb-6">
+                        <button
+                            onClick={clearAllFilters}
+                            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline transition-colors"
+                        >
+                            Clear all filters
+                        </button>
+                    </div>
+                ) : null}
 
                 {/* Loading State */}
                 {loading && (
