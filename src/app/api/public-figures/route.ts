@@ -185,7 +185,7 @@ export async function GET(request: Request) {
             const data = docRef.data();
 
             // Parse occupation array - split combined occupations
-            let occupations: string[] = [];
+            const occupations: string[] = [];
             if (data.occupation && Array.isArray(data.occupation)) {
                 data.occupation.forEach((occ: string) => {
                     // Split by " / " and trim each part
@@ -199,8 +199,8 @@ export async function GET(request: Request) {
             if (data.is_group && data.members && Array.isArray(data.members)) {
                 // Get nationalities from all members
                 const memberNationalities = data.members
-                    .map((member: any) => member.nationality)
-                    .filter((nat: string) => nat);
+                    .map((member: { nationality?: string }) => member.nationality)
+                    .filter((nat: string | undefined): nat is string => Boolean(nat));
 
                 // If all members have the same nationality, use that
                 if (memberNationalities.length > 0) {

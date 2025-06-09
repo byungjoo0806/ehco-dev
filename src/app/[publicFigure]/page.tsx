@@ -338,14 +338,14 @@ function processContentData(data: WikiContentResponse) {
     ];
 
     // Extract available sections from content data
-    const categories = new Set<string>();
+    const categoriesSet = new Set<string>();
     const subcategories = new Set<string>();
 
     // Add categories and subcategories from categoryContent
     categoryContent.forEach(item => {
         if (KNOWN_CATEGORIES.includes(item.category)) {
             // This is a main category
-            categories.add(item.category);
+            categoriesSet.add(item.category);
             if (item.subcategory) {
                 subcategories.add(item.subcategory);
             }
@@ -355,21 +355,13 @@ function processContentData(data: WikiContentResponse) {
         }
     });
 
-    // Debug log for categories and subcategories
-    // console.log('Processed Content Data:', {
-    //     categories: Array.from(categorySet),
-    //     subcategories: Array.from(subcategorySet),
-    //     categoryContent: categoryContent.map(item => ({
-    //         id: item.id,
-    //         category: item.category,
-    //         subcategory: item.subcategory,
-    //         hasContent: item.content.length > 0
-    //     }))
-    // });
+    const orderedCategories = KNOWN_CATEGORIES.filter(category => 
+        categoriesSet.has(category)
+    );
 
     return {
-        sections: [...categories, ...subcategories],
-        categories: Array.from(categories),
+        sections: [...orderedCategories, ...subcategories],
+        categories: orderedCategories, // Use ordered categories instead of Array.from(categoriesSet)
         subcategories: Array.from(subcategories)
     };
 }

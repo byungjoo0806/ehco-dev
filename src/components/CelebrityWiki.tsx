@@ -54,6 +54,7 @@ interface PublicFigureWikiProps {
 
 
 const PublicFigureWiki: React.FC<PublicFigureWikiProps> = ({
+    categories,
     categoryContent = [],
     mainOverview,
     articles = [],
@@ -93,16 +94,8 @@ const PublicFigureWiki: React.FC<PublicFigureWikiProps> = ({
         router.replace(`?${params.toString()}`, { scroll: false });
     }, [activeCategory, activeSubcategories, router]);
 
-    // Get all unique main categories from content
-    const availableMainCategories = Array.from(
-        new Set(
-            categoryContent
-                .map(item => item.category)
-        )
-    );
-
     // Ordered categories - just the main categories without 'Overview'
-    const orderedCategories = availableMainCategories;
+    const orderedCategories = categories;
 
     // Get subcategories for active category
     const availableSubcategories = activeCategory

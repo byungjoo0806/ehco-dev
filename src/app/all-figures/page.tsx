@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { Search, X, Loader2, CheckSquare, Square } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -54,7 +54,7 @@ const LoadingOverlay = () => (
     </div>
 );
 
-export default function AllFiguresPage() {
+function AllFiguresContent() {
     const [figures, setFigures] = useState<Figure[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -891,5 +891,13 @@ export default function AllFiguresPage() {
 
             {isPageLoading && <LoadingOverlay />}
         </div>
+    );
+}
+
+export default function AllFiguresPage() {
+    return (
+        <Suspense fallback={<LoadingOverlay />}>
+            <AllFiguresContent />
+        </Suspense>
     );
 }
