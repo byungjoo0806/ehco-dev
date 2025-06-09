@@ -57,6 +57,12 @@ const preloadImage = (src: string): Promise<string> => {
   });
 };
 
+// Email validation function
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
+
 // The Homepage component without the header
 export default function Home() {
   // Updated state to handle the new data structure
@@ -79,6 +85,12 @@ export default function Home() {
   // State to track which images have been successfully preloaded
   const [preloadedImages, setPreloadedImages] = useState<Set<string>>(new Set());
   const [imagesLoading, setImagesLoading] = useState(true);
+
+  // Newsletter subscription states
+  const [email, setEmail] = useState('');
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState('');
+  const [isSubscribing, setIsSubscribing] = useState(false);
 
   // Check if device is mobile
   useEffect(() => {
@@ -282,6 +294,60 @@ export default function Home() {
     }
 
     return '/images/default-profile.png';
+  };
+
+  // Newsletter subscription handler
+  const handleSubscribe = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Clear previous errors
+    setSubscriptionError('');
+
+    // Validate email format
+    if (!isValidEmail(email)) {
+      setSubscriptionError('Please enter a valid email address.');
+      return;
+    }
+
+    setIsSubscribing(true);
+
+    try {
+      // Replace this with your actual API endpoint
+      const response = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Success
+        setIsSubscribed(true);
+        setEmail('');
+      } else if (response.status === 409) {
+        // Email already exists
+        setSubscriptionError('This email is already subscribed to our newsletter.');
+      } else {
+        // Other error
+        setSubscriptionError(data.message || 'Something went wrong. Please try again.');
+      }
+    } catch (error) {
+      console.error('Subscription error:', error);
+      setSubscriptionError('Network error. Please try again.');
+    } finally {
+      setIsSubscribing(false);
+    }
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    // Clear error when user starts typing
+    if (subscriptionError) {
+      setSubscriptionError('');
+    }
   };
 
   return (
@@ -499,17 +565,52 @@ export default function Home() {
 
           {/* Newsletter signup */}
           <div className="flex justify-center">
-            <div className="relative max-w-lg w-full">
-              <div className="relative flex flex-col sm:flex-row rounded-full border-l-2 border-t-2 border-b-2 border-white overflow-hidden">
-                <input
-                  type="email"
-                  placeholder="Enter Email Address"
-                  className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-transparent text-white placeholder-white placeholder-opacity-80 focus:outline-none text-sm md:text-base w-full sm:w-auto"
-                />
-                <button className="px-4 sm:px-6 md:px-8 py-2 sm:py-3 bg-white text-key-color font-medium hover:bg-gray-100 transition-colors text-sm md:text-base rounded-full border border-white mt-2 sm:mt-0">
-                  Subscribe for Updates
-                </button>
-              </div>
+            <div className="relative max-w-2xl w-full">
+              {isSubscribed ? (
+                // Success message
+                <div className="text-center py-4">
+                  <p className="text-sm md:text-base font-medium">
+                    You are all set! Thank you for subscribing.
+                  </p>
+                </div>
+              ) : (
+                // Subscription form
+                <form onSubmit={handleSubscribe}>
+                  <div className="relative flex flex-col sm:flex-row rounded-full border-l-2 border-t-2 border-b-2 border-white overflow-hidden">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={handleEmailChange}
+                      placeholder="Enter Email Address"
+                      className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-transparent text-white placeholder-white placeholder-opacity-80 focus:outline-none text-sm md:text-base w-full sm:w-auto"
+                      disabled={isSubscribing}
+                    />
+                    <button
+                      type="submit"
+                      disabled={isSubscribing || !email.trim()}
+                      className="px-4 sm:px-6 md:px-8 py-2 sm:py-3 bg-white text-key-color font-medium hover:bg-gray-100 transition-colors text-sm md:text-base rounded-full border border-white mt-2 sm:mt-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    >
+                      {isSubscribing ? (
+                        <>
+                          <Loader2 className="animate-spin mr-2" size={16} />
+                          Subscribing...
+                        </>
+                      ) : (
+                        'Subscribe for Updates'
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Error message */}
+                  {subscriptionError && (
+                    <div className="mt-3 text-center">
+                      <p className="text-sm text-red-200 bg-red-500 bg-opacity-20 px-4 py-2 rounded-lg">
+                        {subscriptionError}
+                      </p>
+                    </div>
+                  )}
+                </form>
+              )}
             </div>
           </div>
         </div>
