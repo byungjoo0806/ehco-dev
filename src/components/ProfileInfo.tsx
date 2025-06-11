@@ -55,18 +55,18 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
   // Format date to be more readable 
   const formatDate = (dateString: string | undefined): string => {
     if (!dateString) return 'N/A';
-    
+
     // Check if the dateString contains additional info after a colon
     const parts = dateString.split(':');
     const dateOnly = parts[0].trim();
     const additionalInfo = parts.length > 1 ? parts[1].trim() : '';
-    
+
     try {
       const date = new Date(dateOnly);
-      const options: Intl.DateTimeFormatOptions = { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       };
       const formattedDate = date.toLocaleDateString('en-US', options);
       return additionalInfo ? `${formattedDate} (${additionalInfo})` : formattedDate;
@@ -74,7 +74,7 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
       return dateString; // Return original if parsing fails
     }
   };
-  
+
   // Determine which fields to display based on whether it's a group or individual
   interface ProfileField {
     label: string;
@@ -94,8 +94,8 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
       // Group-specific fields
       return [
         ...commonFields,
-        { 
-          label: "Members", 
+        {
+          label: "Members",
           value: (publicFigureData as GroupProfile).members?.length.toString() || "0",
           details: (publicFigureData as GroupProfile).members // Pass the full members array
         }
@@ -139,8 +139,8 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
           <div className="w-full md:w-64 flex flex-col items-center md:items-start md:border-r md:border-dashed md:border-gray-300 md:pr-4">
             <div className="w-32 h-32 rounded-lg bg-gray-200 overflow-hidden mb-4 flex items-center justify-center">
               {publicFigureData.profilePic ? (
-                <Image 
-                  src={publicFigureData.profilePic} 
+                <Image
+                  src={publicFigureData.profilePic}
                   alt={publicFigureData.name}
                   width={128}
                   height={128}
@@ -155,7 +155,7 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
             <h1 className="text-xl md:text-2xl font-bold mb-1 text-center md:text-left text-black dark:text-white">
               {publicFigureData.name}
             </h1>
-            
+
             {publicFigureData.name_kr && (
               <h2 className="text-lg md:text-xl font-medium mb-3 text-center md:text-left text-gray-600 dark:text-gray-300">
                 {publicFigureData.name_kr}
@@ -190,27 +190,32 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
               {getProfileFields()
                 .filter(item => item.value) // Only display fields with values
                 .map((item, index) => (
-                <div key={index} className="flex flex-col md:flex-row gap-1 md:gap-2">
-                  <div className="text-sm font-medium text-center md:text-left text-black dark:text-white">
-                    {item.label}:
+                  <div key={index} className="flex flex-col md:flex-row gap-1 md:gap-2">
+                    <div className="text-sm font-medium text-center md:text-left text-black dark:text-white">
+                      {item.label}:
+                    </div>
+                    <div className="text-sm text-center md:text-left text-black dark:text-white">
+                      {item.label !== "Members" && (item.value || "N/A")}
+                      {/* Show member names if this is the Members field for a group */}
+                      {item.label === "Members" && item.details && publicFigureData.is_group && (
+                        <span className="block text-sm text-gray-600 dark:text-gray-300 mt-1">
+                          {(item.details as IndividualPerson[]).map((member, i, arr) => (
+                            <span key={member.name}>
+                              <a
+                                href={`/${member.name.toLowerCase().replace(/\s+/g, '-')}`}
+                                className="hover:underline text-blue-600 dark:text-blue-400"
+                              >
+                                {member.name}
+                              </a>
+                              {i < arr.length - 1 ? ', ' : ''}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-sm text-center md:text-left text-black dark:text-white">
-                    {item.value || "N/A"}
-                    {/* Show member names if this is the Members field for a group */}
-                    {item.label === "Members" && item.details && publicFigureData.is_group && (
-                      <span className="block text-sm text-gray-600 dark:text-gray-300 mt-1">
-                        {(item.details as IndividualPerson[]).map((member, i, arr) => (
-                          <span key={member.name}>
-                            {member.name}
-                            {i < arr.length - 1 ? ', ' : ''}
-                          </span>
-                        ))}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-              
+                ))}
+
               {/* Add occupation here */}
               <div className="flex flex-col md:flex-row gap-1 md:gap-2">
                 <div className="text-sm font-medium text-center md:text-left text-black dark:text-white">
@@ -228,17 +233,17 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
             <h2 className="text-xl font-bold mb-6 text-black dark:text-white text-center md:text-left">
               Overview
             </h2>
-            
+
             {mainOverview?.content ? (
               <div className="prose prose-sm text-black dark:text-gray-300 max-w-none">
-                {mainOverview.content.replaceAll("*","'")}
+                {mainOverview.content.replaceAll("*", "'")}
               </div>
             ) : (
               <div className="text-center text-gray-500 dark:text-gray-400">
                 No overview content available
               </div>
             )}
-            
+
             {/* Add Last Updated Info */}
             {publicFigureData.lastUpdated && (
               <div className="mt-6 text-xs text-gray-500 dark:text-gray-400 text-right">

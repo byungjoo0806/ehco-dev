@@ -254,36 +254,36 @@ const EventItem: React.FC<EventItemProps> = ({
     };
 
     return (
-        <div className="relative pl-6" style={{ marginLeft: indentLevel * 24 + 'px' }}>
+        <div className="relative pl-6">
             {/* Event dot with line */}
             <div className="absolute w-2 h-2 bg-red-500 rounded-full left-0 top-2"></div>
-            {!isLastInGroup && (
+            {/* {!isLastInGroup && (
                 <div className="absolute w-px h-full bg-gray-200 left-1" style={{ top: '10px' }}></div>
-            )}
+            )} */}
 
             {/* Event content */}
-            <div>
+            <div className='mt-2'>
                 {showFullDate && formatDate(event.date) && (
                     <div className="text-sm text-gray-500">
                         {formatDate(event.date)}
                     </div>
                 )}
-                <div className="font-medium">
-                    {/* {event.subcategory && (
+                {/* <div className="font-medium">
+                    {event.subcategory && (
                         <span className="mr-2">{event.subcategory}.</span>
                     )} */}
                     {/* If it's a combined event (with newlines in content), don't show content in the header,
                         as it will be shown in the body. Otherwise, show the first line of content or title */}
-                    {event.content?.includes('\n\n')
+                    {/* {event.content?.includes('\n\n')
                         ? 'Multiple Events'
                         : (event.title || event.content?.split('\n')[0])}
-                </div>
+                </div> */}
 
                 {/* Show event content - split by line breaks for multiple events */}
                 {event.content && event.content.trim() && (
                     <div className="mt-1">
                         {event.content.split('\n\n').map((contentItem, idx) => (
-                            <p key={idx} className="text-sm text-gray-600 mb-2">
+                            <p key={idx} className="text-base text-gray-600 mb-2">
                                 {contentItem}
                             </p>
                         ))}
@@ -584,7 +584,7 @@ const Timeline: React.FC<TimelineProps> = ({
                                                 <div key={`${year}-${month}`}>
                                                     {/* Month header */}
                                                     {monthData.monthEvents.length > 0 && (
-                                                        <div className="text-sm font-medium text-gray-700 ml-6 mb-2">
+                                                        <div className="text-sm font-medium text-gray-700 mb-2">
                                                             {new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', { month: 'long' })}
                                                         </div>
                                                     )}

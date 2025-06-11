@@ -576,19 +576,48 @@ export default function Home() {
               ) : (
                 // Subscription form
                 <form onSubmit={handleSubscribe}>
-                  <div className="relative flex flex-col sm:flex-row rounded-full border-l-2 border-t-2 border-b-2 border-white overflow-hidden">
+                  {/* Desktop layout */}
+                  <div className="hidden sm:block">
+                    <div className="relative flex rounded-full border-2 border-white overflow-hidden">
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={handleEmailChange}
+                        placeholder="Enter Email Address"
+                        className="flex-1 px-6 py-3 bg-transparent text-white placeholder-white placeholder-opacity-80 focus:outline-none text-sm md:text-base"
+                        disabled={isSubscribing}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isSubscribing || !email.trim()}
+                        className="px-6 md:px-8 py-3 bg-white text-key-color font-medium hover:bg-gray-100 transition-colors text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      >
+                        {isSubscribing ? (
+                          <>
+                            <Loader2 className="animate-spin mr-2" size={16} />
+                            Subscribing...
+                          </>
+                        ) : (
+                          'Subscribe for Updates'
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mobile layout */}
+                  <div className="block sm:hidden space-y-3">
                     <input
                       type="email"
                       value={email}
                       onChange={handleEmailChange}
                       placeholder="Enter Email Address"
-                      className="flex-1 px-4 sm:px-6 py-2 sm:py-3 bg-transparent text-white placeholder-white placeholder-opacity-80 focus:outline-none text-sm md:text-base w-full sm:w-auto"
+                      className="w-full px-4 py-3 bg-transparent text-white placeholder-white placeholder-opacity-80 focus:outline-none text-sm border-2 border-white rounded-full"
                       disabled={isSubscribing}
                     />
                     <button
                       type="submit"
                       disabled={isSubscribing || !email.trim()}
-                      className="px-4 sm:px-6 md:px-8 py-2 sm:py-3 bg-white text-key-color font-medium hover:bg-gray-100 transition-colors text-sm md:text-base rounded-full border border-white mt-2 sm:mt-0 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      className="w-full px-4 py-3 bg-white text-key-color font-medium hover:bg-gray-100 transition-colors text-sm rounded-full disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                     >
                       {isSubscribing ? (
                         <>

@@ -179,7 +179,7 @@ const PublicFigureWiki: React.FC<PublicFigureWikiProps> = ({
 
     return (
         <div className="w-full max-w-[100vw] flex flex-row justify-evenly">
-            <div className='w-[50%]'>
+            <div className='w-[90%] sm:w-[50%] px-2'>
                 {/* Main Category Tabs */}
                 <div className="mt-3 mb-6">
                     <div className="flex overflow-x-auto space-x-2 pb-2 hide-scrollbar">
@@ -279,7 +279,7 @@ const PublicFigureWiki: React.FC<PublicFigureWikiProps> = ({
             </div>
 
             {/* Right sidebar placeholder (unchanged) */}
-            <div className='w-[20%] border border-b mt-10 rounded-md'></div>
+            <div className='w-[10%] border border-b mt-10 rounded-md hidden sm:block'></div>
         </div>
     );
 };
