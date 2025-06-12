@@ -397,7 +397,7 @@ function AllFiguresContent() {
 
         try {
             setLoading(true);
-            let params = new URLSearchParams({
+            const params = new URLSearchParams({
                 page: page.toString(),
                 pageSize: itemsPerPage.toString(),
             });
