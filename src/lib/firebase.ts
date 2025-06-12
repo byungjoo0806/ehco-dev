@@ -24,7 +24,7 @@ export let analytics: Analytics | null = null;
 if (typeof window !== 'undefined') {
   try {
     analytics = getAnalytics(app);
-    console.log('Firebase Analytics initialized successfully');
+    // console.log('Firebase Analytics initialized successfully');
   } catch (error) {
     console.error('Firebase Analytics initialization error:', error);
   }

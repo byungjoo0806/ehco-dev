@@ -67,6 +67,7 @@ function AllFiguresContent() {
     const [isMobile, setIsMobile] = useState(false);
     const [isSearchMode, setIsSearchMode] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
@@ -102,6 +103,7 @@ function AllFiguresContent() {
 
     // Handle click outside to close the dropdown
     useEffect(() => {
+        // console.log('🖱️ Click outside useEffect ran');
         function handleClickOutside(event: MouseEvent) {
             if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(event.target as Node)) {
                 setShowCategoryDropdown(false);
@@ -116,6 +118,7 @@ function AllFiguresContent() {
 
     // Check if device is mobile
     useEffect(() => {
+        // console.log('📱 Mobile check useEffect ran');
         const checkIfMobile = () => {
             setIsMobile(window.innerWidth < 640);
         };
@@ -129,12 +132,6 @@ function AllFiguresContent() {
         // Cleanup
         return () => window.removeEventListener('resize', checkIfMobile);
     }, []);
-
-    useEffect(() => {
-        if (!isSearchMode) {
-            fetchFigures(1);
-        }
-    }, [selectedCategories, isSearchMode]); // Refetch when categories or sort changes
 
     // For URL order
     const sortCategoriesForURL = (categories: string[]) => {
@@ -157,14 +154,13 @@ function AllFiguresContent() {
     };
 
     // Function to update URL with current filters
-    const updateURL = useCallback((newCategories: string[], newSearchQuery: string = '', newPage: number = 1) => {
-        console.log('updateURL called with:', { newCategories, newSearchQuery, newPage });
+    const updateURL = useCallback((newCategories: string[], newSearchQuery: string = '', newPage: number = 1, replace: boolean = false) => {
+        // console.log('updateURL called with:', { newCategories, newSearchQuery, newPage, replace });
 
         const params = new URLSearchParams();
 
         // Add categories to URL (skip 'All' as it's default)
         if (newCategories.length > 0 && !newCategories.includes('All')) {
-            // Sort categories for consistent URL order
             const sortedCategories = sortCategoriesForURL(newCategories);
             sortedCategories.forEach(category => {
                 params.append('category', category);
@@ -181,31 +177,22 @@ function AllFiguresContent() {
             params.set('page', newPage.toString());
         }
 
-        // Build the new URL
         const queryString = params.toString();
         const newURL = queryString ? `?${queryString}` : '';
         const fullURL = `/all-figures${newURL}`;
 
-        console.log('Attempting to update URL to:', fullURL);
-
-        // Force URL update using multiple methods
         const currentURL = window.location.pathname + window.location.search;
-        const targetURL = fullURL;
 
-        if (currentURL !== targetURL) {
-            console.log('URL needs to change from', currentURL, 'to', targetURL);
-
-            // Method 1: Use window.history.pushState first, then replace
-            window.history.pushState({}, '', targetURL);
-
-            // Method 2: Then use router.replace to ensure Next.js knows about the change
-            setTimeout(() => {
-                router.replace(targetURL, { scroll: false });
-            }, 0);
-
-            console.log('URL update attempted via window.history.pushState');
-        } else {
-            console.log('URL is already correct, no update needed');
+        if (currentURL !== fullURL) {
+            if (replace) {
+                // Use replaceState for filter changes to avoid creating new history entries
+                window.history.replaceState({}, '', fullURL);
+                router.replace(fullURL, { scroll: false });
+            } else {
+                // Use pushState for actual navigation (like pagination)
+                window.history.pushState({}, '', fullURL);
+                router.replace(fullURL, { scroll: false });
+            }
         }
     }, [router]);
 
@@ -215,32 +202,109 @@ function AllFiguresContent() {
         const search = searchParams.get('search') || '';
         const page = parseInt(searchParams.get('page') || '1');
 
+        // Ensure categories always has a valid value
+        const validCategories = categories.length > 0 ? categories : ['All'];
+
         return {
-            categories: categories.length > 0 ? categories : ['All'],
+            categories: validCategories,
             search,
-            page
+            page: Math.max(1, page) // Ensure page is at least 1
         };
     }, [searchParams]);
 
-    // Initialize state from URL on component mount
     useEffect(() => {
-        const urlState = getInitialStateFromURL();
+        // console.log('🔄 Combined initialization useEffect ran');
 
-        // Only update state if URL has parameters (avoid overriding defaults on first load)
-        if (searchParams.toString()) {
+        const urlState = getInitialStateFromURL();
+        // console.log('📖 Reading from URL:', urlState);
+
+        // Set all state at once
+        setSelectedCategories(urlState.categories);
+        setSearchQuery(urlState.search);
+        setCurrentPage(urlState.page);
+
+        if (urlState.search && urlState.search.trim()) {
+            setIsSearchMode(true);
+        } else {
+            setIsSearchMode(false);
+        }
+
+        // Mark as initialized
+        setIsInitialized(true);
+
+        // Immediately fetch data with the URL state (don't wait for another useEffect)
+        // console.log('🚀 Immediate data fetch with URL state:', urlState);
+
+        if (urlState.search && urlState.search.trim()) {
+            // console.log('🔍 Immediate Algolia search for:', urlState.search);
+            performSearchForGridWithPage(urlState.search, urlState.page);
+        } else {
+            // console.log('📋 Immediate fetch with categories:', urlState.categories);
+            fetchFiguresWithCategories(urlState.page, urlState.categories);
+        }
+    }, []); // Only run once on mount
+
+    useEffect(() => {
+        // Skip if not initialized yet (prevents double-fetch on mount)
+        if (!isInitialized) {
+            // console.log('⏸️ Skipping subsequent useEffect - not initialized yet');
+            return;
+        }
+
+        // console.log('🔄 Subsequent state change useEffect triggered');
+        // console.log('📊 Current state:', {
+        //     selectedCategories,
+        //     searchQuery,
+        //     currentPage,
+        //     isSearchMode
+        // });
+
+        // Handle subsequent changes after initialization
+        if (searchQuery && searchQuery.trim()) {
+            // console.log('🔍 Subsequent Algolia search for:', searchQuery);
+            setIsSearchMode(true);
+            performSearchForGridWithPage(searchQuery, currentPage);
+        } else {
+            // console.log('📋 Subsequent fetch with filters:', selectedCategories);
+            setIsSearchMode(false);
+            fetchFigures(currentPage);
+        }
+    }, [selectedCategories, searchQuery, currentPage, isInitialized]); // Add isInitialized to dependencies
+
+    // 3. Handle browser back/forward navigation
+    useEffect(() => {
+        const handlePopState = (event: PopStateEvent) => {
+            // console.log('🔙 Browser navigation detected');
+
+            // Reset initialization to allow fresh URL read
+            setIsInitialized(false);
+
+            const urlState = getInitialStateFromURL();
+            // console.log('🔄 Restoring state from URL:', urlState);
+
+            // Update all state at once
             setSelectedCategories(urlState.categories);
             setSearchQuery(urlState.search);
             setCurrentPage(urlState.page);
-        }
-    }, []); // Run only on mount
 
-    // Update URL whenever filters change
-    // useEffect(() => {
-    //     // Skip URL update on initial load or when in search mode with Algolia
-    //     if (!isSearchMode) {
-    //         updateURL(selectedCategories, searchQuery, currentPage);
-    //     }
-    // }, [selectedCategories, currentPage, updateURL, isSearchMode]);
+            if (urlState.search && urlState.search.trim()) {
+                setIsSearchMode(true);
+                performSearchForGridWithPage(urlState.search, urlState.page);
+            } else {
+                setIsSearchMode(false);
+                fetchFiguresWithCategories(urlState.page, urlState.categories);
+            }
+
+            // Mark as initialized again
+            setIsInitialized(true);
+        };
+
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [getInitialStateFromURL]);
 
     // Helper function to build category filters for the API
     const buildCategoryParams = (params: URLSearchParams) => {
@@ -273,6 +337,16 @@ function AllFiguresContent() {
     };
 
     const fetchFigures = async (page: number) => {
+        // Add stack trace to see what's calling this function
+        // console.log('🔍 fetchFigures called with page:', page);
+        // console.log('📍 Called from:', new Error().stack?.split('\n')[2]?.trim());
+        // console.log('🏷️ Current state:', {
+        //     selectedCategories,
+        //     searchQuery,
+        //     currentPage,
+        //     isSearchMode
+        // });
+
         try {
             setLoading(true);
             let params = new URLSearchParams({
@@ -288,8 +362,8 @@ function AllFiguresContent() {
             }
 
             // DEBUG: Log the URL being called
-            console.log('Fetching with URL:', `/api/public-figures?${params}`);
-            console.log('Selected categories:', selectedCategories);
+            const apiUrl = `/api/public-figures?${params}`;
+            // console.log('🌐 Fetching URL:', apiUrl);
 
             const response = await fetch(`/api/public-figures?${params}`);
 
@@ -304,8 +378,75 @@ function AllFiguresContent() {
             setTotalPages(data.totalPages || 1);
             setTotalCount(data.totalCount || 0);
 
+            // console.log('✅ fetchFigures completed successfully');
+
         } catch (err) {
             console.error('Fetch error:', err);
+            if (err instanceof Error) {
+                setError(`Failed to load figures: ${err.message}`);
+            } else {
+                setError('Failed to load figures: Unknown error');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchFiguresWithCategories = async (page: number, categories: string[]) => {
+        // console.log('🔍 fetchFiguresWithCategories called with:', { page, categories });
+
+        try {
+            setLoading(true);
+            let params = new URLSearchParams({
+                page: page.toString(),
+                pageSize: itemsPerPage.toString(),
+            });
+
+            // Build category params with the provided categories (not current state)
+            if (categories.length > 0 && !categories.includes('All')) {
+                const fieldFilters: Record<string, string[]> = {};
+
+                categories.forEach(category => {
+                    const mappings = categoryToFieldMap[category];
+                    if (mappings) {
+                        mappings.forEach(mapping => {
+                            if (!fieldFilters[mapping.field]) {
+                                fieldFilters[mapping.field] = [];
+                            }
+                            if (!fieldFilters[mapping.field].includes(mapping.value)) {
+                                fieldFilters[mapping.field].push(mapping.value);
+                            }
+                        });
+                    }
+                });
+
+                Object.entries(fieldFilters).forEach(([field, values]) => {
+                    values.forEach(value => {
+                        params.append(field, value);
+                    });
+                });
+            }
+
+            const apiUrl = `/api/public-figures?${params}`;
+            // console.log('🌐 Fetching URL with categories:', apiUrl);
+
+            const response = await fetch(apiUrl);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            setFigures(data.publicFigures || []);
+            setCurrentPage(data.currentPage || page);
+            setTotalPages(data.totalPages || 1);
+            setTotalCount(data.totalCount || 0);
+
+            // console.log('✅ fetchFiguresWithCategories completed successfully');
+
+        } catch (err) {
+            console.error('❌ Fetch error:', err);
             if (err instanceof Error) {
                 setError(`Failed to load figures: ${err.message}`);
             } else {
@@ -360,7 +501,8 @@ function AllFiguresContent() {
     const performSearchForGrid = async (query: string) => {
         if (!query.trim()) {
             setIsSearchMode(false);
-            fetchFigures(1);
+            // fetchFigures(1);
+            setCurrentPage(1);
             return;
         }
 
@@ -370,7 +512,7 @@ function AllFiguresContent() {
         try {
             // Create filter string for categories
             const filterString = buildAlgoliaFilterString();
-            console.log("Algolia filter string:", filterString); // For debugging
+            // console.log("Algolia filter string:", filterString); // For debugging
 
             const { hits, nbHits, nbPages } = await searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(query, {
                 hitsPerPage: itemsPerPage,
@@ -405,20 +547,62 @@ function AllFiguresContent() {
         }
     };
 
+    const performSearchForGridWithPage = async (query: string, page: number = 1) => {
+        if (!query.trim()) {
+            setIsSearchMode(false);
+            return;
+        }
+
+        setIsSearchMode(true);
+        setLoading(true);
+
+        try {
+            const filterString = buildAlgoliaFilterString();
+
+            const { hits, nbHits, nbPages } = await searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(query, {
+                hitsPerPage: itemsPerPage,
+                page: page - 1, // Algolia uses 0-based indexing
+                attributesToHighlight: ['name', 'name_kr'],
+                filters: filterString,
+                queryType: 'prefixAll',
+                typoTolerance: true
+            });
+
+            const transformedResults: Figure[] = hits.map(hit => ({
+                id: hit.objectID,
+                name: hit.name || '',
+                profilePic: hit.profilePic,
+                occupation: hit.occupation || [],
+                gender: hit.gender,
+                categories: hit.categories
+            }));
+
+            setFigures(transformedResults);
+            setTotalCount(nbHits);
+            setTotalPages(nbPages || 1);
+
+        } catch (error) {
+            console.error('Algolia search error:', error);
+            setError('Search failed. Please try again.');
+            setFigures([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
+        // console.log('Search query changed to:', query);
+
         setSearchQuery(query);
+        setCurrentPage(1);
 
         if (searchTimeoutRef.current) {
             clearTimeout(searchTimeoutRef.current);
         }
 
-        // Update URL immediately for search (remove sortBy parameter)
-        updateURL(selectedCategories, query, 1);
-
-        searchTimeoutRef.current = setTimeout(() => {
-            performSearchForGrid(query);
-        }, 300);
+        // Update URL immediately
+        updateURL(selectedCategories, query, 1, true);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -430,57 +614,22 @@ function AllFiguresContent() {
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages && !loading) {
-            setCurrentPage(newPage);
-
-            // Update URL with new page
-            updateURL(selectedCategories, searchQuery, newPage);
-
-            if (isSearchMode && searchQuery) {
-                // For Algolia pagination
-                setLoading(true);
-
-                const filterString = buildAlgoliaFilterString();
-
-                searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(searchQuery, {
-                    hitsPerPage: itemsPerPage,
-                    page: newPage - 1,
-                    filters: filterString,
-                }).then(({ hits }) => {
-                    const transformedResults: Figure[] = hits.map(hit => ({
-                        id: hit.objectID,
-                        name: hit.name || '',
-                        profilePic: hit.profilePic,
-                        occupation: hit.occupation || [],
-                        gender: hit.gender,
-                        categories: hit.categories
-                    }));
-
-                    setFigures(transformedResults);
-                    setLoading(false);
-                }).catch(err => {
-                    console.error('Algolia pagination error:', err);
-                    setLoading(false);
-                    setError('Failed to load more results');
-                });
-            } else {
-                // For regular API pagination
-                fetchFigures(newPage);
-            }
+            setCurrentPage(newPage); // This will trigger the main useEffect
+            updateURL(selectedCategories, searchQuery, newPage, false);
         }
     };
 
     // Handle category checkbox change
     const handleCategoryChange = (category: string, forceRemove: boolean = false) => {
-        console.log('handleCategoryChange called:', { category, forceRemove, currentCategories: selectedCategories });
+        // console.log('🏷️ handleCategoryChange called:', { category, forceRemove });
+        // console.log('📍 Called from:', new Error().stack?.split('\n')[2]?.trim());
 
         let newCategories: string[];
 
         if (forceRemove) {
-            // This is called from removeCategory (X button click)
             newCategories = selectedCategories.filter(c => c !== category);
             newCategories = newCategories.length === 0 ? ['All'] : newCategories;
         } else {
-            // This is called from dropdown toggle
             if (category === 'All') {
                 newCategories = ['All'];
             } else {
@@ -498,24 +647,17 @@ function AllFiguresContent() {
             }
         }
 
-        console.log('handleCategoryChange - calculated new categories:', newCategories);
+        // console.log('Updating categories to:', newCategories);
 
-        // Update state first
+        // Update state - DON'T manually set isSearchMode here
         setSelectedCategories(newCategories);
         setCurrentPage(1);
 
-        // Update URL immediately - use setTimeout to ensure state has updated
+        // Update URL
         setTimeout(() => {
-            console.log('About to call updateURL with:', newCategories);
-            updateURL(newCategories, searchQuery, 1);
+            updateURL(newCategories, searchQuery, 1, true);
         }, 0);
-
-        // If in search mode, refresh the search with new categories
-        if (isSearchMode && searchQuery) {
-            setTimeout(() => {
-                performSearchForGrid(searchQuery);
-            }, 10);
-        }
+        // console.log('✅ handleCategoryChange completed - should trigger useEffect');
     };
 
     // Remove a category when clicked in the selected categories display
@@ -535,44 +677,19 @@ function AllFiguresContent() {
     // };
 
     const clearAllFilters = () => {
-        console.log('clearAllFilters called');
+        // console.log('Clearing all filters');
 
+        // Update all state in a single batch
         setSelectedCategories(['All']);
         setSearchQuery('');
         setCurrentPage(1);
-        setIsSearchMode(false);
+        // Don't manually set isSearchMode - let useEffect handle it
 
-        // Force URL clear with multiple approaches
+        // Clear URL
         setTimeout(() => {
-            console.log('Clearing URL...');
-
-            // Method 1: Use router.replace
-            try {
-                router.replace('/all-figures', { scroll: false });
-                console.log('Router.replace to base URL successful');
-            } catch (error) {
-                console.error('Router.replace failed:', error);
-
-                // Method 2: Use window.history as fallback
-                window.history.replaceState({}, '', '/all-figures');
-                console.log('Used window.history fallback');
-            }
-
-            // Method 3: Also call updateURL as backup
-            updateURL(['All'], '', 1);
+            router.replace('/all-figures', { scroll: false });
         }, 0);
     };
-
-    // Add this useEffect to monitor URL changes and log them:
-    useEffect(() => {
-        console.log('Current URL:', window.location.href);
-        console.log('Current searchParams:', searchParams.toString());
-    }, [searchParams]);
-
-    // Also add this debugging useEffect to see when selectedCategories changes:
-    useEffect(() => {
-        console.log('selectedCategories changed to:', selectedCategories);
-    }, [selectedCategories]);
 
     const getPageNumbers = () => {
         const pages = [];
@@ -614,9 +731,9 @@ function AllFiguresContent() {
                                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
                                 size={20}
                                 onClick={() => {
-                                    setSearchQuery('');
-                                    setIsSearchMode(false);
-                                    fetchFigures(1);
+                                    setSearchQuery(''); // This will trigger the useEffect to fetch normally
+                                    setCurrentPage(1);
+                                    updateURL(selectedCategories, '', 1, true);
                                 }}
                             />
                         ) : (
@@ -704,9 +821,9 @@ function AllFiguresContent() {
                             <X
                                 className="h-4 w-4 ml-1 cursor-pointer"
                                 onClick={() => {
-                                    setSearchQuery('');
-                                    setIsSearchMode(false);
-                                    fetchFigures(1);
+                                    setSearchQuery(''); // This will trigger the useEffect to fetch normally
+                                    setCurrentPage(1);
+                                    updateURL(selectedCategories, '', 1, true);
                                 }}
                             />
                         </span>

@@ -107,7 +107,7 @@ interface TimelineSourceSwiperProps {
 }
 
 const TimelineSourceSwiper: React.FC<TimelineSourceSwiperProps> = ({ articles, eventId }) => {
-    const [isVisible, setIsVisible] = useState<boolean>(true);
+    const [isVisible, setIsVisible] = useState<boolean>(false);
     const prevRef = React.useRef<HTMLDivElement>(null);
     const nextRef = React.useRef<HTMLDivElement>(null);
 

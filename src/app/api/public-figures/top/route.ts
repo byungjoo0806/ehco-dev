@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 
         if (isTopRequest) {
             // Handle top figures request for homepage
-            console.log('Fetching top figures...');
+            // console.log('Fetching top figures...');
             
             // Since we have document IDs, we can fetch them directly
             const allFigures: PublicFigure[] = [];
@@ -115,7 +115,7 @@ export async function GET(request: Request) {
                 profilePic: figure.profilePic
             }));
 
-            console.log(`Returning ${homepageFigures.length} top figures`);
+            // console.log(`Returning ${homepageFigures.length} top figures`);
             return NextResponse.json(homepageFigures);
         } else {
             // Handle regular paginated request (existing logic)

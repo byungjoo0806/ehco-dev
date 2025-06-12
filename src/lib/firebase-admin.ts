@@ -23,8 +23,8 @@ if (!apps.length) {
             throw new Error('Private key is missing PEM headers/footers');
         }
 
-        console.log("Private key format looks correct (first 25 chars):",
-            privateKey.substring(0, 25), "...[redacted]");
+        // console.log("Private key format looks correct (first 25 chars):",
+        //     privateKey.substring(0, 25), "...[redacted]");
 
         initializeApp({
             credential: cert({
@@ -33,7 +33,7 @@ if (!apps.length) {
                 privateKey: privateKey,
             }),
         });
-        console.log("Firebase admin initialized successfully");
+        // console.log("Firebase admin initialized successfully");
     } catch (error) {
         console.error("Error initializing Firebase admin:", error);
         throw error; // Re-throw so it's visible in server logs

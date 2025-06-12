@@ -17,7 +17,7 @@ export async function GET() {
             ...doc.data()
         }));
 
-        console.log(`Fetched ${articles.length} most recent articles sorted by formatted_date`);
+        // console.log(`Fetched ${articles.length} most recent articles sorted by formatted_date`);
 
         return NextResponse.json({ articles });
     } catch (error) {

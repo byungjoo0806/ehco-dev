@@ -178,11 +178,11 @@ const PublicFigureWiki: React.FC<PublicFigureWikiProps> = ({
     const currentArticles = getCurrentArticles();
 
     return (
-        <div className="w-full max-w-[100vw] flex flex-row justify-evenly">
-            <div className='w-[90%] sm:w-[50%] px-2'>
+        <div className="w-full max-w-[100vw] flex flex-row justify-center">
+            <div className='w-[90%] sm:w-[70%] px-2'>
                 {/* Main Category Tabs */}
-                <div className="mt-3 mb-6">
-                    <div className="flex overflow-x-auto space-x-2 pb-2 hide-scrollbar">
+                <div className="w-full mt-3 mb-6">
+                    <div className="flex flex-col sm:flex-row overflow-x-auto sm:space-x-2 pb-2 hide-scrollbar">
                         {orderedCategories.map(category => (
                             <button
                                 key={category}

@@ -108,7 +108,7 @@ export default function Home() {
     const fetchFigures = async () => {
       try {
         setIsLoading(true);
-        console.log('Fetching top figures...');
+        // console.log('Fetching top figures...');
 
         const response = await fetch('/api/public-figures/top');
         if (!response.ok) {
@@ -116,7 +116,7 @@ export default function Home() {
         }
 
         const data = await response.json();
-        console.log('Received data:', data?.length, 'figures');
+        // console.log('Received data:', data?.length, 'figures');
 
         if (Array.isArray(data)) {
           setFigures(data);
@@ -170,7 +170,7 @@ export default function Home() {
         });
 
         setPreloadedImages(successfullyLoaded);
-        console.log(`Successfully preloaded ${successfullyLoaded.size} images`);
+        // console.log(`Successfully preloaded ${successfullyLoaded.size} images`);
       } catch (error) {
         console.error('Error during image preloading:', error);
       } finally {

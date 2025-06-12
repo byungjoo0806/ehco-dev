@@ -170,7 +170,7 @@ export async function GET(request: Request) {
         // Parse category filters
         const categoryFilters = parseCategoryFilters(url);
 
-        console.log('Category filters:', categoryFilters);
+        // console.log('Category filters:', categoryFilters);
 
         // Get total count of documents (we'll filter these in memory for now)
         const collectionRef = collection(db, 'selected-figures');
@@ -244,28 +244,28 @@ export async function GET(request: Request) {
 
         // Debug: Log some examples of parsed occupations
         const sampleFigures = allFigures.slice(0, 3);
-        console.log('Sample parsed figures:', sampleFigures.map(f => ({
-            name: f.name,
-            originalOccupation: allDocsSnapshot.docs.find(d => d.id === f.id)?.data().occupation,
-            parsedOccupation: f.occupation,
-            gender: f.gender,
-            nationality: f.nationality
-        })));
+        // console.log('Sample parsed figures:', sampleFigures.map(f => ({
+        //     name: f.name,
+        //     originalOccupation: allDocsSnapshot.docs.find(d => d.id === f.id)?.data().occupation,
+        //     parsedOccupation: f.occupation,
+        //     gender: f.gender,
+        //     nationality: f.nationality
+        // })));
 
         // Apply category filters
         const filteredFigures = allFigures.filter(figure =>
             matchesCategoryFilters(figure, categoryFilters)
         );
 
-        console.log(`Filtered ${allFigures.length} figures down to ${filteredFigures.length} after applying AND logic`);
+        // console.log(`Filtered ${allFigures.length} figures down to ${filteredFigures.length} after applying AND logic`);
         if (filteredFigures.length > 0 && filteredFigures.length < 6) {
-            console.log('Sample filtered figures:', filteredFigures.map(f => ({
-                name: f.name,
-                gender: f.gender,
-                is_group: f.is_group,
-                occupation: f.occupation,
-                nationality: f.nationality
-            })));
+            // console.log('Sample filtered figures:', filteredFigures.map(f => ({
+            //     name: f.name,
+            //     gender: f.gender,
+            //     is_group: f.is_group,
+            //     occupation: f.occupation,
+            //     nationality: f.nationality
+            // })));
         }
 
         // Apply sorting
@@ -299,13 +299,13 @@ export async function GET(request: Request) {
             appliedFilters: categoryFilters
         };
 
-        console.log('Sending response:', {
-            figuresCount: paginatedFigures.length,
-            totalCount,
-            totalPages,
-            currentPage: page,
-            appliedFilters: categoryFilters
-        });
+        // console.log('Sending response:', {
+        //     figuresCount: paginatedFigures.length,
+        //     totalCount,
+        //     totalPages,
+        //     currentPage: page,
+        //     appliedFilters: categoryFilters
+        // });
 
         return NextResponse.json(response);
     } catch (error) {
