@@ -31,7 +31,6 @@ interface ArticleData {
     source: string;
     link: string;
     imageUrls: string[];
-    imageCaptions: string[];
     sendDate: string;
 }
 
@@ -56,7 +55,7 @@ interface TimelineProps {
 // ArticleCard component for Timeline
 const TimelineArticleCard: React.FC<{ article: ArticleData }> = ({ article }) => {
     const firstImage = article.imageUrls?.[0] || '';
-    const caption = article.imageCaptions?.[0] || '';
+    // const caption = article.imageCaptions?.[0] || '';
 
     const formatDate = (dateStr: string) => {
         if (dateStr.length === 8) {
@@ -79,7 +78,7 @@ const TimelineArticleCard: React.FC<{ article: ArticleData }> = ({ article }) =>
                     <div className="w-20 h-full relative flex-shrink-0">
                         <img
                             src={firstImage}
-                            alt={caption}
+                            // alt={caption}
                             className="object-cover w-full h-full"
                         />
                     </div>

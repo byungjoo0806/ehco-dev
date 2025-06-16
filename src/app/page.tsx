@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Search, X, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import algoliasearch from 'algoliasearch';
+import { useFigures } from '@/context/FiguresContext';
 
 // Setup Algolia client - same as in Header.tsx
 const searchClient = algoliasearch(
@@ -65,12 +66,11 @@ const isValidEmail = (email: string): boolean => {
 
 // The Homepage component without the header
 export default function Home() {
+  const { figures, isLoading, error } = useFigures();
+
   // Updated state to handle the new data structure
-  const [figures, setFigures] = useState<PublicFigure[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoSliding, setIsAutoSliding] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
 
   // States for search functionality
@@ -103,37 +103,6 @@ export default function Home() {
     return () => window.removeEventListener('resize', checkIfMobile);
   }, []);
 
-  // Fetch top figures data
-  useEffect(() => {
-    const fetchFigures = async () => {
-      try {
-        setIsLoading(true);
-        // console.log('Fetching top figures...');
-
-        const response = await fetch('/api/public-figures/top');
-        if (!response.ok) {
-          throw new Error(`Failed to fetch figures: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        // console.log('Received data:', data?.length, 'figures');
-
-        if (Array.isArray(data)) {
-          setFigures(data);
-        } else {
-          throw new Error('Invalid data format received');
-        }
-      } catch (err) {
-        console.error('Error fetching figures:', err);
-        setError('Failed to load public figures');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchFigures();
-  }, []);
-
   // Preload images after figures are loaded
   useEffect(() => {
     if (figures.length === 0) {
@@ -146,7 +115,6 @@ export default function Home() {
       const preloadPromises: Promise<string>[] = [];
       const imagesToPreload: string[] = [];
 
-      // Collect all valid image URLs
       figures.forEach(figure => {
         if (figure.profilePic &&
           figure.profilePic !== '/images/default-profile.png' &&
@@ -157,7 +125,6 @@ export default function Home() {
       });
 
       try {
-        // Wait for all images to load (or fail)
         const results = await Promise.allSettled(preloadPromises);
         const successfullyLoaded = new Set<string>();
 
@@ -170,7 +137,6 @@ export default function Home() {
         });
 
         setPreloadedImages(successfullyLoaded);
-        // console.log(`Successfully preloaded ${successfullyLoaded.size} images`);
       } catch (error) {
         console.error('Error during image preloading:', error);
       } finally {

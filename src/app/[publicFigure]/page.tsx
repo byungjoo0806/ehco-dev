@@ -7,57 +7,19 @@ import { headers } from 'next/headers';
 import { Loader2 } from 'lucide-react';
 import ProfileInfo from '@/components/ProfileInfo';
 import CelebrityWiki from '@/components/CelebrityWiki';
-import JsonLd from '@/components/JsonLd';
 import type { JsonLdObject } from '@/components/JsonLd';
+import { getArticlesByIds } from '@/lib/article-service';
 
-interface PublicFigurePageProps {
-    params: Promise<{
-        publicFigure: string;
-    }>;
-}
+// --- IMPORTED TYPES ---
+// All shared types are now imported from the central definitions file.
+import {
+    ApiContentResponse,
+    ArticleSummary,
+    WikiContentItem
+} from '@/types/definitions';
 
-// Add this interface near your other interfaces
-interface ArticleData {
-    id: string;
-    subTitle: string;
-    body: string;
-    source: string;
-    link: string;
-    imageUrls: string[];
-    imageCaptions: string[];
-    sendDate: string;
-}
-
-interface ArticleSummaryData {
-    id: string;
-    event_contents?: Record<string, string>;
-    subCategory?: string;
-    category?: string;
-    content?: string;
-    title?: string;
-}
-
-// Updated interfaces to match our new API structure
-interface WikiContentItem {
-    id: string;
-    category: string;
-    subcategory?: string;
-    content: string;
-    articleIds: string[];
-}
-
-// Update the WikiContentResponse interface to include articles
-interface WikiContentResponse {
-    mainOverview: {
-        id: string;
-        content: string;
-        articleIds: string[];
-    };
-    categoryContent: WikiContentItem[];
-    articles?: ArticleData[]; // Add this line
-}
-
-// Extended interface for public figure data based on the screenshots
+// --- PAGE-SPECIFIC TYPES ---
+// These types are only used for fetching data on this page, so they can remain here.
 interface PublicFigureBase {
     id: string;
     name: string;
@@ -90,7 +52,9 @@ interface GroupProfile extends PublicFigureBase {
 
 type PublicFigure = IndividualPerson | GroupProfile;
 
-// Unified loading overlay component
+
+// --- UI COMPONENTS ---
+
 const LoadingOverlay = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
@@ -100,7 +64,9 @@ const LoadingOverlay = () => (
     </div>
 );
 
-// Separate viewport export
+
+// --- NEXT.JS CONFIG ---
+
 export const viewport: Viewport = {
     width: 'device-width',
     initialScale: 1,
@@ -112,12 +78,10 @@ export async function generateMetadata({ params }: { params: Promise<{ publicFig
         const resolvedParams = await params;
         const publicFigureData = await getPublicFigureData(resolvedParams.publicFigure);
 
-        // Handle different title format based on if it's a group or individual
         const title = publicFigureData.is_group
             ? `${publicFigureData.name} (${publicFigureData.name_kr}) - K-pop Group Profile & Information`
             : `${publicFigureData.name} (${publicFigureData.name_kr}) Profile & Information`;
 
-        // Customize description based on group or individual
         let description;
         if (publicFigureData.is_group) {
             description = `Learn about ${publicFigureData.name}, ${publicFigureData.nationality} ${publicFigureData.occupation.join(', ')}. Official profiles, discography, history, and more.`;
@@ -125,7 +89,6 @@ export async function generateMetadata({ params }: { params: Promise<{ publicFig
             const personalDetails = [];
             if ((publicFigureData as IndividualPerson).group) personalDetails.push(`Member of ${(publicFigureData as IndividualPerson).group}`);
             if ((publicFigureData as IndividualPerson).birthDate) personalDetails.push(`Born on ${(publicFigureData as IndividualPerson).birthDate}`);
-
             description = `Learn about ${publicFigureData.name}, ${publicFigureData.nationality} ${publicFigureData.occupation.join(', ')}${personalDetails.length > 0 ? '. ' + personalDetails.join(', ') : '.'}`;
         }
 
@@ -133,33 +96,22 @@ export async function generateMetadata({ params }: { params: Promise<{ publicFig
             title,
             description,
             keywords: [
-                `${publicFigureData.name}`,
-                `${publicFigureData.name_kr}`,
-                `${publicFigureData.name} info`,
-                `${publicFigureData.name} biography`,
-                ...publicFigureData.occupation.map(occ => `${publicFigureData.name} ${occ}`),
+                `${publicFigureData.name}`, `${publicFigureData.name_kr}`, `${publicFigureData.name} info`,
+                `${publicFigureData.name} biography`, ...publicFigureData.occupation.map(occ => `${publicFigureData.name} ${occ}`),
                 `${publicFigureData.nationality} ${publicFigureData.occupation[0] || ''}`,
                 ...(publicFigureData.is_group ? ['kpop group', 'korean idol group'] : ['kpop idol', 'korean celebrity'])
             ],
-            alternates: {
-                canonical: `https://ehco.ai/${resolvedParams.publicFigure}`,
-            },
+            alternates: { canonical: `https://ehco.ai/${resolvedParams.publicFigure}` },
             openGraph: {
-                title: `${title} - EHCO`,
-                description,
-                url: `https://ehco.ai/${resolvedParams.publicFigure}`,
-                type: 'profile',
-                images: publicFigureData.profilePic ? [{ url: publicFigureData.profilePic }] : [],
+                title: `${title} - EHCO`, description, url: `https://ehco.ai/${resolvedParams.publicFigure}`,
+                type: 'profile', images: publicFigureData.profilePic ? [{ url: publicFigureData.profilePic }] : [],
             },
             twitter: {
-                card: 'summary',
-                title: `${title} - EHCO`,
-                description,
+                card: 'summary', title: `${title} - EHCO`, description,
                 images: publicFigureData.profilePic ? [publicFigureData.profilePic] : [],
             }
         }
     } catch (error) {
-        // Return basic metadata if public figure data fetch fails
         return {
             title: 'Public Figure Profile - EHCO',
             description: 'Public figure information and details',
@@ -167,34 +119,10 @@ export async function generateMetadata({ params }: { params: Promise<{ publicFig
     }
 }
 
-// Add this function near your other data-fetching functions
-async function getArticlesData(articleIds: string[]): Promise<ArticleData[]> {
-    if (articleIds.length === 0) return [];
 
-    const headersList = await headers();
-    const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-    const host = headersList.get('host') || 'localhost:3000';
+// --- DATA FETCHING FUNCTIONS ---
 
-    try {
-        const response = await fetch(
-            `${protocol}://${host}/api/articles?ids=${articleIds.join(',')}`,
-            {
-                cache: 'force-cache',
-                next: {
-                    revalidate: 3600 // 1 hour
-                }
-            }
-        );
-
-        if (!response.ok) return [];
-        return await response.json();
-    } catch (error) {
-        console.error('Error fetching articles:', error);
-        return [];
-    }
-}
-
-async function getArticleSummaries(publicFigureId: string, articleIds: string[]): Promise<ArticleSummaryData[]> {
+async function getArticleSummaries(publicFigureId: string, articleIds: string[]): Promise<ArticleSummary[]> {
     if (articleIds.length === 0) return [];
 
     const headersList = await headers();
@@ -204,12 +132,7 @@ async function getArticleSummaries(publicFigureId: string, articleIds: string[])
     try {
         const response = await fetch(
             `${protocol}://${host}/api/article-summaries?publicFigure=${publicFigureId}&articleIds=${articleIds.join(',')}`,
-            {
-                cache: 'force-cache',
-                next: {
-                    revalidate: 3600 // 1 hour
-                }
-            }
+            { cache: 'force-cache', next: { revalidate: 3600 } }
         );
 
         if (!response.ok) return [];
@@ -229,26 +152,15 @@ async function getPublicFigureData(publicFigureId: string): Promise<PublicFigure
     }
 
     const data = docSnap.data();
-
-    // Add the ID to the data
     const publicFigureData: Partial<PublicFigure> = {
-        id: docSnap.id,
-        name: data.name || '',
-        name_kr: data.name_kr || '',
-        gender: data.gender || '',
-        nationality: data.nationality || '',
-        occupation: data.occupation || [],
-        is_group: Boolean(data.is_group),
-        profilePic: data.profilePic || '',
-        instagramUrl: data.instagramUrl || '',
-        spotifyUrl: data.spotifyUrl || '',
-        youtubeUrl: data.youtubeUrl || '',
-        company: data.company || '',
-        debutDate: data.debutDate || '',
-        lastUpdated: data.lastUpdated || '',
+        id: docSnap.id, name: data.name || '', name_kr: data.name_kr || '',
+        gender: data.gender || '', nationality: data.nationality || '', occupation: data.occupation || [],
+        is_group: Boolean(data.is_group), profilePic: data.profilePic || '',
+        instagramUrl: data.instagramUrl || '', spotifyUrl: data.spotifyUrl || '',
+        youtubeUrl: data.youtubeUrl || '', company: data.company || '',
+        debutDate: data.debutDate || '', lastUpdated: data.lastUpdated || '',
     };
 
-    // Add type-specific fields
     if (publicFigureData.is_group) {
         (publicFigureData as GroupProfile).members = data.members || [];
     } else {
@@ -259,243 +171,119 @@ async function getPublicFigureData(publicFigureId: string): Promise<PublicFigure
         (publicFigureData as IndividualPerson).zodiacSign = data.zodiacSign || '';
     }
 
-    // Validate required fields
-    if (!publicFigureData.name ||
-        !publicFigureData.gender ||
-        !publicFigureData.nationality) {
+    if (!publicFigureData.name || !publicFigureData.gender || !publicFigureData.nationality) {
         throw new Error('Invalid public figure data');
     }
 
     return publicFigureData as PublicFigure;
 }
 
-// Updated function to handle the new API response structure
-async function getPublicFigureContent(publicFigureId: string): Promise<{
-    wikiContent: WikiContentResponse;
-}> {
+async function getPublicFigureContent(publicFigureId: string): Promise<ApiContentResponse> {
     const headersList = await headers();
     const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
     const host = headersList.get('host') || 'localhost:3000';
 
-    // Fetch public figure content
     try {
         const contentResponse = await fetch(
             `${protocol}://${host}/api/public-figure-content/${publicFigureId}`,
-            {
-                cache: 'force-cache',
-                next: {
-                    revalidate: 3600 // 1 hour
-                },
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            }
+            { cache: 'force-cache', next: { revalidate: 3600 } }
         );
-
-        if (!contentResponse.ok) {
-            // If the API doesn't exist yet, return empty content
-            return {
-                wikiContent: {
-                    mainOverview: {
-                        id: 'main-overview',
-                        content: '',
-                        articleIds: []
-                    },
-                    categoryContent: []
-                }
-            };
-        }
-
-        const wikiContent = await contentResponse.json();
-
-        return { wikiContent };
+        if (!contentResponse.ok) throw new Error('Failed to fetch content');
+        return await contentResponse.json();
     } catch (error) {
         console.error('Error fetching public figure content:', error);
-        // Return empty content if API fails
         return {
-            wikiContent: {
-                mainOverview: {
-                    id: 'main-overview',
-                    content: '',
-                    articleIds: []
-                },
-                categoryContent: []
+            main_overview: { id: 'main-overview', content: '', articleIds: [] },
+            timeline_content: {
+                schema_version: 'v1_legacy',
+                data: { categoryContent: [] }
             }
         };
     }
 }
 
-// Update the processContentData function
-function processContentData(data: WikiContentResponse) {
-    const { categoryContent } = data;
+// NOTE: The 'processContentData' function and its 'WikiContentResponse' interface
+// were removed as they did not appear to be used in the component's rendering logic.
 
-    const KNOWN_CATEGORIES = [
-        'Creative Works',
-        'Live & Broadcast',
-        'Public Relations',
-        'Personal Milestones',
-        'Incidents & Controversies'
-    ];
+// --- MAIN CONTENT COMPONENT ---
 
-    // Extract available sections from content data
-    const categoriesSet = new Set<string>();
-    const subcategories = new Set<string>();
-
-    // Add categories and subcategories from categoryContent
-    categoryContent.forEach(item => {
-        if (KNOWN_CATEGORIES.includes(item.category)) {
-            // This is a main category
-            categoriesSet.add(item.category);
-            if (item.subcategory) {
-                subcategories.add(item.subcategory);
-            }
-        } else {
-            // Assume it's a subcategory of its own category field
-            subcategories.add(item.category);
-        }
-    });
-
-    const orderedCategories = KNOWN_CATEGORIES.filter(category => 
-        categoriesSet.has(category)
-    );
-
-    return {
-        sections: [...orderedCategories, ...subcategories],
-        categories: orderedCategories, // Use ordered categories instead of Array.from(categoriesSet)
-        subcategories: Array.from(subcategories)
-    };
-}
-
-// Main content component
 async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: string }) {
-    // Fetch public figure data
     const publicFigureData = await getPublicFigureData(publicFigureId);
+    const apiResponse = await getPublicFigureContent(publicFigureId);
 
-    // Try to fetch content if the API exists
-    const { wikiContent } = await getPublicFigureContent(publicFigureId);
+    const allArticleIds: string[] = [...(apiResponse.main_overview.articleIds || [])];
+    if (apiResponse.timeline_content.schema_version === 'v1_legacy') {
+        const legacyArticleIds = apiResponse.timeline_content.data.categoryContent.flatMap((item: WikiContentItem) => item.articleIds || []);
+        allArticleIds.push(...legacyArticleIds);
+    } else { // v2_curated
+        const sourcesSet = new Set<string>();
+        Object.values(apiResponse.timeline_content.data).forEach((subCatMap) => {
+            Object.values(subCatMap).forEach((eventList) => {
+                eventList.forEach((event) => {
+                    (event.sources || []).forEach((source) => {
+                        if (source.id) {
+                            sourcesSet.add(source.id);
+                        }
+                    });
+                });
+            });
+        });
+        allArticleIds.push(...Array.from(sourcesSet));
+    }
+    const uniqueArticleIds = allArticleIds.filter((id, index, self) => self.indexOf(id) === index);
 
-    // Get all unique article IDs from the content
-    const allArticleIds = [
-        ...(wikiContent.mainOverview.articleIds || []),
-        ...(wikiContent.categoryContent.flatMap(item => item.articleIds || []))
-    ].filter((id, index, self) => self.indexOf(id) === index); // Unique IDs
-
-    // Fetch article data
     const [articles, articleSummaries] = await Promise.all([
-        getArticlesData(allArticleIds),
-        getArticleSummaries(publicFigureId, allArticleIds)
+        getArticlesByIds(uniqueArticleIds),
+        getArticleSummaries(publicFigureId, uniqueArticleIds)
     ]);
 
-    // Process content to extract sections
-    const { sections, categories, subcategories } = processContentData(wikiContent);
-
-    // Add articles to wikiContent
-    const wikiContentWithArticles = {
-        ...wikiContent,
-        articles
-    };
-
-    // Debug log to help with troubleshooting
-    // console.log('DEBUG - PublicFigurePage content:', {
-    //     publicFigureId,
-    //     sectionsCount: sections.length,
-    //     categories,
-    //     subcategories,
-    //     categoryContentCount: wikiContent.categoryContent?.length,
-    //     mainOverview: {
-    //         present: Boolean(wikiContent.mainOverview?.content),
-    //         id: wikiContent.mainOverview?.id,
-    //         articleCount: wikiContent.mainOverview?.articleIds?.length || 0
-    //     },
-    //     categoryContentSample: wikiContent.categoryContent?.slice(0, 3).map(item => ({
-    //         id: item.id,
-    //         category: item.category,
-    //         subcategory: item.subcategory || 'none',
-    //         articleCount: item.articleIds?.length || 0
-    //     })),
-    //     articleStats: {
-    //         totalUnique: allArticleIds.length,
-    //         fetched: articles.length
-    //     }
-    // });
-
-    // Schema data for SEO
     const schemaData = publicFigureData.is_group
         ? {
-            "@context": "https://schema.org",
-            "@type": "MusicGroup",
-            "name": publicFigureData.name,
-            "alternateName": publicFigureData.name_kr || null,
-            "nationality": publicFigureData.nationality,
-            "url": `https://ehco.ai/${publicFigureId}`,
-            "sameAs": [
-                publicFigureData.instagramUrl,
-                publicFigureData.spotifyUrl,
-                publicFigureData.youtubeUrl
-            ].filter(Boolean) as string[],
+            "@context": "https://schema.org", "@type": "MusicGroup", name: publicFigureData.name,
+            alternateName: publicFigureData.name_kr || null, nationality: publicFigureData.nationality,
+            url: `https://ehco.ai/${publicFigureId}`,
+            sameAs: [publicFigureData.instagramUrl, publicFigureData.spotifyUrl, publicFigureData.youtubeUrl].filter(Boolean) as string[],
             ...(publicFigureData.company ? { "member": { "@type": "Organization", "name": publicFigureData.company } } : {}),
             ...(publicFigureData.debutDate ? { "foundingDate": publicFigureData.debutDate.split(':')[0].trim() } : {}),
-            // Add members if available
             ...(publicFigureData.is_group && (publicFigureData as GroupProfile).members &&
                 (publicFigureData as GroupProfile).members!.length > 0 ? {
                 "member": (publicFigureData as GroupProfile).members!.map(member => ({
                     "@type": "Person",
                     "birthDate": member.birthDate ? member.birthDate.split(':')[0].trim() : null,
-                    // Add other member properties as needed
                 }))
             } : {})
         } as JsonLdObject
         : {
-            "@context": "https://schema.org",
-            "@type": "Person",
-            "name": publicFigureData.name,
-            "alternateName": publicFigureData.name_kr || null,
-            "gender": publicFigureData.gender,
-            "nationality": publicFigureData.nationality,
-            "url": `https://ehco.ai/${publicFigureId}`,
-            "sameAs": [
-                publicFigureData.instagramUrl,
-                publicFigureData.spotifyUrl,
-                publicFigureData.youtubeUrl
-            ].filter(Boolean) as string[],
-            // Safe way to check for birthDate property
-            ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).birthDate ? {
-                "birthDate": (publicFigureData as IndividualPerson).birthDate!.split(':')[0].trim()
-            } : {}),
-            // Safe way to check for group property
-            ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).group ? {
-                "memberOf": { "@type": "MusicGroup", "name": (publicFigureData as IndividualPerson).group! }
-            } : {}),
-            ...(publicFigureData.company ? {
-                "affiliation": { "@type": "Organization", "name": publicFigureData.company }
-            } : {})
+            "@context": "https://schema.org", "@type": "Person", name: publicFigureData.name,
+            alternateName: publicFigureData.name_kr || null, gender: publicFigureData.gender,
+            nationality: publicFigureData.nationality, url: `https://ehco.ai/${publicFigureId}`,
+            sameAs: [publicFigureData.instagramUrl, publicFigureData.spotifyUrl, publicFigureData.youtubeUrl].filter(Boolean) as string[],
+            ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).birthDate ? { "birthDate": (publicFigureData as IndividualPerson).birthDate!.split(':')[0].trim() } : {}),
+            ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).group ? { "memberOf": { "@type": "MusicGroup", "name": (publicFigureData as IndividualPerson).group! } } : {}),
+            ...(publicFigureData.company ? { "affiliation": { "@type": "Organization", "name": publicFigureData.company } } : {})
         } as JsonLdObject;
 
-        // console.log(articleSummaries);
     return (
         <div className="w-full">
             <ProfileInfo
                 publicFigureData={publicFigureData}
-                mainOverview={wikiContentWithArticles.mainOverview}
+                mainOverview={apiResponse.main_overview}
             />
             <CelebrityWiki
-                availableSections={sections}
-                categories={categories} // Add this
-                subcategories={subcategories} // Add this
-                categoryContent={wikiContentWithArticles.categoryContent}
-                mainOverview={wikiContentWithArticles.mainOverview}
-                articles={wikiContentWithArticles.articles}
+                mainOverview={apiResponse.main_overview}
+                apiResponse={apiResponse.timeline_content}
+                articles={articles}
                 articleSummaries={articleSummaries}
             />
-            <JsonLd data={schemaData} />
+            {/* <JsonLd data={schemaData} /> */}
         </div>
     );
 }
 
-// Main page component
-export default async function PublicFigurePage({ params }: PublicFigurePageProps) {
-    const publicFigureId = (await params).publicFigure.toLowerCase();
+// --- MAIN PAGE COMPONENT ---
 
+export default async function PublicFigurePage({ params }: { params: Promise<{ publicFigure: string }> }) {
+    const publicFigureId = (await params).publicFigure.toLowerCase();
     return (
         <Suspense fallback={<LoadingOverlay />}>
             <PublicFigurePageContent publicFigureId={publicFigureId} />
