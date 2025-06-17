@@ -162,14 +162,14 @@ const EventSources: React.FC<EventSourcesProps> = ({ articleIds, articles }) => 
                         href={article.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-4 p-3 border rounded-lg hover:bg-gray-50/80 transition-all duration-200 shadow-sm"
+                        className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 border rounded-lg hover:bg-gray-50/80 transition-all duration-200 shadow-sm"
                     >
                         {/* Image Section */}
                         {article.imageUrls?.[0] && (
                             <img
                                 src={article.imageUrls[0]}
                                 alt={article.subTitle || 'Source image'}
-                                className="w-20 h-20 object-cover rounded-md flex-shrink-0 bg-gray-100"
+                                className="w-full h-32 sm:w-20 sm:h-20 object-cover rounded-md flex-shrink-0 bg-gray-100"
                             />
                         )}
 
@@ -253,9 +253,6 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
 
 // This component now uses the CuratedTimelineViewProps interface
 const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, articles }) => {
-    // console.log(data);
-    // console.log(articles);
-    // Helper to format category names for display
     const formatCategoryName = (name: string) => name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
     const mainCategories = useMemo(() => {
@@ -267,64 +264,112 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
         });
     }, [data]);
 
+    // --- STATE FOR BOTH LAYOUTS ---
+    // 1. State for the DESKTOP tab view
     const [activeCategory, setActiveCategory] = useState(mainCategories[0] || '');
+    // 2. State for the MOBILE accordion view
+    const [openCategories, setOpenCategories] = useState<string[]>([mainCategories[0] || '']);
+
+    // --- HANDLER FOR MOBILE ACCORDION ---
+    const handleToggleCategory = (category: string) => {
+        setOpenCategories(prevOpen => {
+            const isOpen = prevOpen.includes(category);
+            return isOpen ? prevOpen.filter(c => c !== category) : [...prevOpen, category];
+        });
+    };
 
     return (
         <div className="w-full max-w-[100vw] flex flex-row justify-center">
             <div className='w-[90%] sm:w-[70%] px-2'>
-                {/* Main Category Tabs */}
-                <div className="w-full h-12 mt-3 mb-6 py-2 sticky top-16 z-10 bg-white dark:bg-slate-900/95 backdrop-blur-sm dark:border-gray-800">
-                    <div className="flex flex-col sm:flex-row overflow-x-auto sm:space-x-2 pb-2 hide-scrollbar">
-                        {mainCategories.map(category => (
-                            <button
-                                key={category}
-                                onClick={() => setActiveCategory(category)}
-                                className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${activeCategory === category
-                                    ? 'text-red-500 border-b-2 border-red-500'
-                                    : 'text-gray-500 hover:text-gray-800'
-                                    }`}
-                            >
-                                {formatCategoryName(category)}
-                            </button>
-                        ))}
-                    </div>
-                </div>
 
-                {/* Content Display */}
-                <div className="pb-12">
-                    {activeCategory && data[activeCategory] && Object.entries(data[activeCategory]).map(([subCategory, eventList]) => {
-                        // console.log(subCategory);
-                        // console.log(eventList);
-                        return (
+                {/* ================================================================== */}
+                {/* --- DESKTOP VIEW (sm screens and up) --- */}
+                {/* `hidden sm:block` makes this entire section visible only on desktop */}
+                {/* ================================================================== */}
+                <div className="hidden sm:block">
+                    {/* Main Category Tabs */}
+                    <div className="w-full h-12 mt-3 mb-6 py-2 sticky top-16 z-10 bg-white dark:bg-slate-900/95 backdrop-blur-sm dark:border-gray-800">
+                        <div className="flex flex-row overflow-x-auto space-x-2 pb-2 hide-scrollbar">
+                            {mainCategories.map(category => (
+                                <button
+                                    key={category}
+                                    onClick={() => setActiveCategory(category)}
+                                    className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${activeCategory === category
+                                        ? 'text-red-500 border-b-2 border-red-500'
+                                        : 'text-gray-500 hover:text-gray-800'
+                                        }`}
+                                >
+                                    {formatCategoryName(category)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Content Display for Desktop */}
+                    <div className="pb-12">
+                        {activeCategory && data[activeCategory] && Object.entries(data[activeCategory]).map(([subCategory, eventList]) => (
                             <div key={subCategory} className="mb-8">
-                                <h3 className="text-xl font-bold border-b pb-2 mb-4 text-gray-800">
-                                    {subCategory}
-                                </h3>
+                                <h3 className="text-xl font-bold border-b pb-2 mb-4 text-gray-800">{subCategory}</h3>
                                 <div className="space-y-6">
-                                    {/* TypeScript now knows 'event' is a CuratedEvent */}
                                     {eventList.map(event => (
                                         <div key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white">
                                             <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
                                             <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
                                             <div className="relative pl-5">
-                                                {/* TypeScript now knows 'point' is a TimelinePoint */}
-                                                {/* We now map to our new stateful component */}
                                                 {sortTimelinePoints(event.timeline_points).map((point, index) => (
-                                                    <TimelinePointWithSources
-                                                        key={index}
-                                                        point={point}
-                                                        articles={articles}
-                                                        isLast={index === event.timeline_points.length - 1}
-                                                    />
+                                                    <TimelinePointWithSources key={index} point={point} articles={articles} isLast={index === event.timeline_points.length - 1} />
                                                 ))}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
-                        );
-                    })}
+                        ))}
+                    </div>
                 </div>
+
+                {/* ================================================================== */}
+                {/* --- MOBILE VIEW (screens smaller than sm) --- */}
+                {/* `sm:hidden` makes this entire section visible only on mobile */}
+                {/* ================================================================== */}
+                <div className="sm:hidden">
+                    <div className="w-full mt-3 mb-12 space-y-4">
+                        {mainCategories.map(category => {
+                            const isOpen = openCategories.includes(category);
+                            return (
+                                <div key={category} className="border border-gray-200/80 rounded-lg shadow-sm overflow-hidden transition-all duration-300">
+                                    <button onClick={() => handleToggleCategory(category)} className="w-full flex justify-between items-center px-4 py-3 text-left font-semibold text-gray-800 bg-gray-50/80 hover:bg-gray-100">
+                                        <span className='text-lg'>{formatCategoryName(category)}</span>
+                                        {isOpen ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
+                                    </button>
+                                    {isOpen && (
+                                        <div className="px-4 py-5 bg-white border-t border-gray-200/80">
+                                            {data[category] && Object.entries(data[category]).map(([subCategory, eventList]) => (
+                                                <div key={subCategory} className="mb-8 last:mb-0">
+                                                    <h3 className="text-xl font-bold border-b pb-2 mb-4 text-gray-800">{subCategory}</h3>
+                                                    <div className="space-y-6">
+                                                        {eventList.map(event => (
+                                                            <div key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white">
+                                                                <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
+                                                                <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
+                                                                <div className="relative pl-5">
+                                                                    {sortTimelinePoints(event.timeline_points).map((point, index) => (
+                                                                        <TimelinePointWithSources key={index} point={point} articles={articles} isLast={index === event.timeline_points.length - 1} />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
             </div>
             <div className='w-[10%] border-l mt-10 hidden sm:block'></div>
         </div>

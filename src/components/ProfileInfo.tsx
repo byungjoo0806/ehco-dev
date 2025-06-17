@@ -84,7 +84,6 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
 
   const getProfileFields = (): ProfileField[] => {
     const commonFields: ProfileField[] = [
-      { label: "Gender", value: publicFigureData.gender },
       { label: "Nationality", value: publicFigureData.nationality },
       { label: "Company", value: publicFigureData.company || '' },
       { label: "Debut Date", value: formatDate(publicFigureData.debutDate) },
@@ -105,6 +104,7 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
       const individualData = publicFigureData as IndividualPerson;
       return [
         ...commonFields,
+        { label: "Gender", value: individualData.gender },
         { label: "Birth Date", value: formatDate(individualData.birthDate) },
         { label: "Group", value: individualData.group || '' },
         { label: "Zodiac Sign", value: individualData.zodiacSign || '' },

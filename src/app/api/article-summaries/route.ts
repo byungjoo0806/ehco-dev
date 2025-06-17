@@ -11,6 +11,8 @@ interface ArticleSummaryData {
     title?: string;
 }
 
+const MAX_IN_CLAUSE = 30;
+
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const publicFigureParam = searchParams.get('publicFigure');
@@ -28,24 +30,37 @@ export async function GET(request: Request) {
 
     try {
         const summaries: ArticleSummaryData[] = [];
+        const summaryCollectionRef = collection(db, 'selected-figures', publicFigure, 'article-summaries');
 
-        // For each articleId, get the document from article-summaries collection
-        for (const articleId of articleIds) {
-            const summaryRef = doc(db, 'selected-figures', publicFigure, 'article-summaries', articleId);
-            const summaryDoc = await getDoc(summaryRef);
+        // Chunk the articleIds to handle Firestore's 'in' query limit
+        const chunks: string[][] = [];
+        for (let i = 0; i < articleIds.length; i += MAX_IN_CLAUSE) {
+            chunks.push(articleIds.slice(i, i + MAX_IN_CLAUSE));
+        }
 
-            if (summaryDoc.exists()) {
-                const data = summaryDoc.data();
+        // Create a fetch promise for each chunk
+        const promises = chunks.map(chunk => {
+            const q = query(summaryCollectionRef, where('__name__', 'in', chunk));
+            return getDocs(q);
+        });
+
+        // Wait for all fetches to complete in parallel
+        const snapshots = await Promise.all(promises);
+
+        // Flatten the results from all chunks into a single array
+        snapshots.forEach(snapshot => {
+            snapshot.docs.forEach(doc => {
+                const data = doc.data();
                 summaries.push({
-                    id: articleId,
+                    id: doc.id,
                     event_contents: data.event_contents || {},
                     subCategory: data.subCategory,
                     category: data.category,
                     content: data.content,
                     title: data.title
                 });
-            }
-        }
+            });
+        });
 
         // console.log(summaries);
         return NextResponse.json(summaries);

@@ -131,28 +131,37 @@ export default function RootLayout({
             <div className="w-[90%] md:w-[80%] mx-auto px-4">
               <div className="text-center">
                 <p className="text-xs md:text-sm mb-4 text-gray-600 dark:text-gray-300">© 2025 EHCO. All rights reserved.</p>
-                <div className="flex flex-wrap justify-center items-center gap-3 md:gap-4 text-xs md:text-sm text-gray-600 dark:text-gray-300">
+                <div className="flex flex-col md:flex-row flex-wrap justify-center items-center gap-3 md:gap-4 text-xs md:text-sm text-gray-600 dark:text-gray-300">
                   <Link
                     href="/about-ehco"
                     className='hover:underline'
                   >
                     About Ehco
                   </Link>
-                  <span>|</span>
+
+                  {/* MODIFIED: This separator is hidden on mobile */}
+                  <span className="hidden md:block">|</span>
+
                   <Link
                     href="/contact-us"
                     className='hover:underline'
                   >
                     Contact Us
                   </Link>
-                  <span>|</span>
+
+                  {/* MODIFIED: This separator is hidden on mobile */}
+                  <span className="hidden md:block">|</span>
+
                   <Link
                     href="/terms-of-service"
                     className='hover:underline'
                   >
                     Terms of Service
                   </Link>
-                  <span>|</span>
+
+                  {/* MODIFIED: This separator is hidden on mobile */}
+                  <span className="hidden md:block">|</span>
+
                   <Link
                     href="/privacy-policy"
                     className='hover:underline'
