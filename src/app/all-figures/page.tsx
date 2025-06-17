@@ -142,8 +142,33 @@ function AllFiguresContent() {
                     page: currentPage.toString(),
                     pageSize: '18',
                 });
-                // (Assuming you have a function to add category filters to params)
-                // buildCategoryParams(params, selectedCategories);
+
+                // Check for selected categories and add them to the params
+                if (selectedCategories.length > 0 && !selectedCategories.includes('All')) {
+                    const fieldFilters: Record<string, string[]> = {};
+
+                    selectedCategories.forEach(category => {
+                        const mappings = categoryToFieldMap[category];
+                        if (mappings) {
+                            mappings.forEach(mapping => {
+                                if (!fieldFilters[mapping.field]) {
+                                    fieldFilters[mapping.field] = [];
+                                }
+                                if (!fieldFilters[mapping.field].includes(mapping.value)) {
+                                    fieldFilters[mapping.field].push(mapping.value);
+                                }
+                            });
+                        }
+                    });
+
+                    Object.entries(fieldFilters).forEach(([field, values]) => {
+                        values.forEach(value => {
+                            params.append(field, value);
+                        });
+                    });
+                }
+                
+                // Construct the final URL and fetch the data
                 const response = await fetch(`/api/public-figures?${params}`);
                 if (!response.ok) {
                     throw new Error(await response.text());
