@@ -138,7 +138,7 @@ export default function Header() {
     <Link
       key={result.objectID}
       href={`/${result.objectID}`}
-      className="w-64 flex flex-row items-center px-3 py-2 hover:bg-gray-100"
+      className="w-64 flex flex-row items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-500"
       onClick={(e) => {
         e.preventDefault();
         setShowResults(false);
@@ -159,13 +159,13 @@ export default function Header() {
         />
       )}
       <div className="flex-1 pl-2">
-        <div className="font-medium text-md">
+        <div className="font-medium text-md dark:text-gray-100">
           {result._highlightResult?.name ?
             renderHighlightedText(result._highlightResult.name.value) :
             result.name}
         </div>
         {result.name_kr && (
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-gray-500 dark:text-gray-300">
             {result._highlightResult?.name_kr ?
               renderHighlightedText(result._highlightResult.name_kr.value) :
               result.name_kr}
@@ -231,13 +231,13 @@ export default function Header() {
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder="Search public figures"
-                        className="pl-4 pr-8 py-1.5 border border-[#E4287C] rounded-full w-full text-sm"
+                        className="pl-4 pr-8 py-1.5 border border-key-color rounded-full w-full text-sm dark:bg-black"
                       />
                     </div>
 
                     {/* Search Results Dropdown */}
                     {isSearching ? (
-                      <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 z-50">
+                      <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border rounded-lg shadow-lg w-64 z-50">
                         <div className="px-3 py-3 text-sm text-gray-500 text-center">
                           Loading...
                         </div>
@@ -245,12 +245,12 @@ export default function Header() {
                     ) : (
                       <>
                         {showResults && searchResults.length > 0 && (
-                          <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto z-50">
+                          <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto z-50">
                             {searchResults.map(renderSearchResult)}
                             <div className="border-t border-gray-200 px-3 py-2 text-center">
                               <Link
                                 href={`/search?q=${encodeURIComponent(searchQuery)}`}
-                                className="text-[#E4287C] text-sm font-medium hover:underline"
+                                className="text-key-color text-sm font-medium hover:underline"
                                 onClick={() => setShowResults(false)}
                               >
                                 See all results
@@ -260,7 +260,7 @@ export default function Header() {
                         )}
 
                         {showResults && searchQuery && searchResults.length === 0 && (
-                          <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 z-50">
+                          <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border rounded-lg shadow-lg w-64 z-50">
                             <div className="px-3 py-3 text-sm text-gray-500 text-center">
                               No results found
                             </div>

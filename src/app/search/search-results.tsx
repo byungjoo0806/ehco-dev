@@ -181,10 +181,10 @@ export default function SearchResults() {
     const totalResults = profiles.length + totalArticleHits;
 
     return (
-        <div className="w-full py-8 flex flex-col items-center">
+        <div className="w-full py-8 flex flex-col items-center bg-white dark:bg-slate-800">
             <div className="w-[90%] md:w-[75%] lg:w-[60%] px-4">
-                <h1 className="text-2xl font-bold mb-2">Search Results</h1>
-                <p className="text-gray-600 mb-8">Showing results for: &ldquo;{query}&rdquo;</p>
+                <h1 className="text-2xl font-bold mb-2 dark:text-gray-100">Search Results</h1>
+                <p className="text-gray-600 mb-8 dark:text-gray-400">Showing results for: &ldquo;{query}&rdquo;</p>
 
                 {totalResults === 0 ? (
                     <div className="text-center text-gray-500 py-12">
@@ -195,7 +195,7 @@ export default function SearchResults() {
                         {/* Profile Results */}
                         {profiles.length > 0 && (
                             <div className='w-full'>
-                                <h2 className="text-2xl font-bold mb-6">Profiles</h2>
+                                <h2 className="text-2xl font-bold mb-6 dark:text-gray-100">Profiles</h2>
                                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2 max-w-3xl">
                                     {profiles.map((profile) => (
                                         <Link
@@ -203,7 +203,7 @@ export default function SearchResults() {
                                             href={`/${profile.objectID}`}
                                             className="block"
                                         >
-                                            <div className="flex flex-col sm:flex-row border border-[#E4287C] rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
+                                            <div className="flex flex-col sm:flex-row border border-key-color rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow dark:bg-slate-500">
                                                 {profile.profilePic ? (
                                                     <div className="flex-shrink-0 flex justify-center mb-4 sm:mb-0">
                                                         <div className="text-center">
@@ -212,7 +212,7 @@ export default function SearchResults() {
                                                                 alt={profile.name || "Profile picture"}
                                                                 className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full object-cover mx-auto"
                                                             />
-                                                            <p className="text-center mt-2 font-medium">
+                                                            <p className="text-center mt-2 font-medium dark:text-gray-300">
                                                                 {profile.name || "Profile"}
                                                             </p>
                                                         </div>
@@ -233,12 +233,12 @@ export default function SearchResults() {
                                                 )}
                                                 <div className="sm:ml-6 md:ml-8 flex-grow">
                                                     <div className="mb-3">
-                                                        <p className="font-semibold text-gray-600">Nationality</p>
-                                                        <p>{profile.nationality || "Korean"}</p>
+                                                        <p className="font-semibold text-gray-600 dark:text-gray-100">Nationality</p>
+                                                        <p className='dark:text-gray-300'>{profile.nationality || "Korean"}</p>
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold text-gray-600">Occupation</p>
-                                                        <p>{profile.occupation && profile.occupation.join(', ')}</p>
+                                                        <p className="font-semibold text-gray-600 dark:text-gray-100">Occupation</p>
+                                                        <p className='dark:text-gray-300'>{profile.occupation && profile.occupation.join(', ')}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -251,13 +251,13 @@ export default function SearchResults() {
                         {/* Article Results */}
                         {articles.length > 0 && (
                             <div className="w-full mt-8">
-                                <h2 className="text-2xl font-bold mb-6">Articles</h2>
+                                <h2 className="text-2xl font-bold mb-6 dark:text-gray-100">Articles</h2>
                                 <div className="grid gap-6 w-full">
                                     {articles.map((article) => (
                                         <div
                                             key={article.objectID}
                                             onClick={() => handleArticleClick(article)}
-                                            className="w-full overflow-hidden flex flex-col md:flex-row md:items-center gap-4 p-4 cursor-pointer border border-[#E4287C] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
+                                            className="w-full overflow-hidden flex flex-col md:flex-row md:items-center gap-4 p-4 cursor-pointer border border-key-color rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 dark:bg-slate-500"
                                         >
                                             {article.imageUrls && (
                                                 <div className="w-full md:w-32 flex-shrink-0">
@@ -269,20 +269,35 @@ export default function SearchResults() {
                                                 </div>
                                             )}
                                             <div className="flex-1 min-w-0">
-                                                <h4 className="font-medium mb-1 text-lg hover:text-blue-600 transition-colors">
+                                                <h4 className="font-medium mb-1 text-lg hover:text-blue-600 transition-colors dark:text-gray-100 dark:hover:text-blue-400">
                                                     {article._highlightResult?.subTitle
                                                         ? renderHighlightedText(article._highlightResult.subTitle.value)
                                                         : article.subTitle}
                                                 </h4>
                                                 <div className="flex flex-wrap items-center gap-2">
-                                                    <p className="text-sm text-gray-600">
+                                                    <p className="text-sm text-gray-600 dark:text-gray-200">
                                                         {article.source} • {article.sendDate ? `${article.sendDate.substring(0, 4)}-${article.sendDate.substring(4, 6)}-${article.sendDate.substring(6, 8)}` : ''}
                                                     </p>
                                                 </div>
-                                                <p className="text-sm text-gray-700 mt-2 line-clamp-2">
-                                                    {article._highlightResult?.body
-                                                        ? renderHighlightedText(article._highlightResult.body.value)
-                                                        : article.body}
+                                                <p className="text-sm text-gray-700 mt-2 line-clamp-2 dark:text-gray-300">
+                                                    {(() => {
+                                                        // Use highlighted body value if available, otherwise fall back to the plain body
+                                                        const bodyContent = article._highlightResult?.body?.value || article.body;
+
+                                                        if (!bodyContent) {
+                                                            return null; // Return nothing if there is no body content
+                                                        }
+
+                                                        // Split the content by ' -- '
+                                                        const parts = bodyContent.split(' -- ');
+
+                                                        // Use the part after ' -- ' if it exists, otherwise use the original content. Trim whitespace.
+                                                        const mainContent = (parts.length > 1 ? parts[1] : parts[0]).trim();
+
+                                                        // The renderHighlightedText function will correctly render the string,
+                                                        // whether it contains the <mark> tags or is just plain text.
+                                                        return renderHighlightedText(mainContent);
+                                                    })()}
                                                 </p>
                                             </div>
                                         </div>

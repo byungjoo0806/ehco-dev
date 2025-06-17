@@ -48,11 +48,11 @@ export default function ContactPage() {
     };
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white dark:bg-slate-800">
             <main className="max-w-3xl mx-auto px-4 py-16">
-                <h1 className="text-4xl font-bold text-center mb-8">Contact Us</h1>
+                <h1 className="text-4xl font-bold text-center mb-8 dark:text-key-color">Contact Us</h1>
 
-                <p className="text-center text-[#E4287C] font-medium mb-12">
+                <p className="text-center text-key-color font-medium mb-12">
                     We value your feedback! <br />
                     Please let us know your thoughts, suggestions, or any issues you encounter
                 </p>
@@ -60,7 +60,7 @@ export default function ContactPage() {
                 <form onSubmit={handleSubmit} className="space-y-8" action="https://formspree.io/f/xvgrkeae" method="POST">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
-                            <label htmlFor="name" className="block text-gray-900 font-medium mb-2">
+                            <label htmlFor="name" className="block text-gray-900 dark:text-gray-300 font-medium mb-2">
                                 Name (Optional)
                             </label>
                             <input
@@ -70,12 +70,12 @@ export default function ContactPage() {
                                 value={formData.name}
                                 onChange={handleChange}
                                 placeholder="Your Name"
-                                className="w-full px-4 py-3 border-2 border-[#E4287C] rounded-full focus:outline-none focus:border-pink-700"
+                                className="w-full px-4 py-3 border-2 border-key-color rounded-full focus:outline-none focus:border-pink-700 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-100 dark:focus:border-key-color dark:placeholder-gray-400"
                             />
                         </div>
 
                         <div>
-                            <label htmlFor="email" className="block text-gray-900 font-medium mb-2">
+                            <label htmlFor="email" className="block text-gray-900 dark:text-gray-300 font-medium mb-2">
                                 Email
                             </label>
                             <input
@@ -86,13 +86,13 @@ export default function ContactPage() {
                                 onChange={handleChange}
                                 placeholder="email@example.com"
                                 required
-                                className="w-full px-4 py-3 border-2 border-[#E4287C] rounded-full focus:outline-none focus:border-pink-700"
+                                className="w-full px-4 py-3 border-2 border-key-color rounded-full focus:outline-none focus:border-pink-700 dark:bg-slate-700 dark:border-slate-600 dark:text-gray-100 dark:focus:border-key-color dark:placeholder-gray-400"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label htmlFor="subject" className="block text-gray-900 font-medium mb-2">
+                        <label htmlFor="subject" className="block text-gray-900 dark:text-gray-300 font-medium mb-2">
                             Subject
                         </label>
                         <select
@@ -101,12 +101,7 @@ export default function ContactPage() {
                             value={formData.subject}
                             onChange={handleChange}
                             required
-                            className="w-full px-4 py-3 border-2 border-[#E4287C] rounded-full appearance-none focus:outline-none focus:border-pink-700 cursor-pointer"
-                            style={{
-                                backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 16 16%27%3E%3Cpath fill=%27%23E4287C%27 d=%27M4.427 6.427l3.573 3.573 3.573-3.573L12.5 7.36l-4.5 4.5-4.5-4.5z%27/%3E%3C/svg%3E")',
-                                backgroundRepeat: 'no-repeat',
-                                backgroundPosition: 'right 16px center',
-                            }}
+                            className="w-full px-4 py-3 border-2 border-key-color rounded-full appearance-none focus:outline-none focus:border-pink-700 cursor-pointer dark:bg-slate-700 dark:border-slate-600 dark:text-gray-100 dark:focus:border-key-color select-arrow-light dark:select-arrow-dark"
                         >
                             <option value="">Select a topic</option>
                             <option value="General Feedback">General Feedback</option>
@@ -118,7 +113,7 @@ export default function ContactPage() {
                     </div>
 
                     <div>
-                        <label htmlFor="message" className="block text-gray-900 font-medium mb-2">
+                        <label htmlFor="message" className="block text-gray-900 dark:text-gray-300 font-medium mb-2">
                             Message
                         </label>
                         <textarea
@@ -129,7 +124,7 @@ export default function ContactPage() {
                             placeholder="Tell us more..."
                             required
                             rows={6}
-                            className="w-full px-4 py-3 border-2 border-[#E4287C] rounded-3xl focus:outline-none focus:border-pink-700 resize-none"
+                            className="w-full px-4 py-3 border-2 border-key-color rounded-3xl focus:outline-none focus:border-pink-700 resize-none dark:bg-slate-700 dark:border-slate-600 dark:text-gray-100 dark:focus:border-key-color dark:placeholder-gray-400"
                         />
                     </div>
 
@@ -137,7 +132,7 @@ export default function ContactPage() {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="bg-[#E4287C] text-white font-medium px-8 py-3 rounded-full hover:bg-pink-700 transition-colors disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
+                            className="bg-key-color text-white dark:text-gray-300 font-medium px-8 py-3 rounded-full hover:bg-pink-700 transition-colors disabled:opacity-75 disabled:cursor-not-allowed flex items-center justify-center gap-2 mx-auto"
                         >
                             {isLoading && (
                                 <Loader2 className="animate-spin text-white" size={24} />

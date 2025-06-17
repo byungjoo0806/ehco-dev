@@ -153,7 +153,7 @@ const EventSources: React.FC<EventSourcesProps> = ({ articleIds, articles }) => 
     if (relevantArticles.length === 0) return null;
 
     return (
-        <div className="mt-3 pt-3 border-t border-gray-200/80">
+        <div className="mt-3 pt-3 border-t border-gray-200/80 ">
             {/* The grid will now contain our new source cards */}
             <div className="grid grid-cols-1 gap-4">
                 {relevantArticles.map(article => (
@@ -162,7 +162,7 @@ const EventSources: React.FC<EventSourcesProps> = ({ articleIds, articles }) => 
                         href={article.link}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 border rounded-lg hover:bg-gray-50/80 transition-all duration-200 shadow-sm"
+                        className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 border rounded-lg hover:bg-gray-50/80 transition-all duration-200 shadow-sm dark:bg-gray-400 dark:hover:bg-gray-300"
                     >
                         {/* Image Section */}
                         {article.imageUrls?.[0] && (
@@ -220,13 +220,13 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
 
     return (
         <div className="relative pb-4">
-            <div className="absolute w-3 h-3 bg-red-500 rounded-full left-[-20px] top-1 border-2 border-white"></div>
+            <div className="absolute w-3 h-3 bg-red-500 rounded-full left-[-20px] top-1 border-2 border-white dark:border-none"></div>
             {!isLast && <div className="absolute w-px h-full bg-gray-200 left-[-14px] top-4"></div>}
-            <p className="text-sm font-medium text-gray-500">{formatTimelineDate(point.date)}</p>
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-200">{formatTimelineDate(point.date)}</p>
 
             {/* 1. This new div uses Flexbox to position the description and button */}
             <div className="flex justify-between items-start gap-4">
-                <p className="text-base text-gray-700">{point.description}</p>
+                <p className="text-base text-gray-700 dark:text-gray-300">{point.description}</p>
 
                 {/* 2. The button is now inside the flex container and uses icons */}
                 {hasSources && (
@@ -279,7 +279,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     };
 
     return (
-        <div className="w-full max-w-[100vw] flex flex-row justify-center">
+        <div className="w-full max-w-[100vw] flex flex-row justify-center dark:bg-gray-800">
             <div className='w-[90%] sm:w-[70%] px-2'>
 
                 {/* ================================================================== */}
@@ -288,15 +288,15 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                 {/* ================================================================== */}
                 <div className="hidden sm:block">
                     {/* Main Category Tabs */}
-                    <div className="w-full h-12 mt-3 mb-6 py-2 sticky top-16 z-10 bg-white dark:bg-slate-900/95 backdrop-blur-sm dark:border-gray-800">
-                        <div className="flex flex-row overflow-x-auto space-x-2 pb-2 hide-scrollbar">
+                    <div className="w-full h-12 mt-3 mb-6 py-2 sticky top-16 z-10 bg-white dark:bg-slate-800 backdrop-blur-sm dark:border-gray-800">
+                        <div className="flex flex-row overflow-x-auto space-x-2 pb-2 hide-scrollbar dark:border-b dark:border-b-white">
                             {mainCategories.map(category => (
                                 <button
                                     key={category}
                                     onClick={() => setActiveCategory(category)}
                                     className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${activeCategory === category
                                         ? 'text-red-500 border-b-2 border-red-500'
-                                        : 'text-gray-500 hover:text-gray-800'
+                                        : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'
                                         }`}
                                 >
                                     {formatCategoryName(category)}
@@ -309,12 +309,12 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                     <div className="pb-12">
                         {activeCategory && data[activeCategory] && Object.entries(data[activeCategory]).map(([subCategory, eventList]) => (
                             <div key={subCategory} className="mb-8">
-                                <h3 className="text-xl font-bold border-b pb-2 mb-4 text-gray-800">{subCategory}</h3>
+                                <h3 className="text-xl font-bold border-b pb-2 mb-4 text-gray-800 dark:text-white">{subCategory}</h3>
                                 <div className="space-y-6">
                                     {eventList.map(event => (
-                                        <div key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white">
-                                            <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
-                                            <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
+                                        <div key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-600">
+                                            <h4 className="font-semibold text-lg text-gray-900 dark:text-white">{event.event_title}</h4>
+                                            <p className="text-sm text-gray-600 dark:text-gray-200 italic mt-1 mb-3">{event.event_summary}</p>
                                             <div className="relative pl-5">
                                                 {sortTimelinePoints(event.timeline_points).map((point, index) => (
                                                     <TimelinePointWithSources key={index} point={point} articles={articles} isLast={index === event.timeline_points.length - 1} />

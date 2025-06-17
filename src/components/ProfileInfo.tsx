@@ -132,7 +132,7 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
   };
 
   return (
-    <div className="w-full bg-gray-50 dark:bg-slate-600 py-6 md:py-8 shadow-sm">
+    <div className="w-full bg-gray-50 dark:bg-slate-900 dark:border-b dark:border-b-white py-6 md:py-8 shadow-sm">
       <div className="w-[90%] md:w-[80%] mx-auto px-2 md:px-4">
         <div className="flex flex-col md:flex-row md:justify-between gap-6 md:gap-8">
           {/* Left Section - Profile Icon and Basic Info */}
@@ -167,19 +167,19 @@ export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileI
               <div className="flex space-x-3 mb-4">
                 {publicFigureData.instagramUrl && (
                   <a href={publicFigureData.instagramUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-pink-500 transition-colors">
+                    className="text-pink-500 hover:text-pink-300 transition-colors">
                     <Instagram size={20} />
                   </a>
                 )}
                 {publicFigureData.youtubeUrl && (
                   <a href={publicFigureData.youtubeUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-red-600 transition-colors">
+                    className="text-red-600 hover:text-red-400 transition-colors">
                     <Youtube size={20} />
                   </a>
                 )}
                 {publicFigureData.spotifyUrl && (
                   <a href={publicFigureData.spotifyUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-gray-600 hover:text-green-500 transition-colors">
+                    className="text-green-500 hover:text-green-300 transition-colors">
                     <Music size={20} />
                   </a>
                 )}
