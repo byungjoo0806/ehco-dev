@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Search, X, Loader2, CheckSquare, Square } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import algoliasearch from 'algoliasearch';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 
 // Setup Algolia client - same as in page.tsx
 const searchClient = algoliasearch(
@@ -20,6 +21,13 @@ interface Figure {
     occupation?: string[];
     gender?: string;      // Added gender field
     categories?: string[]; // Added categories field
+}
+
+interface FiguresQueryResult {
+    figures: Figure[];
+    totalPages: number;
+    totalCount: number;
+    isSearchMode: boolean;
 }
 
 // Updated Algolia type to include gender and categories
@@ -55,19 +63,19 @@ const LoadingOverlay = () => (
 );
 
 function AllFiguresContent() {
-    const [figures, setFigures] = useState<Figure[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    // const [figures, setFigures] = useState<Figure[]>([]);
+    // const [loading, setLoading] = useState(true);
+    // const [error, setError] = useState<string | null>(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [totalCount, setTotalCount] = useState(0);
+    // const [totalPages, setTotalPages] = useState(1);
+    // const [totalCount, setTotalCount] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>(['All']); // Default to 'All'
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    const [isSearchMode, setIsSearchMode] = useState(false);
+    // const [isSearchMode, setIsSearchMode] = useState(false);
     const [isPageLoading, setIsPageLoading] = useState(false);
-    const [isInitialized, setIsInitialized] = useState(false);
+    // const [isInitialized, setIsInitialized] = useState(false);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const categoryDropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
@@ -100,6 +108,69 @@ function AllFiguresContent() {
     };
 
     const itemsPerPage = 18;
+
+    // --- DATA FETCHING WITH TANSTACK QUERY ---
+    // This one hook replaces all your previous data-fetching logic.
+    const {
+        isLoading,
+        isFetching,
+        isError,
+        error,
+        data,
+        isPlaceholderData, // Useful for pagination UX
+    } = useQuery<FiguresQueryResult, Error>({
+        // `queryKey` is an array that uniquely identifies this data request.
+        // When any value in this array changes, React Query will re-fetch.
+        queryKey: ['allFigures', { selectedCategories, currentPage, searchQuery }],
+
+        // `queryFn` is the function that performs the actual data fetching.
+        queryFn: async () => {
+            if (searchQuery.trim()) {
+                // Algolia search logic
+                const { hits, nbHits, nbPages } = await searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(searchQuery, {
+                    hitsPerPage: 18,
+                    page: currentPage - 1,
+                    // Your other Algolia parameters...
+                });
+                const transformedResults: Figure[] = hits.map(hit => ({
+                    id: hit.objectID, name: hit.name || '', profilePic: hit.profilePic, occupation: hit.occupation || [], gender: hit.gender, categories: hit.categories
+                }));
+                return { figures: transformedResults, totalPages: nbPages, totalCount: nbHits, isSearchMode: true };
+            } else {
+                // Your backend API fetching logic
+                const params = new URLSearchParams({
+                    page: currentPage.toString(),
+                    pageSize: '18',
+                });
+                // (Assuming you have a function to add category filters to params)
+                // buildCategoryParams(params, selectedCategories);
+                const response = await fetch(`/api/public-figures?${params}`);
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+                const jsonData = await response.json();
+                return {
+                    figures: jsonData.publicFigures || [],
+                    totalPages: jsonData.totalPages || 1,
+                    totalCount: jsonData.totalCount || 0,
+                    isSearchMode: false
+                };
+            }
+        },
+        // Configuration options
+        placeholderData: keepPreviousData, // Prevents UI flicker during pagination. Old data is kept while new data is fetched.
+        staleTime: 1000 * 60 * 5, // Data is considered fresh for 5 minutes, preventing unnecessary re-fetches.
+    });
+
+    // Derive state from the `data` object returned by useQuery.
+    // Provide default values to prevent errors on the initial render.
+    const figures = data?.figures || [];
+    const totalPages = data?.totalPages || 1;
+    const totalCount = data?.totalCount || 0;
+    const isSearchMode = data?.isSearchMode || false;
+
+
+
 
     // Handle click outside to close the dropdown
     useEffect(() => {
@@ -223,88 +294,88 @@ function AllFiguresContent() {
         setSearchQuery(urlState.search);
         setCurrentPage(urlState.page);
 
-        if (urlState.search && urlState.search.trim()) {
-            setIsSearchMode(true);
-        } else {
-            setIsSearchMode(false);
-        }
+        // if (urlState.search && urlState.search.trim()) {
+        //     setIsSearchMode(true);
+        // } else {
+        //     setIsSearchMode(false);
+        // }
 
-        // Mark as initialized
-        setIsInitialized(true);
+        // // Mark as initialized
+        // setIsInitialized(true);
 
-        // Immediately fetch data with the URL state (don't wait for another useEffect)
-        // console.log('🚀 Immediate data fetch with URL state:', urlState);
+        // // Immediately fetch data with the URL state (don't wait for another useEffect)
+        // // console.log('🚀 Immediate data fetch with URL state:', urlState);
 
-        if (urlState.search && urlState.search.trim()) {
-            // console.log('🔍 Immediate Algolia search for:', urlState.search);
-            performSearchForGridWithPage(urlState.search, urlState.page);
-        } else {
-            // console.log('📋 Immediate fetch with categories:', urlState.categories);
-            fetchFiguresWithCategories(urlState.page, urlState.categories);
-        }
+        // if (urlState.search && urlState.search.trim()) {
+        //     // console.log('🔍 Immediate Algolia search for:', urlState.search);
+        //     performSearchForGridWithPage(urlState.search, urlState.page);
+        // } else {
+        //     // console.log('📋 Immediate fetch with categories:', urlState.categories);
+        //     fetchFiguresWithCategories(urlState.page, urlState.categories);
+        // }
     }, []); // Only run once on mount
 
-    useEffect(() => {
-        // Skip if not initialized yet (prevents double-fetch on mount)
-        if (!isInitialized) {
-            // console.log('⏸️ Skipping subsequent useEffect - not initialized yet');
-            return;
-        }
+    // useEffect(() => {
+    //     // Skip if not initialized yet (prevents double-fetch on mount)
+    //     if (!isInitialized) {
+    //         // console.log('⏸️ Skipping subsequent useEffect - not initialized yet');
+    //         return;
+    //     }
 
-        // console.log('🔄 Subsequent state change useEffect triggered');
-        // console.log('📊 Current state:', {
-        //     selectedCategories,
-        //     searchQuery,
-        //     currentPage,
-        //     isSearchMode
-        // });
+    //     // console.log('🔄 Subsequent state change useEffect triggered');
+    //     // console.log('📊 Current state:', {
+    //     //     selectedCategories,
+    //     //     searchQuery,
+    //     //     currentPage,
+    //     //     isSearchMode
+    //     // });
 
-        // Handle subsequent changes after initialization
-        if (searchQuery && searchQuery.trim()) {
-            // console.log('🔍 Subsequent Algolia search for:', searchQuery);
-            setIsSearchMode(true);
-            performSearchForGridWithPage(searchQuery, currentPage);
-        } else {
-            // console.log('📋 Subsequent fetch with filters:', selectedCategories);
-            setIsSearchMode(false);
-            fetchFigures(currentPage);
-        }
-    }, [selectedCategories, searchQuery, currentPage, isInitialized]); // Add isInitialized to dependencies
+    //     // Handle subsequent changes after initialization
+    //     if (searchQuery && searchQuery.trim()) {
+    //         // console.log('🔍 Subsequent Algolia search for:', searchQuery);
+    //         setIsSearchMode(true);
+    //         performSearchForGridWithPage(searchQuery, currentPage);
+    //     } else {
+    //         // console.log('📋 Subsequent fetch with filters:', selectedCategories);
+    //         setIsSearchMode(false);
+    //         fetchFigures(currentPage);
+    //     }
+    // }, [selectedCategories, searchQuery, currentPage, isInitialized]); // Add isInitialized to dependencies
 
     // 3. Handle browser back/forward navigation
-    useEffect(() => {
-        const handlePopState = (event: PopStateEvent) => {
-            // console.log('🔙 Browser navigation detected');
+    // useEffect(() => {
+    //     const handlePopState = (event: PopStateEvent) => {
+    //         // console.log('🔙 Browser navigation detected');
 
-            // Reset initialization to allow fresh URL read
-            setIsInitialized(false);
+    //         // Reset initialization to allow fresh URL read
+    //         setIsInitialized(false);
 
-            const urlState = getInitialStateFromURL();
-            // console.log('🔄 Restoring state from URL:', urlState);
+    //         const urlState = getInitialStateFromURL();
+    //         // console.log('🔄 Restoring state from URL:', urlState);
 
-            // Update all state at once
-            setSelectedCategories(urlState.categories);
-            setSearchQuery(urlState.search);
-            setCurrentPage(urlState.page);
+    //         // Update all state at once
+    //         setSelectedCategories(urlState.categories);
+    //         setSearchQuery(urlState.search);
+    //         setCurrentPage(urlState.page);
 
-            if (urlState.search && urlState.search.trim()) {
-                setIsSearchMode(true);
-                performSearchForGridWithPage(urlState.search, urlState.page);
-            } else {
-                setIsSearchMode(false);
-                fetchFiguresWithCategories(urlState.page, urlState.categories);
-            }
+    //         if (urlState.search && urlState.search.trim()) {
+    //             setIsSearchMode(true);
+    //             performSearchForGridWithPage(urlState.search, urlState.page);
+    //         } else {
+    //             setIsSearchMode(false);
+    //             fetchFiguresWithCategories(urlState.page, urlState.categories);
+    //         }
 
-            // Mark as initialized again
-            setIsInitialized(true);
-        };
+    //         // Mark as initialized again
+    //         setIsInitialized(true);
+    //     };
 
-        window.addEventListener('popstate', handlePopState);
+    //     window.addEventListener('popstate', handlePopState);
 
-        return () => {
-            window.removeEventListener('popstate', handlePopState);
-        };
-    }, [getInitialStateFromURL]);
+    //     return () => {
+    //         window.removeEventListener('popstate', handlePopState);
+    //     };
+    // }, [getInitialStateFromURL]);
 
     // Helper function to build category filters for the API
     const buildCategoryParams = (params: URLSearchParams) => {
@@ -336,126 +407,127 @@ function AllFiguresContent() {
         return params;
     };
 
-    const fetchFigures = async (page: number) => {
-        // Add stack trace to see what's calling this function
-        // console.log('🔍 fetchFigures called with page:', page);
-        // console.log('📍 Called from:', new Error().stack?.split('\n')[2]?.trim());
-        // console.log('🏷️ Current state:', {
-        //     selectedCategories,
-        //     searchQuery,
-        //     currentPage,
-        //     isSearchMode
-        // });
+    // const fetchFigures = async (page: number) => {
+    //     // Add stack trace to see what's calling this function
+    //     // console.log('🔍 fetchFigures called with page:', page);
+    //     // console.log('📍 Called from:', new Error().stack?.split('\n')[2]?.trim());
+    //     // console.log('🏷️ Current state:', {
+    //     //     selectedCategories,
+    //     //     searchQuery,
+    //     //     currentPage,
+    //     //     isSearchMode
+    //     // });
 
-        try {
-            setLoading(true);
-            let params = new URLSearchParams({
-                page: page.toString(),
-                pageSize: itemsPerPage.toString(),
-            });
+    //     try {
+    //         setLoading(true);
+    //         let params = new URLSearchParams({
+    //             page: page.toString(),
+    //             pageSize: itemsPerPage.toString(),
+    //         });
 
-            // Add category filters
-            params = buildCategoryParams(params);
+    //         // Add category filters
+    //         params = buildCategoryParams(params);
 
-            if (searchQuery && !isSearchMode) {
-                params.append('search', searchQuery);
-            }
+    //         if (searchQuery && !isSearchMode) {
+    //             params.append('search', searchQuery);
+    //         }
 
-            // DEBUG: Log the URL being called
-            const apiUrl = `/api/public-figures?${params}`;
-            // console.log('🌐 Fetching URL:', apiUrl);
+    //         // DEBUG: Log the URL being called
+    //         const apiUrl = `/api/public-figures?${params}`;
+    //         // console.log('🌐 Fetching URL:', apiUrl);
 
-            const response = await fetch(`/api/public-figures?${params}`);
+    //         const response = await fetch(`/api/public-figures?${params}`);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+    //         if (!response.ok) {
+    //             throw new Error(`HTTP error! status: ${response.status}`);
+    //         }
 
-            const data = await response.json();
+    //         const data = await response.json();
 
-            setFigures(data.publicFigures || []);
-            setCurrentPage(data.currentPage || page);
-            setTotalPages(data.totalPages || 1);
-            setTotalCount(data.totalCount || 0);
+    //         setFigures(data.publicFigures || []);
+    //         setCurrentPage(data.currentPage || page);
+    //         setTotalPages(data.totalPages || 1);
+    //         setTotalCount(data.totalCount || 0);
 
-            // console.log('✅ fetchFigures completed successfully');
+    //         // console.log('✅ fetchFigures completed successfully');
 
-        } catch (err) {
-            console.error('Fetch error:', err);
-            if (err instanceof Error) {
-                setError(`Failed to load figures: ${err.message}`);
-            } else {
-                setError('Failed to load figures: Unknown error');
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+    //     } catch (err) {
+    //         console.error('Fetch error:', err);
+    //         if (err instanceof Error) {
+    //             setError(`Failed to load figures: ${err.message}`);
+    //         } else {
+    //             setError('Failed to load figures: Unknown error');
+    //         }
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
 
-    const fetchFiguresWithCategories = async (page: number, categories: string[]) => {
-        // console.log('🔍 fetchFiguresWithCategories called with:', { page, categories });
+    // const fetchFiguresWithCategories = async (page: number, categories: string[]) => {
+    //     // console.log('🔍 fetchFiguresWithCategories called with:', { page, categories });
 
-        try {
-            setLoading(true);
-            const params = new URLSearchParams({
-                page: page.toString(),
-                pageSize: itemsPerPage.toString(),
-            });
+    //     try {
+    //         setLoading(true);
+    //         const params = new URLSearchParams({
+    //             page: page.toString(),
+    //             pageSize: itemsPerPage.toString(),
+    //         });
 
-            // Build category params with the provided categories (not current state)
-            if (categories.length > 0 && !categories.includes('All')) {
-                const fieldFilters: Record<string, string[]> = {};
+    //         // Build category params with the provided categories (not current state)
+    //         if (categories.length > 0 && !categories.includes('All')) {
+    //             const fieldFilters: Record<string, string[]> = {};
 
-                categories.forEach(category => {
-                    const mappings = categoryToFieldMap[category];
-                    if (mappings) {
-                        mappings.forEach(mapping => {
-                            if (!fieldFilters[mapping.field]) {
-                                fieldFilters[mapping.field] = [];
-                            }
-                            if (!fieldFilters[mapping.field].includes(mapping.value)) {
-                                fieldFilters[mapping.field].push(mapping.value);
-                            }
-                        });
-                    }
-                });
+    //             categories.forEach(category => {
+    //                 const mappings = categoryToFieldMap[category];
+    //                 if (mappings) {
+    //                     mappings.forEach(mapping => {
+    //                         if (!fieldFilters[mapping.field]) {
+    //                             fieldFilters[mapping.field] = [];
+    //                         }
+    //                         if (!fieldFilters[mapping.field].includes(mapping.value)) {
+    //                             fieldFilters[mapping.field].push(mapping.value);
+    //                         }
+    //                     });
+    //                 }
+    //             });
 
-                Object.entries(fieldFilters).forEach(([field, values]) => {
-                    values.forEach(value => {
-                        params.append(field, value);
-                    });
-                });
-            }
+    //             Object.entries(fieldFilters).forEach(([field, values]) => {
+    //                 values.forEach(value => {
+    //                     params.append(field, value);
+    //                 });
+    //             });
+    //         }
 
-            const apiUrl = `/api/public-figures?${params}`;
-            // console.log('🌐 Fetching URL with categories:', apiUrl);
+    //         const apiUrl = `/api/public-figures?${params}`;
+    //         // console.log('🌐 Fetching URL with categories:', apiUrl);
 
-            const response = await fetch(apiUrl);
+    //         const response = await fetch(apiUrl);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+    //         if (!response.ok) {
+    //             throw new Error(`HTTP error! status: ${response.status}`);
+    //         }
 
-            const data = await response.json();
+    //         const data = await response.json();
 
-            setFigures(data.publicFigures || []);
-            setCurrentPage(data.currentPage || page);
-            setTotalPages(data.totalPages || 1);
-            setTotalCount(data.totalCount || 0);
+    //         setFigures(data.publicFigures || []);
+    //         setCurrentPage(data.currentPage || page);
+    //         setTotalPages(data.totalPages || 1);
+    //         setTotalCount(data.totalCount || 0);
 
-            // console.log('✅ fetchFiguresWithCategories completed successfully');
+    //         // console.log('✅ fetchFiguresWithCategories completed successfully');
 
-        } catch (err) {
-            console.error('❌ Fetch error:', err);
-            if (err instanceof Error) {
-                setError(`Failed to load figures: ${err.message}`);
-            } else {
-                setError('Failed to load figures: Unknown error');
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
+    //     } catch (err) {
+    //         console.error('❌ Fetch error:', err);
+    //         if (err instanceof Error) {
+    //             setError(`Failed to load figures: ${err.message}`);
+    //         } else {
+    //             setError('Failed to load figures: Unknown error');
+    //         }
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
+
 
     // Build Algolia filter string from selected categories
     const buildAlgoliaFilterString = () => {
@@ -498,97 +570,97 @@ function AllFiguresContent() {
     };
 
     // Algolia search functionality for grid
-    const performSearchForGrid = async (query: string) => {
-        if (!query.trim()) {
-            setIsSearchMode(false);
-            // fetchFigures(1);
-            setCurrentPage(1);
-            return;
-        }
+    // const performSearchForGrid = async (query: string) => {
+    //     if (!query.trim()) {
+    //         setIsSearchMode(false);
+    //         // fetchFigures(1);
+    //         setCurrentPage(1);
+    //         return;
+    //     }
 
-        setIsSearchMode(true);
-        setLoading(true);
+    //     setIsSearchMode(true);
+    //     setLoading(true);
 
-        try {
-            // Create filter string for categories
-            const filterString = buildAlgoliaFilterString();
-            // console.log("Algolia filter string:", filterString); // For debugging
+    //     try {
+    //         // Create filter string for categories
+    //         const filterString = buildAlgoliaFilterString();
+    //         // console.log("Algolia filter string:", filterString); // For debugging
 
-            const { hits, nbHits, nbPages } = await searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(query, {
-                hitsPerPage: itemsPerPage,
-                page: currentPage - 1, // Algolia uses 0-based indexing
-                attributesToHighlight: ['name', 'name_kr'],
-                filters: filterString,
-                queryType: 'prefixAll',
-                typoTolerance: true
-            });
+    //         const { hits, nbHits, nbPages } = await searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(query, {
+    //             hitsPerPage: itemsPerPage,
+    //             page: currentPage - 1, // Algolia uses 0-based indexing
+    //             attributesToHighlight: ['name', 'name_kr'],
+    //             filters: filterString,
+    //             queryType: 'prefixAll',
+    //             typoTolerance: true
+    //         });
 
-            // Transform Algolia results to match Figure interface
-            const transformedResults: Figure[] = hits.map(hit => ({
-                id: hit.objectID,
-                name: hit.name || '',
-                profilePic: hit.profilePic,
-                occupation: hit.occupation || [],
-                gender: hit.gender,
-                categories: hit.categories
-            }));
+    //         // Transform Algolia results to match Figure interface
+    //         const transformedResults: Figure[] = hits.map(hit => ({
+    //             id: hit.objectID,
+    //             name: hit.name || '',
+    //             profilePic: hit.profilePic,
+    //             occupation: hit.occupation || [],
+    //             gender: hit.gender,
+    //             categories: hit.categories
+    //         }));
 
-            setFigures(transformedResults);
-            setTotalCount(nbHits);
-            setTotalPages(nbPages || 1);
-            setCurrentPage(1);
+    //         setFigures(transformedResults);
+    //         setTotalCount(nbHits);
+    //         setTotalPages(nbPages || 1);
+    //         setCurrentPage(1);
 
-        } catch (error) {
-            console.error('Algolia search error:', error);
-            setError('Search failed. Please try again.');
-            setFigures([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    //     } catch (error) {
+    //         console.error('Algolia search error:', error);
+    //         setError('Search failed. Please try again.');
+    //         setFigures([]);
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
 
-    const performSearchForGridWithPage = async (query: string, page: number = 1) => {
-        if (!query.trim()) {
-            setIsSearchMode(false);
-            return;
-        }
+    // const performSearchForGridWithPage = async (query: string, page: number = 1) => {
+    //     if (!query.trim()) {
+    //         setIsSearchMode(false);
+    //         return;
+    //     }
 
-        setIsSearchMode(true);
-        setLoading(true);
+    //     setIsSearchMode(true);
+    //     setLoading(true);
 
-        try {
-            const filterString = buildAlgoliaFilterString();
+    //     try {
+    //         const filterString = buildAlgoliaFilterString();
 
-            const { hits, nbHits, nbPages } = await searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(query, {
-                hitsPerPage: itemsPerPage,
-                page: page - 1, // Algolia uses 0-based indexing
-                attributesToHighlight: ['name', 'name_kr'],
-                filters: filterString,
-                queryType: 'prefixAll',
-                typoTolerance: true
-            });
+    //         const { hits, nbHits, nbPages } = await searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(query, {
+    //             hitsPerPage: itemsPerPage,
+    //             page: page - 1, // Algolia uses 0-based indexing
+    //             attributesToHighlight: ['name', 'name_kr'],
+    //             filters: filterString,
+    //             queryType: 'prefixAll',
+    //             typoTolerance: true
+    //         });
 
-            const transformedResults: Figure[] = hits.map(hit => ({
-                id: hit.objectID,
-                name: hit.name || '',
-                profilePic: hit.profilePic,
-                occupation: hit.occupation || [],
-                gender: hit.gender,
-                categories: hit.categories
-            }));
+    //         const transformedResults: Figure[] = hits.map(hit => ({
+    //             id: hit.objectID,
+    //             name: hit.name || '',
+    //             profilePic: hit.profilePic,
+    //             occupation: hit.occupation || [],
+    //             gender: hit.gender,
+    //             categories: hit.categories
+    //         }));
 
-            setFigures(transformedResults);
-            setTotalCount(nbHits);
-            setTotalPages(nbPages || 1);
+    //         setFigures(transformedResults);
+    //         setTotalCount(nbHits);
+    //         setTotalPages(nbPages || 1);
 
-        } catch (error) {
-            console.error('Algolia search error:', error);
-            setError('Search failed. Please try again.');
-            setFigures([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    //     } catch (error) {
+    //         console.error('Algolia search error:', error);
+    //         setError('Search failed. Please try again.');
+    //         setFigures([]);
+    //     } finally {
+    //         setLoading(false);
+    //     }
+    // };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -605,15 +677,15 @@ function AllFiguresContent() {
         updateURL(selectedCategories, query, 1, true);
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && searchQuery.trim()) {
-            e.preventDefault();
-            performSearchForGrid(searchQuery);
-        }
-    };
+    // const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    //     if (e.key === 'Enter' && searchQuery.trim()) {
+    //         e.preventDefault();
+    //         performSearchForGrid(searchQuery);
+    //     }
+    // };
 
     const handlePageChange = (newPage: number) => {
-        if (newPage >= 1 && newPage <= totalPages && !loading) {
+        if (newPage >= 1 && newPage <= totalPages && !isLoading) {
             setCurrentPage(newPage); // This will trigger the main useEffect
             updateURL(selectedCategories, searchQuery, newPage, false);
         }
@@ -722,7 +794,7 @@ function AllFiguresContent() {
                             placeholder="Search for a public figure..."
                             value={searchQuery}
                             onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
+                            // onKeyDown={handleKeyDown}
                             className="w-full px-4 sm:px-6 py-2.5 sm:py-3 text-base border-2 border-key-color rounded-full focus:outline-none focus:border-pink-700 pl-10 sm:pl-12 dark:bg-gray-800 dark:text-white"
                         />
 
@@ -855,7 +927,7 @@ function AllFiguresContent() {
                 ) : null}
 
                 {/* Loading State */}
-                {loading && (
+                {isLoading && (
                     <div className="text-center py-8 sm:py-12">
                         <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-key-color mx-auto"></div>
                         <p className="mt-4 text-gray-600 dark:text-gray-400">Loading figures...</p>
@@ -863,14 +935,14 @@ function AllFiguresContent() {
                 )}
 
                 {/* Error State */}
-                {error && (
+                {isError && (
                     <div className="text-center py-8 sm:py-12 text-red-600 dark:text-red-400">
-                        {error}
+                        {error.message}
                     </div>
                 )}
 
                 {/* Figures Grid - Now shows search results directly */}
-                {!loading && figures.length > 0 && (
+                {!isLoading && figures.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
                         {/* Create a hidden div with all images to force them to be loaded once */}
                         <div className="hidden">
@@ -919,14 +991,14 @@ function AllFiguresContent() {
                 )}
 
                 {/* No Results */}
-                {!loading && figures.length === 0 && !error && (
+                {!isLoading && figures.length === 0 && !error && (
                     <div className="text-center py-8 sm:py-12 text-gray-600 dark:text-gray-400">
                         {searchQuery ? `No figures found matching "${searchQuery}"` : 'No figures found'}
                     </div>
                 )}
 
                 {/* Pagination Controls */}
-                {!loading && figures.length > 0 && totalPages > 1 && (
+                {!isLoading && figures.length > 0 && totalPages > 1 && (
                     <div className="flex justify-center items-center gap-1 sm:gap-2 flex-wrap">
                         <button
                             onClick={() => handlePageChange(1)}
@@ -1022,7 +1094,7 @@ function AllFiguresContent() {
                 )}
 
                 {/* Results Count */}
-                {!loading && figures.length > 0 && (
+                {!isLoading && figures.length > 0 && (
                     <div className="text-center mt-4 text-sm text-gray-500 dark:text-gray-400">
                         {isSearchMode ?
                             `Search results: ${figures.length} of ${totalCount} figures | Page ${currentPage} of ${totalPages}` :

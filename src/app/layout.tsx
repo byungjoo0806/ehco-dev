@@ -8,6 +8,10 @@ import AnalyticsProvider from './AnalyticsProvider';
 import JsonLd from '@/components/JsonLd';
 import Link from 'next/link';
 import { FiguresProvider } from '@/context/FiguresContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Providers } from './providers';
+
+const queryClient = new QueryClient();
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -117,7 +121,7 @@ export default function RootLayout({
         <meta name="referrer" content="no-referrer" />
       </head>
       <body className={inter.className}>
-        <FiguresProvider>
+        <Providers>
           <div className="fixed top-0 left-0 right-0 z-50 shadow-md">
             <Header />
           </div>
@@ -175,7 +179,7 @@ export default function RootLayout({
 
           <Analytics />
           <AnalyticsProvider />
-        </FiguresProvider>
+        </Providers>
       </body>
     </html>
   )

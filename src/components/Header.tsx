@@ -177,7 +177,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="w-full border-b dark:border-b-black bg-white dark:bg-black">
+      <header className="w-full border-b dark:border-b-white bg-white dark:bg-black">
         <div className="w-[90%] md:w-[80%] mx-auto px-4 h-16 flex justify-center items-center">
           <div className="w-full h-full flex">
             {/* Left section with menu */}
