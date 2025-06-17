@@ -945,36 +945,62 @@ function AllFiguresContent() {
                             ‹
                         </button>
 
-                        {getPageNumbers().map(page => (
-                            <button
-                                key={page}
-                                onClick={() => handlePageChange(page)}
-                                className={`px-2 sm:px-3 py-1 rounded-full ${currentPage === page
-                                    ? 'bg-key-color text-white'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                                    }`}
-                                aria-label={`Page ${page}`}
-                                aria-current={currentPage === page ? 'page' : undefined}
-                            >
-                                {page}
-                            </button>
-                        ))}
+                        {(() => {
+                            const pageNumbers = getPageNumbers();
+                            if (pageNumbers.length === 0) return null;
+                            const firstVisiblePage = pageNumbers[0];
+                            const lastVisiblePage = pageNumbers[pageNumbers.length - 1];
 
-                        {totalPages > (isMobile ? 3 : 5) && currentPage < totalPages - (isMobile ? 1 : 2) && (
-                            <span className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400">...</span>
-                        )}
+                            return (
+                                <>
+                                    {/* First page and ellipsis at the start */}
+                                    {firstVisiblePage > 1 && (
+                                        <button
+                                            onClick={() => handlePageChange(1)}
+                                            className="px-2 sm:px-3 py-1 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            aria-label="Page 1"
+                                        >
+                                            1
+                                        </button>
+                                    )}
+                                    {firstVisiblePage > 2 && (
+                                        <span className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400">...</span>
+                                    )}
 
-                        {totalPages > (isMobile ? 3 : 5) && currentPage < totalPages - (isMobile ? 1 : 2) && (
-                            <button
-                                onClick={() => handlePageChange(totalPages)}
-                                className={`px-2 sm:px-3 py-1 rounded-full ${currentPage === totalPages
-                                    ? 'bg-key-color text-white'
-                                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                                aria-label={`Page ${totalPages}`}
-                            >
-                                {totalPages}
-                            </button>
-                        )}
+                                    {/* Page number buttons */}
+                                    {pageNumbers.map(page => (
+                                        <button
+                                            key={page}
+                                            onClick={() => handlePageChange(page)}
+                                            className={`px-2 sm:px-3 py-1 rounded-full ${currentPage === page
+                                                ? 'bg-key-color text-white'
+                                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                }`}
+                                            aria-label={`Page ${page}`}
+                                            aria-current={currentPage === page ? 'page' : undefined}
+                                        >
+                                            {page}
+                                        </button>
+                                    ))}
+
+                                    {/* Ellipsis and last page at the end */}
+                                    {lastVisiblePage < totalPages - 1 && (
+                                        <span className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400">...</span>
+                                    )}
+                                    {lastVisiblePage < totalPages && (
+                                        <button
+                                            onClick={() => handlePageChange(totalPages)}
+                                            className={`px-2 sm:px-3 py-1 rounded-full ${currentPage === totalPages
+                                                ? 'bg-key-color text-white'
+                                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                            aria-label={`Page ${totalPages}`}
+                                        >
+                                            {totalPages}
+                                        </button>
+                                    )}
+                                </>
+                            );
+                        })()}
 
                         <button
                             onClick={() => handlePageChange(currentPage + 1)}
