@@ -8,6 +8,7 @@ import { Loader2 } from 'lucide-react';
 import ProfileInfo from '@/components/ProfileInfo';
 import CelebrityWiki from '@/components/CelebrityWiki';
 import type { JsonLdObject } from '@/components/JsonLd';
+import JsonLd from '@/components/JsonLd';
 import { getArticlesByIds } from '@/lib/article-service';
 
 // --- IMPORTED TYPES ---
@@ -83,13 +84,14 @@ export async function generateMetadata({ params }: { params: Promise<{ publicFig
             : `${publicFigureData.name} (${publicFigureData.name_kr}) Profile & Information`;
 
         let description;
+        const figureName = publicFigureData.name;
+
         if (publicFigureData.is_group) {
-            description = `Learn about ${publicFigureData.name}, ${publicFigureData.nationality} ${publicFigureData.occupation.join(', ')}. Official profiles, discography, history, and more.`;
+            // Better description for groups: More active, highlights unique features.
+            description = `The complete profile for ${figureName}. Explore their members, debut history, discography, and a real-time timeline of verified news and events on EHCO.`;
         } else {
-            const personalDetails = [];
-            if ((publicFigureData as IndividualPerson).group) personalDetails.push(`Member of ${(publicFigureData as IndividualPerson).group}`);
-            if ((publicFigureData as IndividualPerson).birthDate) personalDetails.push(`Born on ${(publicFigureData as IndividualPerson).birthDate}`);
-            description = `Learn about ${publicFigureData.name}, ${publicFigureData.nationality} ${publicFigureData.occupation.join(', ')}${personalDetails.length > 0 ? '. ' + personalDetails.join(', ') : '.'}`;
+            // Better description for individuals: Engages with a question, highlights biography and facts.
+            description = `Who is ${figureName}? Discover their full biography, official profile, timeline of major life events, and all the latest fact-checked news.`;
         }
 
         return {
@@ -239,24 +241,32 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
 
     const schemaData = publicFigureData.is_group
         ? {
-            "@context": "https://schema.org", "@type": "MusicGroup", name: publicFigureData.name,
-            alternateName: publicFigureData.name_kr || null, nationality: publicFigureData.nationality,
+            "@context": "https://schema.org", 
+            "@type": "MusicGroup", 
+            name: publicFigureData.name,
+            alternateName: publicFigureData.name_kr || null, 
+            nationality: publicFigureData.nationality,
             url: `https://ehco.ai/${publicFigureId}`,
             sameAs: [publicFigureData.instagramUrl, publicFigureData.spotifyUrl, publicFigureData.youtubeUrl].filter(Boolean) as string[],
-            ...(publicFigureData.company ? { "member": { "@type": "Organization", "name": publicFigureData.company } } : {}),
+            ...(publicFigureData.company ? { "memberOf": { "@type": "Organization", "name": publicFigureData.company } } : {}),
             ...(publicFigureData.debutDate ? { "foundingDate": publicFigureData.debutDate.split(':')[0].trim() } : {}),
-            ...(publicFigureData.is_group && (publicFigureData as GroupProfile).members &&
-                (publicFigureData as GroupProfile).members!.length > 0 ? {
+            ...((publicFigureData as GroupProfile).members && (publicFigureData as GroupProfile).members!.length > 0 && {
                 "member": (publicFigureData as GroupProfile).members!.map(member => ({
                     "@type": "Person",
                     "birthDate": member.birthDate ? member.birthDate.split(':')[0].trim() : null,
                 }))
-            } : {})
+            }),
+            // ...(timelineEvents.length > 0 && { "event": timelineEvents }),
         } as JsonLdObject
         : {
-            "@context": "https://schema.org", "@type": "Person", name: publicFigureData.name,
-            alternateName: publicFigureData.name_kr || null, gender: publicFigureData.gender,
-            nationality: publicFigureData.nationality, url: `https://ehco.ai/${publicFigureId}`,
+            "@context": "https://schema.org", 
+            "@type": "Person", 
+            name: publicFigureData.name,
+            alternateName: publicFigureData.name_kr || null, 
+            gender: publicFigureData.gender,
+            nationality: publicFigureData.nationality, 
+            "jobTitle": publicFigureData.occupation.join(', '),
+            url: `https://ehco.ai/${publicFigureId}`,
             sameAs: [publicFigureData.instagramUrl, publicFigureData.spotifyUrl, publicFigureData.youtubeUrl].filter(Boolean) as string[],
             ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).birthDate ? { "birthDate": (publicFigureData as IndividualPerson).birthDate!.split(':')[0].trim() } : {}),
             ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).group ? { "memberOf": { "@type": "MusicGroup", "name": (publicFigureData as IndividualPerson).group! } } : {}),
@@ -275,7 +285,7 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
                 articles={articles}
                 articleSummaries={articleSummaries}
             />
-            {/* <JsonLd data={schemaData} /> */}
+            <JsonLd data={schemaData} />
         </div>
     );
 }

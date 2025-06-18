@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://ehco.ai'),
   title: {
     default: 'EHCO - K-Entertainment Facts & Timeline',
-    template: 'EHCO - %s | EHCO Timeline'
+    template: '%s | EHCO'
   },
   description: 'Real-time verified facts and timeline about Korean celebrities. Latest K-entertainment news with accurate fact-checking.',
   keywords: [
