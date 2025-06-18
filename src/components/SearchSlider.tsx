@@ -111,7 +111,7 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
             onClick={() => handleCelebrityClick(result.objectID)}
         >
             {result.profilePic && (
-                <img src={result.profilePic} alt={result.name} className="w-16 h-16 rounded-full" />
+                <img src={result.profilePic} alt={result.name} className="w-16 h-16 rounded-full object-cover" />
             )}
             <div className="flex-1 pl-2">
                 <div className="font-medium text-md">
@@ -150,7 +150,7 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
             )}
 
             <div
-                className={`fixed top-0 right-0 h-full w-full bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
+                className={`fixed top-0 right-0 h-full w-full bg-white dark:bg-slate-800 shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
                     }`}
             >
                 <div className="h-16 px-4 flex items-center border-b">
@@ -161,7 +161,7 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
                             value={searchQuery}
                             onChange={handleInputChange}
                             placeholder="Search celebrities"
-                            className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm"
+                            className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm dark:bg-slate-700 dark:border-slate-600"
                             autoFocus
                         />
                         {searchQuery && (

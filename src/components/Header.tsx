@@ -155,7 +155,7 @@ export default function Header() {
         <img
           src={result.profilePic}
           alt={result.name}
-          className="w-16 h-16 rounded-full"
+          className="w-16 h-16 rounded-full object-cover"
         />
       )}
       <div className="flex-1 pl-2">

@@ -119,6 +119,8 @@ export default function RootLayout({
         {/* <link rel="icon" type="image/x-icon" href="/favicon.ico"></link>
         <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico"></link> */}
         <meta name="referrer" content="no-referrer" />
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1708240738390806"
+          crossOrigin="anonymous"></script>
       </head>
       <body className={inter.className}>
         <Providers>
