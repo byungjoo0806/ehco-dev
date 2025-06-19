@@ -182,27 +182,30 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
         return ORDERED_MAIN_CATEGORIES.filter(c => availableCategories.includes(c));
     }, [data]);
 
-    const activeCategory = useMemo(() => {
+    // We still derive the "true" active category from the URL.
+    // This will be our source of truth for initialization and for reacting to browser back/forward buttons.
+    const urlActiveCategory = useMemo(() => {
         const catFromUrl = getCategoryFromSlug(searchParams.get('category'));
         return mainCategories.includes(catFromUrl) ? catFromUrl : mainCategories[0] || '';
     }, [searchParams, mainCategories]);
 
-    const activeSubCategory = useMemo(() => {
-        return getSubCategoryFromSlug(searchParams.get('subCategory'), activeCategory);
-    }, [searchParams, activeCategory]);
+    const urlActiveSubCategory = useMemo(() => {
+        return getSubCategoryFromSlug(searchParams.get('subCategory'), urlActiveCategory);
+    }, [searchParams, urlActiveCategory]);
 
-    const [openCategories, setOpenCategories] = useState<string[]>([activeCategory]);
+    // NEW: Local state for INSTANT UI updates.
+    // Initialize it with the values from the URL.
+    const [localActiveCategory, setLocalActiveCategory] = useState(urlActiveCategory);
+    const [localActiveSubCategory, setLocalActiveSubCategory] = useState(urlActiveSubCategory);
 
-    const handleSelectCategory = useCallback((category: string, subCategory?: string) => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('category', formatCategoryForURL(category));
-        if (subCategory) {
-            params.set('subCategory', formatCategoryForURL(subCategory));
-        } else {
-            params.delete('subCategory');
-        }
-        router.push(`${pathname}?${params.toString()}`, { scroll: false });
-    }, [pathname, router, searchParams]);
+    // NEW: Effect to sync local state if the URL changes externally (e.g., back/forward button).
+    useEffect(() => {
+        setLocalActiveCategory(urlActiveCategory);
+        setLocalActiveSubCategory(urlActiveSubCategory);
+    }, [urlActiveCategory, urlActiveSubCategory]);
+
+    // (openCategories state remains the same, but let's initialize it with the local state)
+    const [openCategories, setOpenCategories] = useState<string[]>([localActiveCategory]);
 
     const getAvailableSubCategories = useCallback((category: string) => {
         if (!category || !processedData[category]) return [];
@@ -211,13 +214,43 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
         return ordered.filter(sc => subCategoryKeys.includes(sc));
     }, [processedData]);
 
-    useEffect(() => {
-        const availableSubCategories = getAvailableSubCategories(activeCategory);
-        const currentSubCategoryIsValid = availableSubCategories.includes(activeSubCategory);
-        if (activeCategory && !currentSubCategoryIsValid && availableSubCategories.length > 0) {
-            handleSelectCategory(activeCategory, availableSubCategories[0]);
+    const handleSelectCategory = useCallback((category: string, subCategory?: string) => {
+        // --- THIS IS THE KEY CHANGE ---
+        // 1. Update the local state IMMEDIATELY for an instant UI change.
+        setLocalActiveCategory(category);
+        if (subCategory) {
+            setLocalActiveSubCategory(subCategory);
+        } else {
+            // If no subcategory is provided, select the first available one.
+            const availableSubCats = getAvailableSubCategories(category);
+            setLocalActiveSubCategory(availableSubCats[0] || '');
         }
-    }, [activeCategory, activeSubCategory, getAvailableSubCategories, handleSelectCategory]);
+
+        // 2. Update the URL in the background.
+        const params = new URLSearchParams(searchParams.toString());
+        params.set('category', formatCategoryForURL(category));
+        if (subCategory) {
+            params.set('subCategory', formatCategoryForURL(subCategory));
+        } else {
+            const availableSubCats = getAvailableSubCategories(category);
+            if (availableSubCats.length > 0) {
+                params.set('subCategory', formatCategoryForURL(availableSubCats[0]));
+            } else {
+                params.delete('subCategory');
+            }
+        }
+        // Use router.replace to avoid cluttering browser history with tab clicks
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+
+    }, [pathname, router, searchParams, getAvailableSubCategories]); // Added getAvailableSubCategories dependency
+
+    useEffect(() => {
+        const availableSubCategories = getAvailableSubCategories(localActiveCategory);
+        const currentSubCategoryIsValid = availableSubCategories.includes(localActiveSubCategory);
+        if (localActiveCategory && !currentSubCategoryIsValid && availableSubCategories.length > 0) {
+            handleSelectCategory(localActiveCategory, availableSubCategories[0]);
+        }
+    }, [localActiveCategory, localActiveSubCategory, getAvailableSubCategories, handleSelectCategory]);
 
 
     const handleToggleCategory = (category: string) => {
@@ -232,11 +265,11 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     };
 
     const displayedContent = useMemo(() => {
-        if (!activeCategory || !activeSubCategory || !processedData[activeCategory] || !processedData[activeCategory][activeSubCategory]) {
+        if (!localActiveCategory || !localActiveSubCategory || !processedData[localActiveCategory] || !processedData[localActiveCategory][localActiveSubCategory]) {
             return null;
         }
-        return { [activeSubCategory]: processedData[activeCategory][activeSubCategory] };
-    }, [activeCategory, activeSubCategory, processedData]);
+        return { [localActiveSubCategory]: processedData[localActiveCategory][localActiveSubCategory] };
+    }, [localActiveCategory, localActiveSubCategory, processedData]);
 
     return (
         <div className="w-full max-w-[100vw] flex flex-row justify-center dark:bg-gray-800">
@@ -249,15 +282,15 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                     <div className="w-full mt-3 mb-6 sticky top-16 z-10 bg-white dark:bg-slate-800 backdrop-blur-sm">
                         <div className="flex flex-row overflow-x-auto space-x-2 pb-2 hide-scrollbar border-b border-gray-200 dark:border-gray-600">
                             {mainCategories.map(category => (
-                                <button key={category} onClick={() => handleSelectCategory(category)} className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${activeCategory === category ? 'text-red-500 border-b-2 border-red-500' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}>
+                                <button key={category} onClick={() => handleSelectCategory(category)} className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${localActiveCategory === category ? 'text-red-500 border-b-2 border-red-500' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}>
                                     {category}
                                 </button>
                             ))}
                         </div>
-                        {getAvailableSubCategories(activeCategory).length > 0 && (
+                        {getAvailableSubCategories(localActiveCategory).length > 0 && (
                             <div className="flex flex-row overflow-x-auto space-x-2 py-2 hide-scrollbar border-b border-gray-200 dark:border-gray-600">
-                                {getAvailableSubCategories(activeCategory).map(subCategory => (
-                                    <button key={subCategory} onClick={() => handleSelectCategory(activeCategory, subCategory)} className={`px-3 py-1.5 whitespace-nowrap text-xs font-medium rounded-full transition-colors ${activeSubCategory === subCategory ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>
+                                {getAvailableSubCategories(localActiveCategory).map(subCategory => (
+                                    <button key={subCategory} onClick={() => handleSelectCategory(localActiveCategory, subCategory)} className={`px-3 py-1.5 whitespace-nowrap text-xs font-medium rounded-full transition-colors ${localActiveSubCategory === subCategory ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>
                                         {subCategory}
                                     </button>
                                 ))}
@@ -278,7 +311,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                 ))}
                             </div>
                         ))}
-                        {!displayedContent && activeCategory && (
+                        {!displayedContent && localActiveCategory && (
                             <div className="text-center py-12 text-gray-500"><p>Select a subcategory to view events.</p></div>
                         )}
                     </div>
@@ -307,7 +340,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                                     <button
                                                         key={subCat}
                                                         onClick={() => handleSelectCategory(category, subCat)}
-                                                        className={`px-3 py-1.5 whitespace-nowrap text-xs font-medium rounded-full transition-colors ${activeCategory === category && activeSubCategory === subCat
+                                                        className={`px-3 py-1.5 whitespace-nowrap text-xs font-medium rounded-full transition-colors ${localActiveCategory === category && localActiveSubCategory === subCat
                                                             ? 'bg-key-color text-white dark:text-gray-100'
                                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                                                             }`}
@@ -318,7 +351,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                             </div>
 
                                             {/* NEW: Conditional content rendering based on active category and subcategory */}
-                                            {activeCategory === category && displayedContent && (
+                                            {localActiveCategory === category && displayedContent && (
                                                 <div className="space-y-6 pt-4 border-t border-gray-200/80">
                                                     {Object.values(displayedContent)[0].map(event => (
                                                         <div key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-600">
