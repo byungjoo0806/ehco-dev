@@ -120,6 +120,7 @@ export default function RootLayout({
         <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico"></link> */}
         <meta name="referrer" content="no-referrer" />
         <meta name="yandex-verification" content="d95a704c62f53c58" />
+        <meta name="naver-site-verification" content="264ce0fdcec0f8516f15473b626bad62bc29202e" />
         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-1708240738390806"
           crossOrigin="anonymous"></script>
       </head>
