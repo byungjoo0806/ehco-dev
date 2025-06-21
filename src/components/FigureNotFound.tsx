@@ -1,5 +1,6 @@
 // src/components/FigureNotFound.tsx
 import { AlertTriangle } from 'lucide-react';
+import Link from 'next/link';
 
 interface FigureNotFoundProps {
     figureId: string;
@@ -13,11 +14,11 @@ const FigureNotFound = ({ figureId }: FigureNotFoundProps) => {
                 Profile Not Found
             </h1>
             <p className="text-slate-600 dark:text-slate-300">
-                A page for "{figureId}" does not exist or has not been created yet.
+                A page for &quot;{figureId}&quot; does not exist or has not been created yet.
             </p>
-            <a href="/" className="mt-6 px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition-colors">
+            <Link href="/" className="mt-6 px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition-colors">
                 Return to Homepage
-            </a>
+            </Link>
         </div>
     );
 };
