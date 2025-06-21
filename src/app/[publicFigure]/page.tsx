@@ -213,8 +213,6 @@ async function getPublicFigureContent(publicFigureId: string): Promise<ApiConten
 
 async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: string }) {
     try {
-
-
         const publicFigureData = await getPublicFigureData(publicFigureId);
         const apiResponse = await getPublicFigureContent(publicFigureId);
 

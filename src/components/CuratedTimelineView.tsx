@@ -99,6 +99,13 @@ const EventSources: React.FC<EventSourcesProps> = ({ articleIds, articlesMap }) 
     const relevantArticles = articleIds
         .map(id => articlesMap.get(id))
         .filter(Boolean) as Article[];
+    // We'll sort by 'sendDate' from newest to oldest.
+    // The 'YYYYMMDD' format allows for simple string comparison.
+    relevantArticles.sort((a, b) => {
+        if (!a.sendDate) return 1; // Articles without a date go to the end
+        if (!b.sendDate) return -1;
+        return b.sendDate.localeCompare(a.sendDate); // 'b' vs 'a' for descending order (newest first)
+    });
     const formatArticleDate = (dateString: string | undefined): string => {
         if (!dateString || dateString.length !== 8) return dateString || '';
         try {
