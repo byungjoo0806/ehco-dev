@@ -10,6 +10,7 @@ import CelebrityWiki from '@/components/CelebrityWiki';
 import type { JsonLdObject } from '@/components/JsonLd';
 import JsonLd from '@/components/JsonLd';
 import { getArticlesByIds } from '@/lib/article-service';
+import { notFound } from 'next/navigation';
 
 // --- IMPORTED TYPES ---
 // All shared types are now imported from the central definitions file.
@@ -75,8 +76,8 @@ export const viewport: Viewport = {
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ publicFigure: string }> }): Promise<Metadata> {
+    const resolvedParams = await params;
     try {
-        const resolvedParams = await params;
         const publicFigureData = await getPublicFigureData(resolvedParams.publicFigure);
 
         const title = publicFigureData.is_group
@@ -114,9 +115,10 @@ export async function generateMetadata({ params }: { params: Promise<{ publicFig
             }
         }
     } catch (error) {
+        // If the figure is not found, return generic "Not Found" metadata
         return {
-            title: 'Public Figure Profile - EHCO',
-            description: 'Public figure information and details',
+            title: 'Profile Not Found - EHCO',
+            description: 'The profile you are looking for could not be found.',
         }
     }
 }
@@ -210,84 +212,96 @@ async function getPublicFigureContent(publicFigureId: string): Promise<ApiConten
 // --- MAIN CONTENT COMPONENT ---
 
 async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: string }) {
-    const publicFigureData = await getPublicFigureData(publicFigureId);
-    const apiResponse = await getPublicFigureContent(publicFigureId);
+    try {
 
-    const allArticleIds: string[] = [...(apiResponse.main_overview.articleIds || [])];
-    if (apiResponse.timeline_content.schema_version === 'v1_legacy') {
-        const legacyArticleIds = apiResponse.timeline_content.data.categoryContent.flatMap((item: WikiContentItem) => item.articleIds || []);
-        allArticleIds.push(...legacyArticleIds);
-    } else { // v2_curated
-        const sourcesSet = new Set<string>();
-        Object.values(apiResponse.timeline_content.data).forEach((subCatMap) => {
-            Object.values(subCatMap).forEach((eventList) => {
-                eventList.forEach((event) => {
-                    (event.sources || []).forEach((source) => {
-                        if (source.id) {
-                            sourcesSet.add(source.id);
-                        }
+
+        const publicFigureData = await getPublicFigureData(publicFigureId);
+        const apiResponse = await getPublicFigureContent(publicFigureId);
+
+        const allArticleIds: string[] = [...(apiResponse.main_overview.articleIds || [])];
+        if (apiResponse.timeline_content.schema_version === 'v1_legacy') {
+            const legacyArticleIds = apiResponse.timeline_content.data.categoryContent.flatMap((item: WikiContentItem) => item.articleIds || []);
+            allArticleIds.push(...legacyArticleIds);
+        } else { // v2_curated
+            const sourcesSet = new Set<string>();
+            Object.values(apiResponse.timeline_content.data).forEach((subCatMap) => {
+                Object.values(subCatMap).forEach((eventList) => {
+                    eventList.forEach((event) => {
+                        (event.sources || []).forEach((source) => {
+                            if (source.id) {
+                                sourcesSet.add(source.id);
+                            }
+                        });
                     });
                 });
             });
-        });
-        allArticleIds.push(...Array.from(sourcesSet));
+            allArticleIds.push(...Array.from(sourcesSet));
+        }
+        const uniqueArticleIds = allArticleIds.filter((id, index, self) => self.indexOf(id) === index);
+
+        const [articles, articleSummaries] = await Promise.all([
+            getArticlesByIds(uniqueArticleIds),
+            getArticleSummaries(publicFigureId, uniqueArticleIds)
+        ]);
+
+        const schemaData = publicFigureData.is_group
+            ? {
+                "@context": "https://schema.org",
+                "@type": "MusicGroup",
+                name: publicFigureData.name,
+                alternateName: publicFigureData.name_kr || null,
+                nationality: publicFigureData.nationality,
+                url: `https://ehco.ai/${publicFigureId}`,
+                sameAs: [publicFigureData.instagramUrl, publicFigureData.spotifyUrl, publicFigureData.youtubeUrl].filter(Boolean) as string[],
+                ...(publicFigureData.company ? { "memberOf": { "@type": "Organization", "name": publicFigureData.company } } : {}),
+                ...(publicFigureData.debutDate ? { "foundingDate": publicFigureData.debutDate.split(':')[0].trim() } : {}),
+                ...((publicFigureData as GroupProfile).members && (publicFigureData as GroupProfile).members!.length > 0 && {
+                    "member": (publicFigureData as GroupProfile).members!.map(member => ({
+                        "@type": "Person",
+                        "birthDate": member.birthDate ? member.birthDate.split(':')[0].trim() : null,
+                    }))
+                }),
+                // ...(timelineEvents.length > 0 && { "event": timelineEvents }),
+            } as JsonLdObject
+            : {
+                "@context": "https://schema.org",
+                "@type": "Person",
+                name: publicFigureData.name,
+                alternateName: publicFigureData.name_kr || null,
+                gender: publicFigureData.gender,
+                nationality: publicFigureData.nationality,
+                "jobTitle": publicFigureData.occupation.join(', '),
+                url: `https://ehco.ai/${publicFigureId}`,
+                sameAs: [publicFigureData.instagramUrl, publicFigureData.spotifyUrl, publicFigureData.youtubeUrl].filter(Boolean) as string[],
+                ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).birthDate ? { "birthDate": (publicFigureData as IndividualPerson).birthDate!.split(':')[0].trim() } : {}),
+                ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).group ? { "memberOf": { "@type": "MusicGroup", "name": (publicFigureData as IndividualPerson).group! } } : {}),
+                ...(publicFigureData.company ? { "affiliation": { "@type": "Organization", "name": publicFigureData.company } } : {})
+            } as JsonLdObject;
+
+        return (
+            <div className="w-full">
+                <ProfileInfo
+                    publicFigureData={publicFigureData}
+                    mainOverview={apiResponse.main_overview}
+                />
+                <CelebrityWiki
+                    mainOverview={apiResponse.main_overview}
+                    apiResponse={apiResponse.timeline_content}
+                    articles={articles}
+                    articleSummaries={articleSummaries}
+                />
+                <JsonLd data={schemaData} />
+            </div>
+        );
+    } catch (error) {
+        // Check if the error is the one we expect from getPublicFigureData
+        if (error instanceof Error && error.message === 'Public figure not found') {
+            // This is the key change: trigger the 404 page
+            notFound();
+        }
+        // For any other unexpected errors, you might want to re-throw or handle differently
+        throw error;
     }
-    const uniqueArticleIds = allArticleIds.filter((id, index, self) => self.indexOf(id) === index);
-
-    const [articles, articleSummaries] = await Promise.all([
-        getArticlesByIds(uniqueArticleIds),
-        getArticleSummaries(publicFigureId, uniqueArticleIds)
-    ]);
-
-    const schemaData = publicFigureData.is_group
-        ? {
-            "@context": "https://schema.org", 
-            "@type": "MusicGroup", 
-            name: publicFigureData.name,
-            alternateName: publicFigureData.name_kr || null, 
-            nationality: publicFigureData.nationality,
-            url: `https://ehco.ai/${publicFigureId}`,
-            sameAs: [publicFigureData.instagramUrl, publicFigureData.spotifyUrl, publicFigureData.youtubeUrl].filter(Boolean) as string[],
-            ...(publicFigureData.company ? { "memberOf": { "@type": "Organization", "name": publicFigureData.company } } : {}),
-            ...(publicFigureData.debutDate ? { "foundingDate": publicFigureData.debutDate.split(':')[0].trim() } : {}),
-            ...((publicFigureData as GroupProfile).members && (publicFigureData as GroupProfile).members!.length > 0 && {
-                "member": (publicFigureData as GroupProfile).members!.map(member => ({
-                    "@type": "Person",
-                    "birthDate": member.birthDate ? member.birthDate.split(':')[0].trim() : null,
-                }))
-            }),
-            // ...(timelineEvents.length > 0 && { "event": timelineEvents }),
-        } as JsonLdObject
-        : {
-            "@context": "https://schema.org", 
-            "@type": "Person", 
-            name: publicFigureData.name,
-            alternateName: publicFigureData.name_kr || null, 
-            gender: publicFigureData.gender,
-            nationality: publicFigureData.nationality, 
-            "jobTitle": publicFigureData.occupation.join(', '),
-            url: `https://ehco.ai/${publicFigureId}`,
-            sameAs: [publicFigureData.instagramUrl, publicFigureData.spotifyUrl, publicFigureData.youtubeUrl].filter(Boolean) as string[],
-            ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).birthDate ? { "birthDate": (publicFigureData as IndividualPerson).birthDate!.split(':')[0].trim() } : {}),
-            ...(!publicFigureData.is_group && (publicFigureData as IndividualPerson).group ? { "memberOf": { "@type": "MusicGroup", "name": (publicFigureData as IndividualPerson).group! } } : {}),
-            ...(publicFigureData.company ? { "affiliation": { "@type": "Organization", "name": publicFigureData.company } } : {})
-        } as JsonLdObject;
-
-    return (
-        <div className="w-full">
-            <ProfileInfo
-                publicFigureData={publicFigureData}
-                mainOverview={apiResponse.main_overview}
-            />
-            <CelebrityWiki
-                mainOverview={apiResponse.main_overview}
-                apiResponse={apiResponse.timeline_content}
-                articles={articles}
-                articleSummaries={articleSummaries}
-            />
-            <JsonLd data={schemaData} />
-        </div>
-    );
 }
 
 // --- MAIN PAGE COMPONENT ---
