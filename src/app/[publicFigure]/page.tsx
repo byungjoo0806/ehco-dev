@@ -160,13 +160,13 @@ async function getPublicFigureData(publicFigureId: string): Promise<PublicFigure
 
     const data = docSnap.data();
     const publicFigureData: Partial<PublicFigure> = {
-        id: docSnap.id, 
-        name: data.name || '', 
+        id: docSnap.id,
+        name: data.name || '',
         name_kr: data.name_kr || '',
         gender: data.gender || '',
         nationality: data.nationality || '',
         occupation: data.occupation || [],
-        is_group: Boolean(data.is_group), 
+        is_group: Boolean(data.is_group),
         profilePic: data.profilePic || '',
         companyUrl: data.companyUrl || '',
         instagramUrl: data.instagramUrl || '',
@@ -202,7 +202,8 @@ async function getPublicFigureContent(publicFigureId: string): Promise<ApiConten
     try {
         const contentResponse = await fetch(
             `${protocol}://${host}/api/public-figure-content/${publicFigureId}`,
-            { cache: 'force-cache', next: { revalidate: 3600 } }
+            // { cache: 'force-cache', next: { revalidate: 3600 } }
+            { cache: 'no-store' }
         );
         if (!contentResponse.ok) throw new Error('Failed to fetch content');
         return await contentResponse.json();
@@ -233,19 +234,30 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
             const legacyArticleIds = apiResponse.timeline_content.data.categoryContent.flatMap((item: WikiContentItem) => item.articleIds || []);
             allArticleIds.push(...legacyArticleIds);
         } else { // v2_curated
+            // ================================================================== //
+            // --- MODIFIED BLOCK ---                                             //
+            // ================================================================== //
             const sourcesSet = new Set<string>();
-            Object.values(apiResponse.timeline_content.data).forEach((subCatMap) => {
-                Object.values(subCatMap).forEach((eventList) => {
-                    eventList.forEach((event) => {
-                        (event.sources || []).forEach((source) => {
-                            if (source.id) {
-                                sourcesSet.add(source.id);
-                            }
+
+            // The outer loop now iterates over the main category object
+            Object.values(apiResponse.timeline_content.data).forEach((mainCatData) => {
+                // We now specifically access the .subCategories property
+                if (mainCatData && mainCatData.subCategories) {
+                    Object.values(mainCatData.subCategories).forEach((eventList) => {
+                        eventList.forEach((event) => {
+                            (event.sources || []).forEach((source) => {
+                                if (source.id) {
+                                    sourcesSet.add(source.id);
+                                }
+                            });
                         });
                     });
-                });
+                }
             });
             allArticleIds.push(...Array.from(sourcesSet));
+            // ================================================================== //
+            // --- END MODIFIED BLOCK ---                                         //
+            // ================================================================== //
         }
         const uniqueArticleIds = allArticleIds.filter((id, index, self) => self.indexOf(id) === index);
 
@@ -254,6 +266,7 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
             getArticleSummaries(publicFigureId, uniqueArticleIds)
         ]);
 
+        // ... rest of the function (schemaData, JSX return) remains unchanged ...
         const schemaData = publicFigureData.is_group
             ? {
                 "@context": "https://schema.org",

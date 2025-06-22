@@ -18,9 +18,17 @@ interface CuratedEvent {
     sources: string[];
 }
 
+interface SubCategoryMap {
+    [subCategory: string]: CuratedEvent[];
+}
+
+// This interface is what we want our API to ultimately return for v2.
 interface CuratedTimelineData {
     [mainCategory: string]: {
-        [subCategory: string]: CuratedEvent[];
+        description: string;
+        subCategories: {
+            [subCategory: string]: CuratedEvent[];
+        };
     };
 }
 
@@ -41,6 +49,7 @@ interface LegacyWikiData {
 // --- HELPER FUNCTIONS ---
 
 async function fetchMainOverview(publicFigureRef: DocumentReference) {
+    // ... (This function is correct, no changes needed)
     const overviewRef = doc(publicFigureRef, 'wiki-content', 'main-overview');
     const overviewDoc = await getDoc(overviewRef);
     if (overviewDoc.exists()) {
@@ -54,7 +63,9 @@ async function fetchMainOverview(publicFigureRef: DocumentReference) {
     return { id: 'main-overview', content: "", articleIds: [] };
 }
 
-async function fetchNewTimelineData(publicFigureRef: DocumentReference): Promise<CuratedTimelineData | null> {
+// MODIFIED: This function is now simplified. Its ONLY job is to get the event data.
+// It no longer needs to worry about descriptions.
+async function fetchNewTimelineData(publicFigureRef: DocumentReference): Promise<Record<string, SubCategoryMap> | null> {
     const timelineCollectionRef = collection(publicFigureRef, 'curated-timeline');
     const timelineSnapshot = await getDocs(timelineCollectionRef);
 
@@ -62,15 +73,16 @@ async function fetchNewTimelineData(publicFigureRef: DocumentReference): Promise
         return null;
     }
 
-    const curatedData = {} as CuratedTimelineData;
-
+    const eventData: Record<string, SubCategoryMap> = {};
     for (const doc of timelineSnapshot.docs) {
-        curatedData[doc.id] = doc.data();
+        // Just get the raw data, which contains the sub-category fields.
+        eventData[doc.id] = doc.data();
     }
-
-    return curatedData;
+    return eventData;
 }
 
+// NO CHANGE: This function is perfect because it already reads the 'wiki-content'
+// documents where our descriptions are stored. We will reuse it.
 async function fetchLegacyWikiData(publicFigureRef: DocumentReference): Promise<LegacyWikiData> {
     const wikiContentRef = collection(publicFigureRef, 'wiki-content');
     const wikiContentSnapshot = await getDocs(wikiContentRef);
@@ -86,8 +98,10 @@ async function fetchLegacyWikiData(publicFigureRef: DocumentReference): Promise<
         const id = doc.id;
         const formattedId = formatDisplayName(id);
         if (MAIN_CATEGORIES.includes(formattedId)) {
+            // This captures the main category documents and their content.
             categoryContent.push({ id, category: formattedId, content: data.content || "", articleIds: data.articleIds || [] });
         } else if (data.category && MAIN_CATEGORIES.includes(data.category)) {
+            // This captures the sub-category documents for the v1 schema.
             categoryContent.push({ id, category: data.category, subcategory: formattedId, content: data.content || "", articleIds: data.articleIds || [] });
         }
     }
@@ -111,25 +125,52 @@ export async function GET(
         }
 
         const mainOverviewData = await fetchMainOverview(publicFigureRef);
-        const newTimelineData = await fetchNewTimelineData(publicFigureRef);
 
-        if (newTimelineData) {
+        // Fetch both sets of data in parallel
+        const [timelineEventData, wikiData] = await Promise.all([
+            fetchNewTimelineData(publicFigureRef),
+            fetchLegacyWikiData(publicFigureRef)
+        ]);
+
+        // If we have timeline data, we are using the v2 schema.
+        if (timelineEventData) {
+
+            // Create a simple map to easily look up descriptions by category name.
+            const descriptionMap = new Map<string, string>();
+            wikiData.categoryContent.forEach(item => {
+                // We only care about main categories here (items without a subcategory).
+                if (!item.subcategory) {
+                    descriptionMap.set(item.category, item.content);
+                }
+            });
+
+            // Now, we'll build the final data structure the frontend expects.
+            const finalCuratedData: CuratedTimelineData = {};
+
+            for (const mainCategory in timelineEventData) {
+                finalCuratedData[mainCategory] = {
+                    // Get the description from our map.
+                    description: descriptionMap.get(mainCategory) || "",
+                    // The event data becomes the subCategories.
+                    subCategories: timelineEventData[mainCategory]
+                };
+            }
+
             return NextResponse.json({
                 main_overview: mainOverviewData,
                 timeline_content: {
                     schema_version: 'v2_curated',
-                    data: newTimelineData
+                    data: finalCuratedData // Send the newly merged data!
                 }
             });
         }
 
-        const legacyWikiData = await fetchLegacyWikiData(publicFigureRef);
-
+        // Fallback to legacy schema if no timeline data exists.
         return NextResponse.json({
             main_overview: mainOverviewData,
             timeline_content: {
                 schema_version: 'v1_legacy',
-                data: legacyWikiData
+                data: wikiData
             }
         });
 

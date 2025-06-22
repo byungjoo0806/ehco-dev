@@ -78,7 +78,7 @@ const TimelineArticleCard: React.FC<{ article: ArticleData }> = ({ article }) =>
                     <div className="w-20 h-full relative flex-shrink-0">
                         <img
                             src={firstImage}
-                            // alt={caption}
+                            alt={"article image"}
                             className="object-cover w-full h-full"
                         />
                     </div>

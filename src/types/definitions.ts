@@ -21,7 +21,10 @@ export interface CuratedEvent {
 
 export interface CuratedTimelineData {
     [mainCategory: string]: {
-        [subCategory: string]: CuratedEvent[];
+        description: string;
+        subCategories: {
+            [subCategory: string]: CuratedEvent[];
+        };
     };
 }
 

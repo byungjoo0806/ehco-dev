@@ -9,6 +9,7 @@ import {
     CuratedTimelineData,
     TimelinePoint
 } from '@/types/definitions';
+import MainCategorySummary from './MainCategorySummary';
 
 // --- TYPE DEFINITIONS ---
 interface EventSourcesProps {
@@ -258,15 +259,18 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
 
 // --- MAIN COMPONENT ---
 const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, articles }) => {
+    console.log("Data received by CuratedTimelineView:", data);
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
     const processedData: CuratedTimelineData = useMemo(() => {
         const dataCopy: CuratedTimelineData = JSON.parse(JSON.stringify(data));
+        // CHANGED: Logic now iterates through the new structure
         for (const mainCategory in dataCopy) {
-            for (const subCategory in dataCopy[mainCategory]) {
-                const eventList = dataCopy[mainCategory][subCategory];
+            // Now we look inside the subCategories property
+            for (const subCategory in dataCopy[mainCategory].subCategories) {
+                const eventList = dataCopy[mainCategory].subCategories[subCategory];
                 eventList.forEach((event) => {
                     event.timeline_points = sortTimelinePoints(event.timeline_points);
                 });
@@ -306,20 +310,24 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     const [openCategories, setOpenCategories] = useState<string[]>([localActiveCategory]);
 
     const getAvailableSubCategories = useCallback((category: string) => {
-        if (!category || !processedData[category]) return [];
-        const subCategoryKeys = Object.keys(processedData[category]);
+        // CHANGED: Now looks inside the .subCategories object
+        if (!category || !processedData[category] || !processedData[category].subCategories) return [];
+        const subCategoryKeys = Object.keys(processedData[category].subCategories);
         const ordered = ORDERED_SUB_CATEGORIES[category] || [];
         return ordered.filter(sc => subCategoryKeys.includes(sc));
     }, [processedData]);
 
     const availableYears = useMemo(() => {
         const yearSet = new Set<number>();
-        Object.values(processedData).forEach(subCategories => {
-            Object.values(subCategories).forEach(events => {
-                events.forEach(event => {
-                    event.event_years?.forEach(year => yearSet.add(year));
+        // CHANGED: Iterates one level deeper to get to events
+        Object.values(processedData).forEach(mainCatData => {
+            if (mainCatData && mainCatData.subCategories) {
+                Object.values(mainCatData.subCategories).forEach(events => {
+                    events.forEach(event => {
+                        event.event_years?.forEach(year => yearSet.add(year));
+                    });
                 });
-            });
+            }
         });
         return Array.from(yearSet).sort((a, b) => b - a);
     }, [processedData]);
@@ -379,11 +387,12 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     };
 
     const displayedContent = useMemo(() => {
-        if (!localActiveCategory || !localActiveSubCategory || !processedData[localActiveCategory]?.[localActiveSubCategory]) {
+        // CHANGED: Accesses data through the new .subCategories path
+        if (!localActiveCategory || !localActiveSubCategory || !processedData[localActiveCategory]?.subCategories?.[localActiveSubCategory]) {
             return null;
         }
         
-        let events = processedData[localActiveCategory][localActiveSubCategory];
+        let events = processedData[localActiveCategory].subCategories[localActiveSubCategory];
         
         if (selectedYears.length > 0) {
             events = events.filter(event => 
@@ -435,13 +444,21 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                 {/* ================================================================== */}
                 <div className="hidden sm:block">
                     <div className="w-full mt-3 mb-6 sticky top-16 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-                        <div className="flex flex-row overflow-x-auto space-x-2 pb-2 hide-scrollbar border-b border-gray-200 dark:border-gray-600">
+                        <div className="flex flex-row flex-wrap gap-x-2 gap-y-1 pb-2 border-b border-gray-200 dark:border-gray-600">
                             {mainCategories.map(category => (
                                 <button key={category} onClick={() => handleSelectCategory(category)} className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${localActiveCategory === category ? 'text-red-500 border-b-2 border-red-500' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}>
                                     {category}
                                 </button>
                             ))}
                         </div>
+
+                        {/* ========================================================= */}
+                        {/* ADDED: Main Category Description is placed here           */}
+                        {/* ========================================================= */}
+                        {localActiveCategory && processedData[localActiveCategory] && (
+                             <MainCategorySummary content={processedData[localActiveCategory].description} />
+                        )}
+
                         {getAvailableSubCategories(localActiveCategory).length > 0 && (
                             <div className="flex flex-row overflow-x-auto space-x-2 py-2 hide-scrollbar border-b border-gray-200 dark:border-gray-600">
                                 {getAvailableSubCategories(localActiveCategory).map(subCategory => (
