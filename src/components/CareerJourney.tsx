@@ -10,7 +10,6 @@ import {
     Article,
     ArticleSummary,
     LegacyWikiData,
-    MainOverview,
     WikiContentItem
 } from '@/types/definitions';
 
@@ -51,16 +50,15 @@ function processLegacyData(data: LegacyWikiData) {
 }
 
 // Define the props for the component with our new interfaces
-interface CelebrityWikiProps {
+interface CareerJourneyProps {
     apiResponse: TimelineContent;
     articles: Article[];
     articleSummaries: ArticleSummary[];
-    mainOverview: MainOverview;
 }
 
 // --- COMPONENT ---
 
-const CelebrityWiki: React.FC<CelebrityWikiProps> = ({ apiResponse, articles, articleSummaries, mainOverview }) => {
+const CareerJourney: React.FC<CareerJourneyProps> = ({ apiResponse, articles, articleSummaries }) => {
 
     if (apiResponse.schema_version === 'v2_curated') {
         return <CuratedTimelineView
@@ -77,7 +75,6 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({ apiResponse, articles, ar
             categories={categories}
             subcategories={subcategories}
             categoryContent={apiResponse.data.categoryContent}
-            mainOverview={mainOverview}
             articles={articles}
             articleSummaries={articleSummaries}
         />;
@@ -86,4 +83,4 @@ const CelebrityWiki: React.FC<CelebrityWikiProps> = ({ apiResponse, articles, ar
     return <div>Unable to render content. Unknown schema version.</div>;
 };
 
-export default CelebrityWiki;
+export default CareerJourney;

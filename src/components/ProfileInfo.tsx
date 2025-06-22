@@ -1,10 +1,12 @@
+// src/components/ProfileInfo.tsx
 'use client';
 
 import React from 'react';
 import Image from 'next/image';
-import { User, Instagram, Youtube, Music } from 'lucide-react';
+import { User, Instagram, Youtube, Music, Globe, Twitter, Facebook, Plus } from 'lucide-react';
 
-// Extended interface for public figure data
+// --- TYPE DEFINITIONS ---
+// These interfaces are based on what's available in page.tsx
 interface PublicFigureBase {
   id: string;
   name: string;
@@ -15,6 +17,10 @@ interface PublicFigureBase {
   instagramUrl?: string;
   spotifyUrl?: string;
   youtubeUrl?: string;
+  // Assuming these might be added later based on the screenshot
+  companyUrl?: string;
+  twitterUrl?: string;
+  facebookUrl?: string;
   gender: string;
   company?: string;
   debutDate?: string;
@@ -24,10 +30,6 @@ interface PublicFigureBase {
 interface IndividualPerson extends PublicFigureBase {
   is_group: false;
   birthDate?: string;
-  chineseZodiac?: string;
-  group?: string;
-  school?: string[];
-  zodiacSign?: string;
 }
 
 interface GroupProfile extends PublicFigureBase {
@@ -39,219 +41,123 @@ type PublicFigure = IndividualPerson | GroupProfile;
 
 interface ProfileInfoProps {
   publicFigureData: PublicFigure;
-  mainOverview?: {
-    id: string;
-    content: string;
-    articleIds: string[];
-  };
 }
 
-export default function ProfileInfo({ publicFigureData, mainOverview }: ProfileInfoProps) {
-  const formatArrayValue = (value: string[] | undefined): string => {
-    if (!value || value.length === 0) return 'N/A';
-    return value.join(', ');
-  };
 
-  // Format date to be more readable 
+// --- HELPER COMPONENTS & FUNCTIONS ---
+const InfoField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+  <div>
+    <p className="text-xs font-semibold text-gray-500">{label}</p>
+    <p className="text-sm text-gray-800 dark:text-gray-200">{value}</p>
+  </div>
+);
+
+const SocialLink: React.FC<{ href?: string; icon: React.ReactNode; label: string }> = ({ href, icon, label }) => {
+  if (!href) return null;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-500 transition-colors dark:text-gray-400 dark:hover:text-blue-400"
+    >
+      {icon}
+      {label}
+    </a>
+  );
+};
+
+
+// --- MAIN COMPONENT ---
+export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
+
   const formatDate = (dateString: string | undefined): string => {
     if (!dateString) return 'N/A';
-
-    // Check if the dateString contains additional info after a colon
-    const parts = dateString.split(':');
-    const dateOnly = parts[0].trim();
-    const additionalInfo = parts.length > 1 ? parts[1].trim() : '';
-
+    const dateOnly = dateString.split(':')[0].trim();
     try {
       const date = new Date(dateOnly);
-      const options: Intl.DateTimeFormatOptions = {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      };
-      const formattedDate = date.toLocaleDateString('en-US', options);
-      return additionalInfo ? `${formattedDate} (${additionalInfo})` : formattedDate;
+      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     } catch (error) {
-      return dateString; // Return original if parsing fails
+      return dateString;
     }
   };
 
-  // Determine which fields to display based on whether it's a group or individual
-  interface ProfileField {
-    label: string;
-    value: string;
-    details?: IndividualPerson[]; // Specifically for member info in groups
-  }
-
-  const getProfileFields = (): ProfileField[] => {
-    const commonFields: ProfileField[] = [
-      { label: "Nationality", value: publicFigureData.nationality },
-      { label: "Company", value: publicFigureData.company || '' },
-      { label: "Debut Date", value: formatDate(publicFigureData.debutDate) },
-    ];
-
-    if (publicFigureData.is_group) {
-      // Group-specific fields
-      return [
-        ...commonFields,
-        {
-          label: "Members",
-          value: (publicFigureData as GroupProfile).members?.length.toString() || "0",
-          details: (publicFigureData as GroupProfile).members // Pass the full members array
-        }
-      ];
-    } else {
-      // Individual-specific fields
-      const individualData = publicFigureData as IndividualPerson;
-      return [
-        ...commonFields,
-        { label: "Gender", value: individualData.gender },
-        { label: "Birth Date", value: formatDate(individualData.birthDate) },
-        { label: "Group", value: individualData.group || '' },
-        { label: "Zodiac Sign", value: individualData.zodiacSign || '' },
-        { label: "Chinese Zodiac", value: individualData.chineseZodiac || '' },
-      ];
-    }
+  const getYearsActive = (dateString: string | undefined): string => {
+    if (!dateString) return 'N/A';
+    const year = dateString.split('-')[0].split(' ')[0].trim();
+    return `${year} - Present`;
   };
 
-  // Additional info fields for the right section
-  const getAdditionalFields = () => {
-    const commonFields = [
-      { label: "Occupation", value: formatArrayValue(publicFigureData.occupation) }
-    ];
-
-    if (!publicFigureData.is_group) {
-      // Individual-specific additional fields
-      const individualData = publicFigureData as IndividualPerson;
-      return [
-        ...commonFields,
-        { label: "Education", value: formatArrayValue(individualData.school) }
-      ];
-    }
-
-    return commonFields;
-  };
+  // const description = `${publicFigureData.nationality} ${publicFigureData.occupation.join(', ')}. Renowned for...`; // Example description
 
   return (
-    <div className="w-full bg-gray-50 dark:bg-slate-900 dark:border-b dark:border-b-white py-6 md:py-8 shadow-sm">
-      <div className="w-[90%] md:w-[80%] mx-auto px-2 md:px-4">
-        <div className="flex flex-col md:flex-row md:justify-between gap-6 md:gap-8">
-          {/* Left Section - Profile Icon and Basic Info */}
-          <div className="w-full md:w-64 flex flex-col items-center md:items-start md:border-r md:border-dashed md:border-gray-300 md:pr-4">
-            <div className="w-32 h-32 rounded-lg bg-gray-200 overflow-hidden mb-4 flex items-center justify-center">
-              {publicFigureData.profilePic ? (
-                <Image
-                  src={publicFigureData.profilePic}
-                  alt={publicFigureData.name}
-                  width={128}
-                  height={128}
-                  className="w-full h-full object-cover"
-                  unoptimized
-                />
-              ) : (
-                <User size={64} className="text-gray-400" />
-              )}
+    // Main container with two-column layout
+    <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 w-full p-4 border shadow-md rounded-lg">
+
+      {/* --- LEFT COLUMN: PROFILE IMAGE --- */}
+      <div className="w-full sm:w-1/3 md:w-48 lg:w-56 flex-shrink-0">
+        <div className="aspect-square w-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
+          {publicFigureData.profilePic ? (
+            <Image
+              src={publicFigureData.profilePic}
+              alt={publicFigureData.name}
+              width={224} // Corresponds to w-56
+              height={224}
+              className="w-full h-full object-cover"
+              unoptimized
+            />
+          ) : (
+            <div className='text-center text-gray-500'>
+              <User size={64} className="mx-auto text-gray-400 mb-2" />
+              Image Not Found
             </div>
+          )}
+        </div>
+      </div>
 
-            <h1 className="text-xl md:text-2xl font-bold mb-1 text-center md:text-left text-black dark:text-white">
-              {publicFigureData.name}
-            </h1>
+      {/* --- RIGHT COLUMN: ALL TEXTUAL INFO --- */}
+      <div className="flex flex-col flex-grow">
 
-            {publicFigureData.name_kr && (
-              <h2 className="text-lg md:text-xl font-medium mb-3 text-center md:text-left text-gray-600 dark:text-gray-300">
-                {publicFigureData.name_kr}
-              </h2>
-            )}
+        {/* Name and Description */}
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{publicFigureData.name}</h1>
+        <h2>{publicFigureData.name_kr}</h2>
 
-            {/* Social Media Links */}
-            {(publicFigureData.instagramUrl || publicFigureData.youtubeUrl || publicFigureData.spotifyUrl) && (
-              <div className="flex space-x-3 mb-4">
-                {publicFigureData.instagramUrl && (
-                  <a href={publicFigureData.instagramUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-pink-500 hover:text-pink-300 transition-colors">
-                    <Instagram size={20} />
-                  </a>
-                )}
-                {publicFigureData.youtubeUrl && (
-                  <a href={publicFigureData.youtubeUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-red-600 hover:text-red-400 transition-colors">
-                    <Youtube size={20} />
-                  </a>
-                )}
-                {publicFigureData.spotifyUrl && (
-                  <a href={publicFigureData.spotifyUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-green-500 hover:text-green-300 transition-colors">
-                    <Music size={20} />
-                  </a>
-                )}
-              </div>
-            )}
+        {/* Info Grid */}
+        <div className="grid grid-cols-2 gap-y-4 gap-x-8 mt-6">
+          {!publicFigureData.is_group && (
+            <InfoField label="Born" value={formatDate((publicFigureData as IndividualPerson).birthDate)} />
+          )}
+          <InfoField label="Origin" value={publicFigureData.nationality} />
+          {!publicFigureData.is_group && (
+            <InfoField label="Roles" value={publicFigureData.occupation[0]} />
+          )}
+          <InfoField label="Labels" value={publicFigureData.company || 'N/A'} />
+          {publicFigureData.is_group && (
+            <InfoField label="Members" value={publicFigureData.members?.map(member => member.name).join(', ') || 'N/A'}/>
+          )}
+          <InfoField label="Years Active" value={getYearsActive(publicFigureData.debutDate)} />
+        </div>
 
-            <div className="grid grid-cols-1 gap-y-3 w-full">
-              {getProfileFields()
-                .filter(item => item.value) // Only display fields with values
-                .map((item, index) => (
-                  <div key={index} className="flex flex-col md:flex-row gap-1 md:gap-2">
-                    <div className="text-sm font-medium text-center md:text-left text-black dark:text-white">
-                      {item.label}:
-                    </div>
-                    <div className="text-sm text-center md:text-left text-black dark:text-white">
-                      {item.label !== "Members" && (item.value || "N/A")}
-                      {/* Show member names if this is the Members field for a group */}
-                      {item.label === "Members" && item.details && publicFigureData.is_group && (
-                        <span className="block text-sm text-gray-600 dark:text-gray-300 mt-1">
-                          {(item.details as IndividualPerson[]).map((member, i, arr) => (
-                            <span key={member.name}>
-                              <a
-                                href={`/${member.name.toLowerCase().replace(/\s+/g, '-')}`}
-                                className="hover:underline text-blue-600 dark:text-blue-400"
-                              >
-                                {member.name}
-                              </a>
-                              {i < arr.length - 1 ? ', ' : ''}
-                            </span>
-                          ))}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-
-              {/* Add occupation here */}
-              <div className="flex flex-col md:flex-row gap-1 md:gap-2">
-                <div className="text-sm font-medium text-center md:text-left text-black dark:text-white">
-                  Occupation:
-                </div>
-                <div className="text-sm text-center md:text-left text-black dark:text-white">
-                  {formatArrayValue(publicFigureData.occupation)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Section - Main Overview */}
-          <div className="w-full md:w-[70%] lg:w-[65%]">
-            <h2 className="text-xl font-bold mb-6 text-black dark:text-white text-center md:text-left">
-              Overview
-            </h2>
-
-            {mainOverview?.content ? (
-              <div className="prose prose-sm text-black dark:text-gray-300 max-w-none">
-                {mainOverview.content.replaceAll("*", "'")}
-              </div>
-            ) : (
-              <div className="text-center text-gray-500 dark:text-gray-400">
-                No overview content available
-              </div>
-            )}
-
-            {/* Add Last Updated Info */}
-            {publicFigureData.lastUpdated && (
-              <div className="mt-6 text-xs text-gray-500 dark:text-gray-400 text-right">
-                Last Updated: {formatDate(publicFigureData.lastUpdated)}
-              </div>
-            )}
+        {/* Official Links */}
+        <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-semibold text-gray-500 mb-3">Official Links</h3>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <SocialLink href={publicFigureData.companyUrl} icon={<Globe size={16} />} label="Website" />
+            <SocialLink href={publicFigureData.instagramUrl} icon={<Instagram size={16} />} label="Instagram" />
+            <SocialLink href={publicFigureData.twitterUrl} icon={<Twitter size={16} />} label="Twitter" />
+            <SocialLink href={publicFigureData.youtubeUrl} icon={<Youtube size={16} />} label="YouTube" />
+            <SocialLink href={publicFigureData.facebookUrl} icon={<Facebook size={16} />} label="Facebook" />
+            <SocialLink href={publicFigureData.spotifyUrl} icon={<Music size={16} />} label="Spotify" />
           </div>
         </div>
+
+        {/* Follow Button */}
+        {/* <div className="mt-8">
+          <button className="w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors">
+            <Plus size={20} />
+            Follow
+          </button>
+        </div> */}
       </div>
     </div>
   );

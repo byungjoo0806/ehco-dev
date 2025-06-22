@@ -6,7 +6,8 @@ import { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import { Loader2 } from 'lucide-react';
 import ProfileInfo from '@/components/ProfileInfo';
-import CelebrityWiki from '@/components/CelebrityWiki';
+import CareerJourney from '@/components/CareerJourney';
+import MainOverview from '@/components/MainOverview';
 import type { JsonLdObject } from '@/components/JsonLd';
 import JsonLd from '@/components/JsonLd';
 import { getArticlesByIds } from '@/lib/article-service';
@@ -19,6 +20,7 @@ import {
     ArticleSummary,
     WikiContentItem
 } from '@/types/definitions';
+import YouMightAlsoLike from '@/components/YouMightAlsoLike';
 
 // --- PAGE-SPECIFIC TYPES ---
 // These types are only used for fetching data on this page, so they can remain here.
@@ -29,6 +31,7 @@ interface PublicFigureBase {
     nationality: string;
     occupation: string[];
     profilePic?: string;
+    companyUrl?: string;
     instagramUrl?: string;
     spotifyUrl?: string;
     youtubeUrl?: string;
@@ -157,12 +160,21 @@ async function getPublicFigureData(publicFigureId: string): Promise<PublicFigure
 
     const data = docSnap.data();
     const publicFigureData: Partial<PublicFigure> = {
-        id: docSnap.id, name: data.name || '', name_kr: data.name_kr || '',
-        gender: data.gender || '', nationality: data.nationality || '', occupation: data.occupation || [],
-        is_group: Boolean(data.is_group), profilePic: data.profilePic || '',
-        instagramUrl: data.instagramUrl || '', spotifyUrl: data.spotifyUrl || '',
-        youtubeUrl: data.youtubeUrl || '', company: data.company || '',
-        debutDate: data.debutDate || '', lastUpdated: data.lastUpdated || '',
+        id: docSnap.id, 
+        name: data.name || '', 
+        name_kr: data.name_kr || '',
+        gender: data.gender || '',
+        nationality: data.nationality || '',
+        occupation: data.occupation || [],
+        is_group: Boolean(data.is_group), 
+        profilePic: data.profilePic || '',
+        companyUrl: data.companyUrl || '',
+        instagramUrl: data.instagramUrl || '',
+        spotifyUrl: data.spotifyUrl || '',
+        youtubeUrl: data.youtubeUrl || '',
+        company: data.company || '',
+        debutDate: data.debutDate || '',
+        lastUpdated: data.lastUpdated || '',
     };
 
     if (publicFigureData.is_group) {
@@ -277,18 +289,38 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
             } as JsonLdObject;
 
         return (
-            <div className="w-full">
-                <ProfileInfo
-                    publicFigureData={publicFigureData}
-                    mainOverview={apiResponse.main_overview}
-                />
-                <CelebrityWiki
-                    mainOverview={apiResponse.main_overview}
-                    apiResponse={apiResponse.timeline_content}
-                    articles={articles}
-                    articleSummaries={articleSummaries}
-                />
+            <div className="w-full max-w-6xl mx-auto p-4 lg:p-6">
                 <JsonLd data={schemaData} />
+
+                <div className="grid grid-cols-1 lg:grid-cols-4 lg:gap-x-8">
+
+                    {/* --- LEFT (MAIN) COLUMN --- */}
+                    <div className="lg:col-span-3">
+                        <ProfileInfo
+                            publicFigureData={publicFigureData}
+                        />
+                        <MainOverview
+                            mainOverview={apiResponse.main_overview}
+                        />
+                        <div className="mt-8 border-t border-gray-200 pt-8">
+                            <h2 className="text-xl font-bold mb-4">Career Journey</h2>
+                            <CareerJourney
+                                apiResponse={apiResponse.timeline_content}
+                                articles={articles}
+                                articleSummaries={articleSummaries}
+                            />
+                        </div>
+                    </div>
+
+                    {/* --- RIGHT (SIDEBAR) COLUMN --- */}
+                    <div className="hidden lg:block lg:sticky lg:top-20 mt-8 lg:mt-0 space-y-6 self-start">
+                        <YouMightAlsoLike />
+                        <div className="h-96 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500">
+                            Vertical Ad Placeholder
+                        </div>
+                    </div>
+
+                </div>
             </div>
         );
     } catch (error) {

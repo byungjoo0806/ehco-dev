@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 interface CuratedEvent {
     event_title: string;
     event_summary: string;
+    event_years: number[];
     primary_date: string;
     timeline_points: {
         date: string;

@@ -1,16 +1,16 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { CheckSquare, ChevronDown, ChevronUp, Square } from 'lucide-react';
 import {
     Article,
+    CuratedEvent,
     CuratedTimelineData,
     TimelinePoint
 } from '@/types/definitions';
 
 // --- TYPE DEFINITIONS ---
-// (No changes here)
 interface EventSourcesProps {
     articleIds: string[];
     articlesMap: Map<string, Article>;
@@ -46,7 +46,6 @@ const ORDERED_SUB_CATEGORIES: { [key: string]: string[] } = {
 
 
 // --- HELPER FUNCTIONS ---
-// (No changes here)
 const formatTimelineDate = (dateStr: string): string => {
     if (!dateStr) return '';
     const parts = dateStr.split('-');
@@ -92,19 +91,121 @@ const getSubCategoryFromSlug = (slug: string | null, mainCategory: string): stri
     return subCategories.find(subCat => formatCategoryForURL(subCat) === slug) || '';
 };
 
+// Helper to create URL-safe IDs from titles
+const slugify = (text: string) =>
+    text
+        .toLowerCase()
+        .replace(/\s+/g, '-') // Replace spaces with -
+        .replace(/[^\w-]+/g, ''); // Remove all non-word chars
 
 // --- CHILD COMPONENTS ---
-// (No changes here)
+
+// Year filter
+const YearFilter: React.FC<{
+    years: number[];
+    selectedYears: number[];
+    onToggleYear: (year: number) => void;
+    onSelectAll: () => void;
+}> = ({ years, selectedYears, onToggleYear, onSelectAll }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Handle click outside to close the dropdown
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [dropdownRef]);
+
+    const buttonText = selectedYears.length === 0 
+        ? 'All Years' 
+        : `${selectedYears.length} year${selectedYears.length > 1 ? 's' : ''} selected`;
+
+    return (
+        <div className='relative p-4 border-b border-gray-200 dark:border-gray-700/60' ref={dropdownRef}>
+            <label className="font-semibold text-sm mb-2 block text-gray-800 dark:text-gray-200">Filter by Year</label>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full p-2 border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors flex justify-between items-center"
+            >
+                <span>{buttonText}</span>
+                <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    <ul className="py-1">
+                        <li
+                            className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center"
+                            onClick={onSelectAll}
+                        >
+                            {selectedYears.length === 0 ? (
+                                <CheckSquare className="mr-2 h-5 w-5 text-red-500" />
+                            ) : (
+                                <Square className="mr-2 h-5 w-5 text-gray-400" />
+                            )}
+                            <span className="text-gray-800 dark:text-gray-200">All Years</span>
+                        </li>
+                        {years.map(year => (
+                            <li
+                                key={year}
+                                className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center"
+                                onClick={() => onToggleYear(year)}
+                            >
+                                {selectedYears.includes(year) ? (
+                                    <CheckSquare className="mr-2 h-5 w-5 text-red-500" />
+                                ) : (
+                                    <Square className="mr-2 h-5 w-5 text-gray-400" />
+                                )}
+                                <span className="text-gray-800 dark:text-gray-200">{year}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Navigation component for events in the current view
+const EventNavigator: React.FC<{ eventList: CuratedEvent[], onNavigate: (id: string) => void }> = ({ eventList, onNavigate }) => {
+    if (!eventList || eventList.length === 0) {
+        return <div className="p-3 text-center text-xs text-gray-500 dark:text-gray-400">No events in this section.</div>;
+    }
+
+    return (
+        <div className="w-full">
+            <h3 className="font-semibold text-sm p-3 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">On This Page</h3>
+            <nav>
+                <ul className="py-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 250px)' }}>
+                    {eventList.map(event => (
+                        <li key={event.event_title}>
+                            <button
+                                onClick={() => onNavigate(slugify(event.event_title))}
+                                className="w-full text-left text-sm px-3 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-gray-200 transition-colors duration-200 rounded-md"
+                            >
+                                {event.event_title}
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+            </nav>
+        </div>
+    );
+};
+
+
 const EventSources: React.FC<EventSourcesProps> = ({ articleIds, articlesMap }) => {
     const relevantArticles = articleIds
         .map(id => articlesMap.get(id))
         .filter(Boolean) as Article[];
-    // We'll sort by 'sendDate' from newest to oldest.
-    // The 'YYYYMMDD' format allows for simple string comparison.
     relevantArticles.sort((a, b) => {
-        if (!a.sendDate) return 1; // Articles without a date go to the end
+        if (!a.sendDate) return 1;
         if (!b.sendDate) return -1;
-        return b.sendDate.localeCompare(a.sendDate); // 'b' vs 'a' for descending order (newest first)
+        return b.sendDate.localeCompare(a.sendDate);
     });
     const formatArticleDate = (dateString: string | undefined): string => {
         if (!dateString || dateString.length !== 8) return dateString || '';
@@ -162,35 +263,27 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     const searchParams = useSearchParams();
 
     const processedData: CuratedTimelineData = useMemo(() => {
-        // This deep copy is important to avoid changing the original 'data' prop, which is a best practice in React.
         const dataCopy: CuratedTimelineData = JSON.parse(JSON.stringify(data));
-
-        // Now, we iterate through the data just once and sort all the timeline_points arrays.
         for (const mainCategory in dataCopy) {
             for (const subCategory in dataCopy[mainCategory]) {
                 const eventList = dataCopy[mainCategory][subCategory];
                 eventList.forEach((event) => {
-                    // We replace the original array with the newly sorted one.
                     event.timeline_points = sortTimelinePoints(event.timeline_points);
                 });
             }
         }
         return dataCopy;
-    }, [data]); // The hook only re-runs if the initial 'data' prop itself changes.
+    }, [data]);
 
     const articlesMap = useMemo(() => {
-        // We create a new Map where each article's 'id' is the key and the article object is the value.
-        // This allows for instantaneous lookups instead of slow filtering.
         return new Map<string, Article>(articles.map(article => [article.id, article]));
-    }, [articles]); // This only re-runs if the initial 'articles' prop changes.
+    }, [articles]);
 
     const mainCategories = useMemo(() => {
         const availableCategories = Object.keys(data);
         return ORDERED_MAIN_CATEGORIES.filter(c => availableCategories.includes(c));
     }, [data]);
 
-    // We still derive the "true" active category from the URL.
-    // This will be our source of truth for initialization and for reacting to browser back/forward buttons.
     const urlActiveCategory = useMemo(() => {
         const catFromUrl = getCategoryFromSlug(searchParams.get('category'));
         return mainCategories.includes(catFromUrl) ? catFromUrl : mainCategories[0] || '';
@@ -200,18 +293,16 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
         return getSubCategoryFromSlug(searchParams.get('subCategory'), urlActiveCategory);
     }, [searchParams, urlActiveCategory]);
 
-    // NEW: Local state for INSTANT UI updates.
-    // Initialize it with the values from the URL.
     const [localActiveCategory, setLocalActiveCategory] = useState(urlActiveCategory);
     const [localActiveSubCategory, setLocalActiveSubCategory] = useState(urlActiveSubCategory);
 
-    // NEW: Effect to sync local state if the URL changes externally (e.g., back/forward button).
+    const [selectedYears, setSelectedYears] = useState<number[]>([]);
+
     useEffect(() => {
         setLocalActiveCategory(urlActiveCategory);
         setLocalActiveSubCategory(urlActiveSubCategory);
     }, [urlActiveCategory, urlActiveSubCategory]);
 
-    // (openCategories state remains the same, but let's initialize it with the local state)
     const [openCategories, setOpenCategories] = useState<string[]>([localActiveCategory]);
 
     const getAvailableSubCategories = useCallback((category: string) => {
@@ -221,19 +312,27 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
         return ordered.filter(sc => subCategoryKeys.includes(sc));
     }, [processedData]);
 
+    const availableYears = useMemo(() => {
+        const yearSet = new Set<number>();
+        Object.values(processedData).forEach(subCategories => {
+            Object.values(subCategories).forEach(events => {
+                events.forEach(event => {
+                    event.event_years?.forEach(year => yearSet.add(year));
+                });
+            });
+        });
+        return Array.from(yearSet).sort((a, b) => b - a);
+    }, [processedData]);
+
     const handleSelectCategory = useCallback((category: string, subCategory?: string) => {
-        // --- THIS IS THE KEY CHANGE ---
-        // 1. Update the local state IMMEDIATELY for an instant UI change.
         setLocalActiveCategory(category);
         if (subCategory) {
             setLocalActiveSubCategory(subCategory);
         } else {
-            // If no subcategory is provided, select the first available one.
             const availableSubCats = getAvailableSubCategories(category);
             setLocalActiveSubCategory(availableSubCats[0] || '');
         }
 
-        // 2. Update the URL in the background.
         const params = new URLSearchParams(searchParams.toString());
         params.set('category', formatCategoryForURL(category));
         if (subCategory) {
@@ -246,10 +345,19 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                 params.delete('subCategory');
             }
         }
-        // Use router.replace to avoid cluttering browser history with tab clicks
         router.replace(`${pathname}?${params.toString()}`, { scroll: false });
 
-    }, [pathname, router, searchParams, getAvailableSubCategories]); // Added getAvailableSubCategories dependency
+    }, [pathname, router, searchParams, getAvailableSubCategories]);
+
+    const handleToggleYear = (year: number) => {
+        setSelectedYears(prev =>
+            prev.includes(year) ? prev.filter(y => y !== year) : [...prev, year]
+        );
+    };
+
+    const handleSelectAllYears = () => {
+        setSelectedYears([]);
+    };
 
     useEffect(() => {
         const availableSubCategories = getAvailableSubCategories(localActiveCategory);
@@ -261,7 +369,6 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
 
 
     const handleToggleCategory = (category: string) => {
-        // When opening an accordion, also set it as the active category in the URL
         if (!openCategories.includes(category)) {
             handleSelectCategory(category);
         }
@@ -272,21 +379,62 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     };
 
     const displayedContent = useMemo(() => {
-        if (!localActiveCategory || !localActiveSubCategory || !processedData[localActiveCategory] || !processedData[localActiveCategory][localActiveSubCategory]) {
+        if (!localActiveCategory || !localActiveSubCategory || !processedData[localActiveCategory]?.[localActiveSubCategory]) {
             return null;
         }
-        return { [localActiveSubCategory]: processedData[localActiveCategory][localActiveSubCategory] };
-    }, [localActiveCategory, localActiveSubCategory, processedData]);
+        
+        let events = processedData[localActiveCategory][localActiveSubCategory];
+        
+        if (selectedYears.length > 0) {
+            events = events.filter(event => 
+                event.event_years?.some(year => selectedYears.includes(year))
+            );
+        }
+        
+        return { [localActiveSubCategory]: events };
+    }, [localActiveCategory, localActiveSubCategory, processedData, selectedYears]);
+
+    // Memoize the list of events for the navigator
+    const eventListForNavigator = useMemo(() => {
+        if (!displayedContent) return [];
+        return Object.values(displayedContent)[0] || [];
+    }, [displayedContent]);
+
+    // Handler for smooth scrolling
+    const handleEventNavigation = (id: string) => {
+        const element = document.getElementById(id);
+        element?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    };
 
     return (
-        <div className="w-full max-w-[100vw] flex flex-row justify-center dark:bg-gray-800">
-            <div className='w-[90%] sm:w-[70%] px-2'>
+        <div className="w-full max-w-[100vw] flex flex-row justify-start dark:bg-gray-800">
+            {/* ================================================================== */}
+            {/* --- Sticky Left Navigation ---                                     */}
+            {/* ================================================================== */}
+            <div className='hidden sm:flex w-[25%] max-w-xs flex-col'>
+                <div className="sticky top-16 self-start w-full h-screen overflow-y-auto border-r border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800">
+                    <YearFilter 
+                        years={availableYears} 
+                        selectedYears={selectedYears} 
+                        onToggleYear={handleToggleYear}
+                        onSelectAll={handleSelectAllYears} 
+                    />
+                    <div className='p-2'>
+                        <EventNavigator eventList={eventListForNavigator} onNavigate={handleEventNavigation} />
+                    </div>
+                </div>
+            </div>
+
+            <div className='w-full sm:w-[75%] px-2 sm:px-8'>
 
                 {/* ================================================================== */}
                 {/* --- DESKTOP VIEW (sm screens and up) ---                           */}
                 {/* ================================================================== */}
                 <div className="hidden sm:block">
-                    <div className="w-full mt-3 mb-6 sticky top-16 z-10 bg-white dark:bg-slate-800 backdrop-blur-sm">
+                    <div className="w-full mt-3 mb-6 sticky top-16 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
                         <div className="flex flex-row overflow-x-auto space-x-2 pb-2 hide-scrollbar border-b border-gray-200 dark:border-gray-600">
                             {mainCategories.map(category => (
                                 <button key={category} onClick={() => handleSelectCategory(category)} className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${localActiveCategory === category ? 'text-red-500 border-b-2 border-red-500' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}>
@@ -306,9 +454,10 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                     </div>
                     <div className="pb-12">
                         {displayedContent && Object.entries(displayedContent).map(([subCategory, eventList]) => (
-                            <div key={subCategory} className="space-y-6">
+                            <div key={subCategory} className="space-y-8">
                                 {eventList.map(event => (
-                                    <div key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-600">
+                                    // MODIFIED: Added id and scroll-mt for navigation
+                                    <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-700 scroll-mt-40">
                                         <h4 className="font-semibold text-lg text-gray-900 dark:text-white">{event.event_title}</h4>
                                         <p className="text-sm text-gray-600 dark:text-gray-200 italic mt-1 mb-3">{event.event_summary}</p>
                                         <div className="relative pl-5">
@@ -341,14 +490,13 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                     </button>
                                     {isOpen && (
                                         <div className="px-4 pt-4 pb-2 bg-white dark:bg-slate-500 border-t border-gray-200/80">
-                                            {/* NEW: Subcategory tabs for mobile */}
                                             <div className="flex flex-wrap gap-2 mb-4">
                                                 {availableSubCats.map(subCat => (
                                                     <button
                                                         key={subCat}
-                                                        onClick={() => handleSelectCategory(category, subCat)}
+                                                        onClick={(e) => { e.stopPropagation(); handleSelectCategory(category, subCat); }}
                                                         className={`px-3 py-1.5 whitespace-nowrap text-xs font-medium rounded-full transition-colors ${localActiveCategory === category && localActiveSubCategory === subCat
-                                                            ? 'bg-key-color text-white dark:text-gray-100'
+                                                            ? 'bg-red-500 text-white'
                                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                                                             }`}
                                                     >
@@ -357,11 +505,11 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                                 ))}
                                             </div>
 
-                                            {/* NEW: Conditional content rendering based on active category and subcategory */}
                                             {localActiveCategory === category && displayedContent && (
                                                 <div className="space-y-6 pt-4 border-t border-gray-200/80">
                                                     {Object.values(displayedContent)[0].map(event => (
-                                                        <div key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-600">
+                                                        // FIXED: Added id and scroll-mt for navigation on mobile
+                                                        <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-600 scroll-mt-16">
                                                             <h4 className="font-semibold text-lg text-gray-900 dark:text-white">{event.event_title}</h4>
                                                             <p className="text-sm text-gray-600 italic mt-1 mb-3 dark:text-gray-200">{event.event_summary}</p>
                                                             <div className="relative pl-5">
@@ -382,7 +530,6 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                 </div>
 
             </div>
-            <div className='w-[10%] border-l mt-10 hidden sm:block'></div>
         </div>
     );
 };

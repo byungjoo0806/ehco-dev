@@ -271,9 +271,9 @@ const EventItem: React.FC<EventItemProps> = ({
                     {event.subcategory && (
                         <span className="mr-2">{event.subcategory}.</span>
                     )} */}
-                    {/* If it's a combined event (with newlines in content), don't show content in the header,
+                {/* If it's a combined event (with newlines in content), don't show content in the header,
                         as it will be shown in the body. Otherwise, show the first line of content or title */}
-                    {/* {event.content?.includes('\n\n')
+                {/* {event.content?.includes('\n\n')
                         ? 'Multiple Events'
                         : (event.title || event.content?.split('\n')[0])}
                 </div> */}
@@ -479,6 +479,11 @@ const Timeline: React.FC<TimelineProps> = ({
         });
     };
 
+    const handleYearSelectChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const selectedOptions = Array.from(event.target.selectedOptions, option => option.value);
+        setSelectedYears(selectedOptions);
+    };
+
     // Handle select/deselect all years
     const handleToggleAllYears = () => {
         if (selectedYears.length === availableYears.length) {
@@ -521,105 +526,114 @@ const Timeline: React.FC<TimelineProps> = ({
                     Timeline
                 </h2>
 
-                {/* Year filters */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                    {/* Select All button */}
-                    <button
-                        onClick={handleToggleAllYears}
-                        className={`px-3 py-1 text-sm rounded shadow-lg ${selectedYears.length === availableYears.length
-                            ? 'bg-red-500 text-white hover:bg-red-300'
-                            : 'bg-white text-red-500 border border-gray-200 rounded-md hover:bg-red-100'
-                            }`}
-                    >
-                        All
-                    </button>
+                {/* NEW: Flexbox container for the two-column layout */}
+                <div className="flex flex-col sm:flex-row gap-8">
 
-                    {availableYears.map(year => (
-                        <button
-                            key={year}
-                            onClick={() => handleYearSelect(year)}
-                            className={`px-2 py-1 text-sm rounded shadow-lg ${selectedYears.includes(year)
-                                ? 'bg-red-500 text-white hover:bg-red-300'
-                                : 'bg-white text-red-500 border border-gray-200 rounded-md hover:bg-red-100'
-                                }`}
-                        >
-                            {year}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Events timeline - only show selected years */}
-                <div className="space-y-8">
-                    {displayedYearData.length === 0 ? (
-                        <div className="text-center text-gray-500 py-8">
-                            Select years to view timeline events
-                        </div>
-                    ) : (
-                        displayedYearData.map(([year, yearData]) => (
-                            <div key={year}>
-                                <div className="relative">
-                                    {/* Year label */}
-                                    <div className="bg-red-500 text-white px-2 py-1 rounded-full text-sm inline-block mb-4">
+                    {/* --- LEFT COLUMN: YEAR FILTERS --- */}
+                    <div className="w-full sm:w-48 flex-shrink-0">
+                        <div className="sticky top-24"> {/* Makes the filter stick on scroll */}
+                            <h3 className="font-semibold text-gray-700 mb-3">Years</h3>
+                            <div className="flex flex-row sm:flex-col flex-wrap sm:flex-nowrap gap-2">
+                                <button
+                                    onClick={handleToggleAllYears}
+                                    className={`w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${selectedYears.length === availableYears.length
+                                        ? 'bg-red-500 text-white'
+                                        : 'bg-gray-100 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    All Years
+                                </button>
+                                {availableYears.map(year => (
+                                    <button
+                                        key={year}
+                                        onClick={() => handleYearSelect(year)}
+                                        className={`w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors ${selectedYears.includes(year)
+                                            ? 'bg-red-500 text-white'
+                                            : 'bg-gray-100 hover:bg-gray-200'
+                                            }`}
+                                    >
                                         {year}
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        {/* Year-only events */}
-                                        {yearData.yearEvents.map((event, index) => (
-                                            <EventItem
-                                                key={event.id}
-                                                event={event}
-                                                index={index}
-                                                isLastInGroup={index === yearData.yearEvents.length - 1}
-                                                eventArticles={getEventArticles(event)}
-                                                showFullDate={false}
-                                            />
-                                        ))}
-
-                                        {/* Month-level events */}
-                                        {Object.entries(yearData.monthEvents)
-                                            .sort(([monthA], [monthB]) => parseInt(monthB) - parseInt(monthA))
-                                            .map(([month, monthData]) => (
-                                                <div key={`${year}-${month}`}>
-                                                    {/* Month header */}
-                                                    {monthData.monthEvents.length > 0 && (
-                                                        <div className="text-sm font-medium text-gray-700 mb-2">
-                                                            {new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', { month: 'long' })}
-                                                        </div>
-                                                    )}
-
-                                                    {/* Month-only events */}
-                                                    {monthData.monthEvents.map((event, index) => (
-                                                        <EventItem
-                                                            key={event.id}
-                                                            event={event}
-                                                            index={index}
-                                                            isLastInGroup={index === monthData.monthEvents.length - 1}
-                                                            eventArticles={getEventArticles(event)}
-                                                            showFullDate={false}
-                                                            indentLevel={1}
-                                                        />
-                                                    ))}
-
-                                                    {/* Day-level events */}
-                                                    {monthData.dayEvents.map((event, index) => (
-                                                        <EventItem
-                                                            key={event.id}
-                                                            event={event}
-                                                            index={index}
-                                                            isLastInGroup={index === monthData.dayEvents.length - 1}
-                                                            eventArticles={getEventArticles(event)}
-                                                            showFullDate={true}
-                                                            indentLevel={1}
-                                                        />
-                                                    ))}
-                                                </div>
-                                            ))}
-                                    </div>
-                                </div>
+                                    </button>
+                                ))}
                             </div>
-                        ))
-                    )}
+                        </div>
+                    </div>
+
+                    {/* --- RIGHT COLUMN: TIMELINE EVENTS --- */}
+                    <div className="flex-grow w-full">
+                        <div className="space-y-8">
+                            {displayedYearData.length === 0 ? (
+                                <div className="text-center text-gray-500 py-8">
+                                    Select years to view timeline events
+                                </div>
+                            ) : (
+                                displayedYearData.map(([year, yearData]) => (
+                                    <div key={year}>
+                                        <div className="relative">
+                                            {/* Year label */}
+                                            <div className="bg-red-500 text-white px-2 py-1 rounded-full text-sm inline-block mb-4">
+                                                {year}
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                {/* Year-only events */}
+                                                {yearData.yearEvents.map((event, index) => (
+                                                    <EventItem
+                                                        key={event.id}
+                                                        event={event}
+                                                        index={index}
+                                                        isLastInGroup={index === yearData.yearEvents.length - 1}
+                                                        eventArticles={getEventArticles(event)}
+                                                        showFullDate={false}
+                                                    />
+                                                ))}
+
+                                                {/* Month-level events */}
+                                                {Object.entries(yearData.monthEvents)
+                                                    .sort(([monthA], [monthB]) => parseInt(monthB) - parseInt(monthA))
+                                                    .map(([month, monthData]) => (
+                                                        <div key={`${year}-${month}`}>
+                                                            {/* Month header */}
+                                                            {monthData.monthEvents.length > 0 && (
+                                                                <div className="text-sm font-medium text-gray-700 mb-2">
+                                                                    {new Date(parseInt(year), parseInt(month) - 1).toLocaleString('default', { month: 'long' })}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Month-only events */}
+                                                            {monthData.monthEvents.map((event, index) => (
+                                                                <EventItem
+                                                                    key={event.id}
+                                                                    event={event}
+                                                                    index={index}
+                                                                    isLastInGroup={index === monthData.monthEvents.length - 1}
+                                                                    eventArticles={getEventArticles(event)}
+                                                                    showFullDate={false}
+                                                                    indentLevel={1}
+                                                                />
+                                                            ))}
+
+                                                            {/* Day-level events */}
+                                                            {monthData.dayEvents.map((event, index) => (
+                                                                <EventItem
+                                                                    key={event.id}
+                                                                    event={event}
+                                                                    index={index}
+                                                                    isLastInGroup={index === monthData.dayEvents.length - 1}
+                                                                    eventArticles={getEventArticles(event)}
+                                                                    showFullDate={true}
+                                                                    indentLevel={1}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

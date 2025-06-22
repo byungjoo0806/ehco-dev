@@ -41,11 +41,6 @@ interface PublicFigureWikiProps {
     categories: string[]; // Add this
     subcategories: string[]; // Add this
     categoryContent: WikiContentItem[];
-    mainOverview: {
-        id: string;
-        content: string;
-        articleIds: string[];
-    };
     articles?: ArticleData[];
     articleSummaries?: ArticleSummaryData[];
 }
@@ -55,7 +50,6 @@ interface PublicFigureWikiProps {
 const LegacyWikiView: React.FC<PublicFigureWikiProps> = ({
     categories,
     categoryContent = [],
-    mainOverview,
     articles = [],
     articleSummaries = []
 }) => {
@@ -178,7 +172,7 @@ const LegacyWikiView: React.FC<PublicFigureWikiProps> = ({
 
     return (
         <div className="w-full max-w-[100vw] flex flex-row justify-center">
-            <div className='w-[90%] sm:w-[70%] px-2'>
+            <div className='w-full px-2'>
                 {/* Main Category Tabs */}
                 <div className="w-full mt-3 mb-6">
                     <div className="flex flex-col sm:flex-row overflow-x-auto sm:space-x-2 pb-2 hide-scrollbar">
@@ -276,9 +270,6 @@ const LegacyWikiView: React.FC<PublicFigureWikiProps> = ({
                     )}
                 </div>
             </div>
-
-            {/* Right sidebar placeholder (unchanged) */}
-            <div className='w-[10%] border border-b mt-10 rounded-md hidden sm:block'></div>
         </div>
     );
 };

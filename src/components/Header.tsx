@@ -7,7 +7,6 @@ import SlidingMenu from './SlidingMenu';
 import SearchSlider from './SearchSlider';
 import algoliasearch from 'algoliasearch';
 import { useRouter, usePathname } from 'next/navigation';
-import Image from 'next/image';
 
 const searchClient = algoliasearch(
   "B1QF6MLIU5",

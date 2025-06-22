@@ -1,4 +1,3 @@
-
 from public_figure_extractor import PublicFigureExtractor, NewsManager
 import asyncio
 import json
@@ -37,6 +36,13 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
         if preview_count > 0:
             print(f"Preview of first {preview_count} names: {', '.join(self.predefined_names[:preview_count])}")
         
+    def _get_earliest_date(self, dates_array):
+        """Finds the earliest date from an array of date strings."""
+        if not dates_array:
+            return None
+        # The min() function works correctly on 'YYYY-MM-DD' formatted strings
+        return min(dates_array)
+    
     
     def _load_predefined_names_from_csv(self, csv_filepath="k_celebrities_master.csv"):
         """
@@ -259,7 +265,8 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
             """
             
             # Call DeepSeek API
-            response = self.news_manager.client.chat.completions.create(
+            # FIX #1: Added 'await' before the client call
+            response = await self.news_manager.client.chat.completions.create(
                 model=self.news_manager.model,
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant that creates concise, focused summaries and extracts specific dates with event descriptions from content."},
@@ -374,7 +381,8 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
                 """
                 
                 # Call DeepSeek API
-                response = self.news_manager.client.chat.completions.create(
+                # FIX #2: Added 'await' before the client call. This is the one causing the error in your log.
+                response = await self.news_manager.client.chat.completions.create(
                     model=self.news_manager.model,
                     messages=[
                         {"role": "system", "content": "You are a precise assistant that identifies when specific named entities are mentioned in text."},
@@ -436,383 +444,208 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
         
     async def extract_for_predefined_figures(self, limit=None, reverse_order=True, start_after_doc_id=None):
         """
-        Process articles to find mentions of predefined public figures.
-        1. Fetch articles directly with options for ordering and limiting
-        2. For each article, check if it mentions any predefined public figures
-        3. For matches, create/update public figure info documents
-        4. Create public figure-focused article summaries
-        
-        Args:
-            limit (int, optional): Maximum number of articles to process. None means process all.
-            reverse_order (bool): If True, process articles in reverse alphabetical order.
+        REVISED FINAL VERSION: Processes articles to find mentions of predefined public figures.
+        This function now fetches articles and calls the reusable 'process_single_figure_mention' 
+        method for each figure found.
         """
         try:
-            # Log the predefined public figures we're searching for
-            print(f"Looking for mentions of {len(self.predefined_names)} predefined public figures in articles")
-            print(f"First 10 names: {', '.join(self.predefined_names[:10])}...")
-            
-            # Step 1: Fetch articles with ordering and limiting options (similar to original)
+            # Step 1: Fetch articles with ordering and limiting (This part is unchanged)
             print("Fetching articles...")
-            
-            # Start with the base query
             query = self.news_manager.db.collection("newsArticles")
             
-            # Apply ordering
             if reverse_order:
                 query = query.order_by("__name__", direction=firestore.Query.DESCENDING)
             else:
                 query = query.order_by("__name__", direction=firestore.Query.ASCENDING)
                 
-            # If we have a document ID to start after, get a reference to it and modify the query
             if start_after_doc_id:
                 print(f"Starting processing after document ID: {start_after_doc_id}")
                 start_doc_ref = self.news_manager.db.collection("newsArticles").document(start_after_doc_id)
                 start_doc = start_doc_ref.get()
-            
                 if start_doc.exists:
                     query = query.start_after(start_doc)
-                else:
-                    print(f"Warning: Start document {start_after_doc_id} does not exist. Starting from the beginning.")
             
-            # Apply limit if specified
             if limit is not None:
                 query = query.limit(limit)
                 print(f"Limited to processing {limit} articles")
             
-            # Execute the query
             articles_ref = query.stream()
-            articles = []
-
-            # Convert to list so we can count and iterate
-            for doc in articles_ref:
-                articles.append({"id": doc.id, "data": doc.to_dict()})
-
+            articles = [{"id": doc.id, "data": doc.to_dict()} for doc in articles_ref]
             count = len(articles)
             print(f"Found {count} articles to process")
 
             if count == 0:
-                print("No articles found")
+                print("No articles found to process.")
                 return
 
-            # Log the first few article IDs to confirm ordering
-            preview_count = min(5, count)
-            preview_ids = [article["id"] for article in articles[:preview_count]]
-            print(f"First {preview_count} articles to be processed (in this order): {preview_ids}")
-
-            # Track stats
+            # Initialize stats tracking
             stats = {
                 "articles_processed": 0,
                 "articles_with_figures": 0,
                 "figure_mentions": 0,
-                "figures_researched": 0,
                 "summaries_created": 0
             }
 
-            # Step 2: Process each article to find mentions of predefined public figures
+            # Step 2: Process each article
             for i, article in enumerate(articles):
                 article_id = article["id"]
-                body = article["data"].get("body", "")
+                article_data = article.get("data", {})
+                body = article_data.get("body", "")
                 
-                # Handle title and subtitle (fixing the switched fields as in original)
-                title = article["data"].get("subTitle", "")
-                subtitle = article["data"].get("title", "")
-                
-                # Get other article fields for the article-summaries collection
-                link = article["data"].get("link", "")
-                
-                # Handle imageUrl (could be a string or an array)
-                image_url = article["data"].get("imageUrl", "")
-                if isinstance(image_url, list) and len(image_url) > 0:
-                    first_image_url = image_url[0]
-                else:
-                    first_image_url = image_url
-                
-                # Get article publication date if available
-                send_date = article["data"].get("sendDate", "")
-                article_date = ""
-                if send_date and isinstance(send_date, str) and len(send_date) == 8:
-                    # Convert YYYYMMDD to YYYY-MM-DD
-                    article_date = f"{send_date[:4]}-{send_date[4:6]}-{send_date[6:8]}"
-
-                print(f"Processing article {i+1}/{count} (ID: {article_id})")
+                print(f"\nProcessing article {i+1}/{count} (ID: {article_id})")
                 stats["articles_processed"] += 1
 
                 if not body:
-                    print(f"Skipping article {article_id} - No body content available")
+                    print(f"Skipping article {article_id} - No body content.")
+                    # Mark as processed to avoid picking it up again
+                    self.news_manager.db.collection("newsArticles").document(article_id).update({"public_figures": []})
                     continue
 
                 # Find which predefined public figures are mentioned in this article
                 mentioned_figures = await self._find_mentioned_figures(body)
                 
-                if not mentioned_figures:
-                    print(f"No predefined public figures found in article {article_id}")
-                    continue
-                
-                print(f"Found {len(mentioned_figures)} public figures in article {article_id}: {mentioned_figures}")
-                stats["articles_with_figures"] += 1
-                stats["figure_mentions"] += len(mentioned_figures)
-                
-                # Update the article document with public figure names
+                # IMPORTANT: Update the article with the list of found figures (even if empty).
+                # This marks the article as "processed" for future update runs.
                 self.news_manager.db.collection("newsArticles").document(article_id).update(
                     {"public_figures": mentioned_figures}
                 )
-                print(f"Updated article {article_id} with public figures: {mentioned_figures}")
-
-                # Process each mentioned public figure
+                
+                if not mentioned_figures:
+                    print(f"No predefined public figures found in article {article_id}. Marked as processed.")
+                    continue
+                
+                print(f"Found {len(mentioned_figures)} public figures: {', '.join(mentioned_figures)}")
+                stats["articles_with_figures"] += 1
+                stats["figure_mentions"] += len(mentioned_figures)
+                
+                # THE KEY CHANGE: The large block of logic that was here is now gone.
+                # Instead, we loop through the names and call our new reusable method.
                 for public_figure_name in mentioned_figures:
-                    print(f"\nProcessing public figure: {public_figure_name}")
-                    
-                    # Create document ID (lowercase, no spaces)
-                    doc_id = public_figure_name.lower().replace(" ", "").replace("-", "").replace(".", "")
-                    
-                    # Check if the public figure document already exists
-                    public_figure_doc_ref = self.news_manager.db.collection("selected-figures").document(doc_id)
-                    public_figure_doc = public_figure_doc_ref.get()
-                    public_figure_exists = public_figure_doc.exists
-                    
-                    if public_figure_exists:
-                        print(f"Public figure {public_figure_name} already exists in database")
-                        # Get existing data
-                        existing_data = public_figure_doc.to_dict()
-                        # Get existing sources or initialize empty array
-                        existing_sources = existing_data.get("sources", [])
-                        
-                        # Only add the source if it's not already in the list
-                        if article_id not in existing_sources:
-                            existing_sources.append(article_id)
-                            # Update only the sources field
-                            public_figure_doc_ref.update({"sources": existing_sources})
-                            print(f"Updated sources for {public_figure_name}, added article ID: {article_id}")
-                        else:
-                            print(f"Article {article_id} already in sources for {public_figure_name}, skipping update")
-                        
-                        # Check if we need to update lastUpdated field
-                        should_update_timestamp = False
-                        current_date_kr = datetime.now(pytz.timezone('Asia/Seoul')).strftime("%Y-%m-%d")
-                        
-                        # If lastUpdated field doesn't exist or is older than today (in KR timezone)
-                        if "lastUpdated" not in existing_data or existing_data.get("lastUpdated", "") != current_date_kr:
-                            public_figure_doc_ref.update({"lastUpdated": current_date_kr})
-                            print(f"Updated lastUpdated timestamp for {public_figure_name}")
-                        
-                        # Check if we should enrich missing fields (similar to original)
-                        # missing_fields = []
-                        # essential_fields = ["birthDate", "chineseZodiac", "company", "debutDate", "group", 
-                        #                     "instagramUrl", "profilePic", "school", "spotifyUrl", "youtubeUrl", 
-                        #                     "zodiacSign", "gender", "occupation", "nationality"]
-                        
-                        # for field in essential_fields:
-                        #     if field not in existing_data or (
-                        #         (isinstance(existing_data.get(field), str) and not existing_data.get(field)) or
-                        #         (isinstance(existing_data.get(field), list) and not existing_data.get(field))
-                        #     ):
-                        #         missing_fields.append(field)
-                        
-                        # For groups, check if members have complete information
-                        # is_group = existing_data.get("is_group", False)
-                        # members_need_update = False
-                        
-                        # if is_group and "members" in existing_data and isinstance(existing_data["members"], list):
-                        #     for member in existing_data["members"]:
-                        #         for member_field in ["birthDate", "chineseZodiac", "instagramUrl", "profilePic", 
-                        #                             "school", "spotifyUrl", "youtubeUrl", "zodiacSign"]:
-                        #             if member_field not in member or (
-                        #                 (isinstance(member.get(member_field), str) and not member.get(member_field)) or
-                        #                 (isinstance(member.get(member_field), list) and not member.get(member_field))
-                        #             ):
-                        #                 members_need_update = True
-                        #                 break
-                                
-                        #         if members_need_update:
-                        #             break
-                        
-                        # Only perform research if essential data is missing
-                        # if missing_fields or members_need_update:
-                        #     print(f"Public figure {public_figure_name} has missing information: {missing_fields}")
-                        #     print(f"Members need update: {members_need_update}")
-                        #     print(f"Researching more info for {public_figure_name} to fill in missing data...")
-                            
-                        #     # Research to get missing information
-                        #     additional_info = await self.research_public_figure(public_figure_name)
-                        #     print(f"Research results for {public_figure_name}: {json.dumps(additional_info, indent=2)}")
-                        #     stats["figures_researched"] += 1
-                            
-                        #     # Prepare the update data
-                        #     update_data = {}
-                            
-                        #     # Add any missing fields we found to update_data
-                        #     for field in missing_fields:
-                        #         if field in additional_info and additional_info[field]:
-                        #             update_data[field] = additional_info[field]
-                        #             print(f"Adding missing field {field}: {additional_info[field]}")
-                            
-                        #     # If it's a group and members need update (same as original)
-                        #     if is_group and members_need_update and "members" in additional_info:
-                        #         # Code for updating members (same as original)
-                        #         existing_members = existing_data.get("members", [])
-                        #         researched_members = additional_info.get("members", [])
-                        #         researched_members_dict = {member.get("name", ""): member for member in researched_members}
-                                
-                        #         for i, member in enumerate(existing_members):
-                        #             member_name = member.get("name", "")
-                        #             if member_name and member_name in researched_members_dict:
-                        #                 researched_member = researched_members_dict[member_name]
-                                        
-                        #                 for member_field in ["birthDate", "chineseZodiac", "instagramUrl", "profilePic", 
-                        #                                     "school", "spotifyUrl", "youtubeUrl", "zodiacSign"]:
-                        #                     if (member_field not in member or not member.get(member_field)) and \
-                        #                     member_field in researched_member and researched_member[member_field]:
-                        #                         existing_members[i][member_field] = researched_member[member_field]
-                        #                         print(f"Updated {member_field} for member {member_name}")
-                                
-                        #         update_data["members"] = existing_members
-                            
-                        #     # Only update if we have data to update
-                        #     if update_data:
-                        #         public_figure_doc_ref.update(update_data)
-                        #         print(f"Updated public figure {public_figure_name} with missing information")
-                        #     else:
-                        #         print(f"No new information found for {public_figure_name}, skipping update")
-                        
-                        # else:
-                        #     print(f"Public figure {public_figure_name} has complete information, no update needed")
-                    
-                    else:
-                        # This is a new public figure - not in database yet
-                        print(f"Creating new public figure entry for {public_figure_name}")
-                        
-                        # Research comprehensive information
-                        print(f"Researching info for new public figure {public_figure_name}...")
-                        public_figure_info = await self.research_public_figure(public_figure_name)
-                        print(f"Research results for {public_figure_name}: {json.dumps(public_figure_info, indent=2)}")
-                        stats["figures_researched"] += 1
-                        
-                        # Get basic info
-                        gender = public_figure_info.get("gender", "")
-                        occupation = public_figure_info.get("occupation", [])
-                        is_group = public_figure_info.get("is_group", False)
-                        nationality = public_figure_info.get("nationality", "")
-                        
-                        # Create a new clean public figure data object
-                        public_figure_data = {
-                            "name": public_figure_name,
-                            "gender": gender,
-                            "occupation": occupation,
-                            "is_group": is_group,
-                            "nationality": nationality,
-                            "sources": [article_id],  # Initialize sources array with current article ID
-                            "birthDate": "",
-                            "chineseZodiac": "",
-                            "company": "",
-                            "debutDate": "",
-                            "group": "",
-                            "instagramUrl": "",
-                            "profilePic": "",
-                            "school": [],
-                            "spotifyUrl": "",
-                            "youtubeUrl": "",
-                            "zodiacSign": "",
-                            "lastUpdated": datetime.now(pytz.timezone('Asia/Seoul')).strftime("%Y-%m-%d")
-                        }
-                        
-                        # Update with research results
-                        for field in ["birthDate", "chineseZodiac", "company", "debutDate", "group", 
-                                    "instagramUrl", "profilePic", "school", "spotifyUrl", "youtubeUrl", 
-                                    "zodiacSign"]:
-                            if field in public_figure_info and public_figure_info[field]:
-                                public_figure_data[field] = public_figure_info[field]
-                        
-                        # Handle Korean name
-                        is_korean = False
-                        if nationality:
-                            is_korean = "korean" in nationality.lower() or "south korea" in nationality.lower()
-                            
-                        if is_korean and public_figure_info.get("name_kr"):
-                            name_kr = public_figure_info.get("name_kr", "")
-                            if name_kr and isinstance(name_kr, str) and len(name_kr.strip()) > 0:
-                                public_figure_data["name_kr"] = name_kr
-                        
-                        # Add members if this is a group
-                        if is_group and "members" in public_figure_info and isinstance(public_figure_info["members"], list):
-                            public_figure_data["members"] = public_figure_info["members"]
-                        
-                        # Create the document
-                        public_figure_doc_ref.set(public_figure_data)
-                        print(f"Created new public-figure-info for {public_figure_name}")
-
-                    # Generate and save article summary for this public figure
-                    summary_doc_ref = self.news_manager.db.collection("selected-figures").document(doc_id).collection("article-summaries").document(article_id)
-                    summary_doc = summary_doc_ref.get()
-                    
-                    if summary_doc.exists:
-                        print(f"Summary for {public_figure_name} in article {article_id} already exists, skipping...")
-                        continue
-                    
-                    # Generate a summary focused on this public figure
-                    print(f"Generating summary for article {article_id} focused on {public_figure_name}")
-                    
-                    # Extract dates and summary with event content
-                    summary_results = await self.generate_public_figure_focused_summary_with_date(
-                        title=title,
-                        description=body,
+                    await self.process_single_figure_mention(
                         public_figure_name=public_figure_name,
-                        article_date=article_date
+                        article_id=article_id,
+                        article_data=article_data
                     )
-                    
-                    summary = summary_results.get("summary", "")
-                    event_date = summary_results.get("content_date", "")
-                    event_contents = summary_results.get("event_contents", {})
-                    
-                    if not summary:
-                        print(f"Failed to generate summary for {public_figure_name} in article {article_id}")
-                        continue
-                    
-                    # Create a new summary document with ALL required fields
-                    summary_data = {
-                        "article_id": article_id,
-                        "public_figure": public_figure_name,
-                        "summary": summary,
-                        "created_at": firestore.SERVER_TIMESTAMP,
-                        "title": title,
-                        "subtitle": subtitle,
-                        "link": link,
-                        "body": body,
-                        "source": "Yonhap News Agency",  # Always set to "Yonhap News Agency"
-                        "imageUrl": first_image_url  # First image URL or single string value
-                    }
-                    
-                    # Add event_date as a separate field if available
-                    if event_date:
-                        summary_data["event_dates"] = event_date
-                        print(f"Adding event dates '{event_date}' to summary for {public_figure_name}")
-                    
-                    # Add event_contents as a separate field if available
-                    if event_contents:
-                        summary_data["event_contents"] = event_contents
-                        print(f"Adding event contents for {len(event_contents)} dates to summary for {public_figure_name}")
-                    
-                    summary_doc_ref.set(summary_data)
-                    print(f"Saved new summary for {public_figure_name} in article {article_id}")
+                    # We can track summary creation here
                     stats["summaries_created"] += 1
 
-            # Print final statistics
+            # Print final statistics (Unchanged)
             print("\n=== Processing Statistics ===")
             print(f"Total articles processed: {stats['articles_processed']}")
             print(f"Articles with predefined figures: {stats['articles_with_figures']}")
             print(f"Total public figure mentions: {stats['figure_mentions']}")
-            print(f"Public figures researched: {stats['figures_researched']}")
             print(f"Article summaries created: {stats['summaries_created']}")
             print("===========================\n")
 
-            print("Predefined public figure extraction and summary generation completed successfully!")
-
         except Exception as e:
-            print(f"Error in extract_for_predefined_figures: {e}")
+            print(f"An error occurred in extract_for_predefined_figures: {e}")
             raise
         finally:
-            # Close the connection
+            # Close the connection (Unchanged)
             await self.news_manager.close()
+    
            
+    async def process_single_figure_mention(self, public_figure_name, article_id, article_data):
+        """
+        NEW REUSABLE METHOD: Processes a single mention of a public figure in an article.
+        This contains the core logic for creating/updating figure profiles and summaries.
+        """
+        print(f"\n-- Processing mention of '{public_figure_name}' in article '{article_id}' --")
+
+        # Create a document ID from the figure's name
+        doc_id = public_figure_name.lower().replace(" ", "").replace("-", "").replace(".", "")
+        public_figure_doc_ref = self.news_manager.db.collection("selected-figures").document(doc_id)
+        
+        # Check if the public figure's main document already exists
+        public_figure_doc = public_figure_doc_ref.get()
+        if public_figure_doc.exists:
+            print(f"'{public_figure_name}' already exists. Updating sources.")
+            public_figure_doc_ref.update({
+                "sources": firestore.ArrayUnion([article_id]),
+                "lastUpdated": datetime.now(pytz.timezone('Asia/Seoul')).strftime("%Y-%m-%d")
+            })
+        else:
+            print(f"'{public_figure_name}' is a new figure. Researching and creating profile.")
+            # Research comprehensive information for the new figure
+            public_figure_info = await self.research_public_figure(public_figure_name)
+            
+            # Create a clean data object for the new figure
+            public_figure_data = {
+                "name": public_figure_name,
+                "sources": [article_id],
+                "lastUpdated": datetime.now(pytz.timezone('Asia/Seoul')).strftime("%Y-%m-%d"),
+                **public_figure_info  # Unpack all researched info
+            }
+            public_figure_doc_ref.set(public_figure_data)
+            print(f"Created new profile for '{public_figure_name}'.")
+
+        # --- Generate and Save the Article Summary ---
+        summary_doc_ref = public_figure_doc_ref.collection("article-summaries").document(article_id)
+        if summary_doc_ref.get().exists:
+            print(f"Summary for '{public_figure_name}' in article '{article_id}' already exists. Skipping.")
+            return
+
+        print(f"Generating summary focused on '{public_figure_name}'...")
+        # Get article details from the passed data
+        title = article_data.get("subTitle", "")
+        body = article_data.get("body", "")
+        
+        send_date = article_data.get("sendDate", "")
+        article_date = f"{send_date[:4]}-{send_date[4:6]}-{send_date[6:8]}" if send_date and len(send_date) == 8 else ""
+
+        summary_results = await self.generate_public_figure_focused_summary_with_date(
+            title=title,
+            description=body,
+            public_figure_name=public_figure_name,
+            article_date=article_date
+        )
+
+        if not summary_results.get("summary"):
+            print(f"Failed to generate summary for '{public_figure_name}'.")
+            return
+
+        # Prepare summary data for Firestore
+        image_url = article_data.get("imageUrl", "")
+        first_image_url = image_url[0] if isinstance(image_url, list) and image_url else image_url
+
+        summary_data = {
+            "article_id": article_id,
+            "public_figure": public_figure_name,
+            "summary": summary_results.get("summary"),
+            "event_dates": summary_results.get("content_date", []),
+            "event_contents": summary_results.get("event_contents", {}),
+            "created_at": firestore.SERVER_TIMESTAMP,
+            "title": title,
+            "subtitle": article_data.get("title", ""),
+            "link": article_data.get("link", ""),
+            "body": body,
+            "source": "Yonhap News Agency",
+            "imageUrl": first_image_url,
+            "is_processed_for_timeline": False
+        }
+        
+        event_dates_for_primary = summary_data.get('event_dates')
+        if event_dates_for_primary:
+            earliest_date_str = self._get_earliest_date(event_dates_for_primary)
+            if earliest_date_str:
+                try:
+                    # Convert string to a proper datetime object for Firestore
+                    if len(earliest_date_str) == 4: # YYYY
+                        dt_object = datetime.strptime(earliest_date_str, '%Y')
+                    elif len(earliest_date_str) == 7: # YYYY-MM
+                        dt_object = datetime.strptime(earliest_date_str, '%Y-%m')
+                    else: # YYYY-MM-DD
+                        dt_object = datetime.strptime(earliest_date_str, '%Y-%m-%d')
+                    
+                    # Add the new field directly to our summary data object
+                    summary_data['primary_event_date'] = dt_object
+                    print(f"Successfully added 'primary_event_date': {dt_object.strftime('%Y-%m-%d')}")
+                except ValueError:
+                    print(f"Warning: Could not parse date '{earliest_date_str}' in doc {article_id}. Skipping date field.")
+        
+        summary_doc_ref.set(summary_data)
+        print(f"Saved new summary for '{public_figure_name}' in article '{article_id}'.") 
+        
                     
 # Main function
 async def main():

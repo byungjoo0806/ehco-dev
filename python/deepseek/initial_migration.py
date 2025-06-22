@@ -2,7 +2,7 @@ import asyncio
 import json
 from collections import defaultdict
 from setup_firebase_deepseek import NewsManager
-from typing import Union, Optional
+from typing import Union, Optional, Dict, Any
 
 # --- CONFIGURATION ---
 TARGET_FIGURE_ID = "iu(leejieun)"
@@ -172,20 +172,22 @@ class CurationEngine:
 
     # HELPER: Get all categories from the database
     def _get_all_subcategories(self) -> dict:
-        print("Finding all unique subcategories to process...")
-        articles_ref = self.db.collection('selected-figures').document(self.figure_id).collection('article-summaries')
-        docs = articles_ref.stream()
-        grouped_categories = defaultdict(set)
-        for doc in docs:
-            data = doc.to_dict()
-            main_cat = data.get('mainCategory')
-            sub_cat = data.get('subcategory')
-            if main_cat and sub_cat:
-                grouped_categories[main_cat].add(sub_cat)
-        for main_cat in grouped_categories:
-            grouped_categories[main_cat] = list(grouped_categories[main_cat])
-        print(f"Found {sum(len(v) for v in grouped_categories.values())} subcategories across {len(grouped_categories)} main categories.")
-        return dict(grouped_categories)
+        """
+        Returns a predefined, hardcoded dictionary of main and subcategories
+        to ensure consistency across the entire timeline.
+        """
+        print("Loading predefined category structure...")
+        
+        predefined_categories = {
+            "Creative Works": ["Music", "Film & TV", "Publications & Art", "Awards & Honors"],
+            "Live & Broadcast": ["Concerts & Tours", "Fan Events", "Broadcast Appearances"],
+            "Public Relations": ["Media Interviews", "Endorsements & Ambassadors", "Social & Digital"],
+            "Personal Milestones": ["Relationships & Family", "Health & Service", "Education & Growth"],
+            "Incidents & Controversies": ["Legal & Scandal", "Accidents & Emergencies", "Public Backlash"]
+        }
+        
+        print(f"Loaded {len(predefined_categories)} main categories.")
+        return predefined_categories
 
     # HELPER: Fetch articles for a given category
     def _fetch_raw_entries_for_subcategory(self, subcategory_name: str) -> list:
@@ -206,6 +208,26 @@ class CurationEngine:
             })
         return raw_entries
     
+    def _add_event_years(self, event: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Calculates and adds the 'event_years' field to an event object.
+        It extracts all unique years from the timeline_points dates.
+        """
+        years = set()
+        for point in event.get('timeline_points', []):
+            date_str = point.get('date', '')
+            if date_str and isinstance(date_str, str) and '-' in date_str:
+                try:
+                    # Extracts the year part from 'YYYY-MM-DD'
+                    year = int(date_str.split('-')[0])
+                    years.add(year)
+                except (ValueError, IndexError):
+                    print(f"    Warning: Could not parse year from date '{date_str}' in event '{event.get('event_title', 'Untitled')}'.")
+        
+        # Add the new field, sorted from newest to oldest
+        event['event_years'] = sorted(list(years), reverse=True)
+        return event
+    
     # MAIN MIGRATION LOGIC
     async def run_initial_migration(self):
         print("--- Starting Enhanced Timeline Migration ---")
@@ -214,6 +236,7 @@ class CurationEngine:
         # PHASE 1: EXTRACT ALL EVENTS INTO A STAGING AREA
         print("\n--- Phase 1: Extracting all events from all articles ---")
         staged_events = []
+        processed_source_ids = set()
         all_subcategories = [sub for subs in all_categories.values() for sub in subs]
         
         for sub_cat in all_subcategories:
@@ -223,6 +246,7 @@ class CurationEngine:
                 generated_event = await self._generate_initial_event(entry)
                 if generated_event:
                     staged_events.append(generated_event)
+                    processed_source_ids.add(entry['sourceId'])
         
         print(f"\n--- Phase 1 Complete: Extracted {len(staged_events)} potential events. ---")
 
@@ -292,6 +316,26 @@ class CurationEngine:
                         print(f"    Action: Decision unclear. Added event as new.")
                 
                 final_timeline[main_cat][sub_cat] = curated_events_for_subcategory
+                
+        # PHASE 4: Enriching final data with event_years ---        
+        print("\n--- Phase 4: Enriching events with calculated year data ---")
+        for main_cat, sub_cat_data in final_timeline.items():
+            for sub_cat, events in sub_cat_data.items():
+                # Apply the year calculation to each event
+                final_timeline[main_cat][sub_cat] = [self._add_event_years(event) for event in events]
+        print("--- Phase 4 Complete. All events enriched. ---")
+        
+        # PHASE 5: Mark all processed articles in Firestore --- <--- ADD THIS NEW SECTION
+        print("\n--- Phase 5: Marking processed articles in Firestore ---")
+        if not processed_source_ids:
+            print("No source IDs were processed, skipping update.")
+        else:
+            articles_ref = self.db.collection('selected-figures').document(self.figure_id).collection('article-summaries')
+            for source_id in processed_source_ids:
+                article_ref = articles_ref.document(source_id)
+                article_ref.update({"is_processed_for_timeline": True})
+            print(f"--- Phase 5 Complete. Marked {len(processed_source_ids)} articles as processed. ---")
+        
 
         print("\n--- Migration processing complete. Saving to Firestore... ---")
         timeline_collection_ref = self.db.collection('selected-figures').document(self.figure_id).collection(CURATED_TIMELINE_COLLECTION)
