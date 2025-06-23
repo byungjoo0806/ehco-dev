@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { X, Search, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { debounce } from 'lodash';
 import { usePathname, useRouter } from 'next/navigation';
 import algoliasearch from 'algoliasearch';
+import Image from 'next/image';
 
 const searchClient = algoliasearch(
     "B1QF6MLIU5",
@@ -50,19 +51,20 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
         setIsNavigating(false);
     }, [pathname]);
 
-    const handleCelebrityClick = (celebrityId: string) => {
+    const handleCelebrityClick = useCallback(() => {
         setIsNavigating(true);
         onClose();
         setSearchQuery('');
         setSearchResults([]);
         setShowResults(false);
-        router.push(`/${celebrityId}`);
-    };
+        // The router.push is handled by the Link component's onClick
+    }, [onClose]);
 
-    const performSearch = async (query: string) => {
+    const performSearch = useCallback(async (query: string) => {
         if (!query.trim()) {
             setSearchResults([]);
             setShowResults(false);
+            setIsSearching(false); // Ensure searching state is reset
             return;
         }
 
@@ -72,7 +74,7 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
             const { hits } = await searchClient.initIndex('selected-figures').search<Celebrity>(query, {
                 hitsPerPage: 5,
                 attributesToHighlight: ['name', 'koreanName'],
-                highlightPreTag: '<mark class="bg-yellow-200">',
+                highlightPreTag: '<mark class="bg-yellow-200 dark:bg-yellow-400">',
                 highlightPostTag: '</mark>',
                 queryType: 'prefixAll',
                 typoTolerance: true
@@ -86,12 +88,18 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
         } finally {
             setIsSearching(false);
         }
-    };
+    }, []);
 
-    const debouncedSearch = useCallback(
-        debounce((query: string) => performSearch(query), 300),
-        []
-    );
+    const debouncedSearch = useMemo(() => {
+        return debounce((query: string) => performSearch(query), 300);
+    }, [performSearch]);
+
+    // Cleanup the debounced function on unmount
+    useEffect(() => {
+        return () => {
+            debouncedSearch.cancel();
+        };
+    }, [debouncedSearch]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -107,20 +115,28 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
         <Link
             key={result.objectID}
             href={`/${result.objectID}`}
-            className="flex flex-row items-center px-3 py-2 hover:bg-gray-100"
-            onClick={() => handleCelebrityClick(result.objectID)}
+            className="flex flex-row items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-700"
+            onClick={handleCelebrityClick}
         >
             {result.profilePic && (
-                <img src={result.profilePic} alt={result.name} className="w-16 h-16 rounded-full object-cover" />
+                <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
+                    <Image
+                        src={result.profilePic}
+                        alt={result.name || 'Profile Picture'}
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                    />
+                </div>
             )}
             <div className="flex-1 pl-2">
-                <div className="font-medium text-md">
+                <div className="font-medium text-md text-slate-800 dark:text-slate-200">
                     {result._highlightResult?.name ?
                         renderHighlightedText(result._highlightResult.name.value) :
                         result.name}
                 </div>
                 {result.koreanName && (
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                         {result._highlightResult?.koreanName ?
                             renderHighlightedText(result._highlightResult.koreanName.value) :
                             result.koreanName}

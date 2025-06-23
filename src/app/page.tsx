@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import algoliasearch from 'algoliasearch';
 import { useFigures } from '@/context/FiguresContext';
+import Image from 'next/image';
 
 // Setup Algolia client - same as in Header.tsx
 const searchClient = algoliasearch(
@@ -384,17 +385,16 @@ export default function Home() {
                             }, 500);
                           }}
                         >
-                          {result.profilePic && (
-                            <img
-                              src={result.profilePic}
+                          <div className="relative w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden flex-shrink-0">
+                            <Image
+                              src={result.profilePic || '/images/default-profile.png'}
                               alt={result.name || 'Profile'}
-                              className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = '/images/default-profile.png';
-                              }}
+                              fill
+                              sizes="(max-width: 768px) 48px, 64px"
+                              className="object-cover"
                             />
-                          )}
+                          </div>
+
                           <div className="flex-1 pl-4">
                             <div className="font-medium text-sm md:text-md text-black dark:text-white truncate">
                               {result._highlightResult?.name ?
@@ -470,16 +470,13 @@ export default function Home() {
                     key={`${figure.id}-${index}`}
                     className="text-center group"
                   >
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full overflow-hidden mb-1 md:mb-3 mx-auto border-2 border-gray-200 group-hover:border-key-color transition-colors">
-                      <img
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full overflow-hidden mb-1 md:mb-3 mx-auto border-2 border-gray-200 group-hover:border-key-color transition-colors">
+                      <Image
                         src={getImageSrc(figure)}
                         alt={figure.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/images/default-profile.png';
-                        }}
-                        loading="eager"
+                        fill
+                        sizes="(max-width: 640px) 6rem, (max-width: 768px) 8rem, 10rem"
+                        className="object-cover"
                       />
                     </div>
                     <p className="text-xs md:text-sm font-medium text-black dark:text-white truncate max-w-[80px] sm:max-w-[100px] md:max-w-full mx-auto">

@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import algoliasearch from 'algoliasearch';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const searchClient = algoliasearch(
     "B1QF6MLIU5",
@@ -204,33 +205,22 @@ export default function SearchResults() {
                                             className="block"
                                         >
                                             <div className="flex flex-col sm:flex-row border border-key-color rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow dark:bg-slate-500">
-                                                {profile.profilePic ? (
-                                                    <div className="flex-shrink-0 flex justify-center mb-4 sm:mb-0">
-                                                        <div className="text-center">
-                                                            <img
-                                                                src={profile.profilePic}
+                                                <div className="flex-shrink-0 flex justify-center mb-4 sm:mb-0">
+                                                    <div className="text-center">
+                                                        <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full overflow-hidden mx-auto">
+                                                            <Image
+                                                                src={profile.profilePic || "/images/default-profile.png"}
                                                                 alt={profile.name || "Profile picture"}
-                                                                className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full object-cover mx-auto"
+                                                                fill
+                                                                sizes="(max-width: 640px) 4rem, (max-width: 768px) 5rem, 6rem"
+                                                                className="object-cover"
                                                             />
-                                                            <p className="text-center mt-2 font-medium dark:text-gray-300">
-                                                                {profile.name || "Profile"}
-                                                            </p>
                                                         </div>
+                                                        <p className="text-center mt-2 font-medium dark:text-gray-300">
+                                                            {profile.name || "Profile"}
+                                                        </p>
                                                     </div>
-                                                ) : (
-                                                    <div className="flex-shrink-0 flex justify-center mb-4 sm:mb-0">
-                                                        <div className="text-center">
-                                                            <img
-                                                                src={"/images/default-profile.png"}
-                                                                alt={profile.name || "Profile picture"}
-                                                                className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full object-cover mx-auto"
-                                                            />
-                                                            <p className="text-center mt-2 font-medium">
-                                                                {profile.name || "Profile"}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                </div>
                                                 <div className="sm:ml-6 md:ml-8 flex-grow">
                                                     <div className="mb-3">
                                                         <p className="font-semibold text-gray-600 dark:text-gray-100">Nationality</p>

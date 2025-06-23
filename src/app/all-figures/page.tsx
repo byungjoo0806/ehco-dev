@@ -6,6 +6,7 @@ import { Search, X, Loader2, CheckSquare, Square } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import algoliasearch from 'algoliasearch';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import Image from 'next/image';
 
 // Setup Algolia client - same as in page.tsx
 const searchClient = algoliasearch(
@@ -53,6 +54,11 @@ type AlgoliaPublicFigure = {
     };
 }
 
+const CATEGORY_ORDER = [
+    'Male', 'Female', 'Group', 'South Korean', 'Singer', 'Singer-Songwriter',
+    'Film Director', 'Rapper', 'Actor', 'Actress'
+];
+
 const LoadingOverlay = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
         <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
@@ -85,11 +91,6 @@ function AllFiguresContent() {
     const categories = [
         'All', 'Male', 'Female', 'Group', 'Singer', 'Singer-Songwriter',
         'Film Director', 'Rapper', 'Actor', 'Actress', 'South Korean'
-    ];
-
-    const CATEGORY_ORDER = [
-        'Male', 'Female', 'Group', 'South Korean', 'Singer', 'Singer-Songwriter',
-        'Film Director', 'Rapper', 'Actor', 'Actress'
     ];
 
     // Map category selections to search fields
@@ -167,7 +168,7 @@ function AllFiguresContent() {
                         });
                     });
                 }
-                
+
                 // Construct the final URL and fetch the data
                 const response = await fetch(`/api/public-figures?${params}`);
                 if (!response.ok) {
@@ -230,32 +231,21 @@ function AllFiguresContent() {
     }, []);
 
     // For URL order
-    const sortCategoriesForURL = (categories: string[]) => {
+    const sortCategoriesForURL = useCallback((categories: string[]) => {
         return categories.sort((a, b) => {
             const indexA = CATEGORY_ORDER.indexOf(a);
             const indexB = CATEGORY_ORDER.indexOf(b);
-
-            // If both categories are in the order array, sort by their position
-            if (indexA !== -1 && indexB !== -1) {
-                return indexA - indexB;
-            }
-
-            // If only one is in the array, prioritize it
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
             if (indexA !== -1) return -1;
             if (indexB !== -1) return 1;
-
-            // If neither is in the array, sort alphabetically
             return a.localeCompare(b);
         });
-    };
+    }, []);
 
     // Function to update URL with current filters
     const updateURL = useCallback((newCategories: string[], newSearchQuery: string = '', newPage: number = 1, replace: boolean = false) => {
-        // console.log('updateURL called with:', { newCategories, newSearchQuery, newPage, replace });
-
         const params = new URLSearchParams();
 
-        // Add categories to URL (skip 'All' as it's default)
         if (newCategories.length > 0 && !newCategories.includes('All')) {
             const sortedCategories = sortCategoriesForURL(newCategories);
             sortedCategories.forEach(category => {
@@ -263,12 +253,10 @@ function AllFiguresContent() {
             });
         }
 
-        // Add search query if present
         if (newSearchQuery.trim()) {
             params.set('search', newSearchQuery);
         }
 
-        // Add page if it's not 1
         if (newPage > 1) {
             params.set('page', newPage.toString());
         }
@@ -281,16 +269,14 @@ function AllFiguresContent() {
 
         if (currentURL !== fullURL) {
             if (replace) {
-                // Use replaceState for filter changes to avoid creating new history entries
                 window.history.replaceState({}, '', fullURL);
                 router.replace(fullURL, { scroll: false });
             } else {
-                // Use pushState for actual navigation (like pagination)
                 window.history.pushState({}, '', fullURL);
                 router.replace(fullURL, { scroll: false });
             }
         }
-    }, [router]);
+    }, [router, sortCategoriesForURL]);
 
     // Function to read initial state from URL
     const getInitialStateFromURL = useCallback(() => {
@@ -318,89 +304,7 @@ function AllFiguresContent() {
         setSelectedCategories(urlState.categories);
         setSearchQuery(urlState.search);
         setCurrentPage(urlState.page);
-
-        // if (urlState.search && urlState.search.trim()) {
-        //     setIsSearchMode(true);
-        // } else {
-        //     setIsSearchMode(false);
-        // }
-
-        // // Mark as initialized
-        // setIsInitialized(true);
-
-        // // Immediately fetch data with the URL state (don't wait for another useEffect)
-        // // console.log('🚀 Immediate data fetch with URL state:', urlState);
-
-        // if (urlState.search && urlState.search.trim()) {
-        //     // console.log('🔍 Immediate Algolia search for:', urlState.search);
-        //     performSearchForGridWithPage(urlState.search, urlState.page);
-        // } else {
-        //     // console.log('📋 Immediate fetch with categories:', urlState.categories);
-        //     fetchFiguresWithCategories(urlState.page, urlState.categories);
-        // }
-    }, []); // Only run once on mount
-
-    // useEffect(() => {
-    //     // Skip if not initialized yet (prevents double-fetch on mount)
-    //     if (!isInitialized) {
-    //         // console.log('⏸️ Skipping subsequent useEffect - not initialized yet');
-    //         return;
-    //     }
-
-    //     // console.log('🔄 Subsequent state change useEffect triggered');
-    //     // console.log('📊 Current state:', {
-    //     //     selectedCategories,
-    //     //     searchQuery,
-    //     //     currentPage,
-    //     //     isSearchMode
-    //     // });
-
-    //     // Handle subsequent changes after initialization
-    //     if (searchQuery && searchQuery.trim()) {
-    //         // console.log('🔍 Subsequent Algolia search for:', searchQuery);
-    //         setIsSearchMode(true);
-    //         performSearchForGridWithPage(searchQuery, currentPage);
-    //     } else {
-    //         // console.log('📋 Subsequent fetch with filters:', selectedCategories);
-    //         setIsSearchMode(false);
-    //         fetchFigures(currentPage);
-    //     }
-    // }, [selectedCategories, searchQuery, currentPage, isInitialized]); // Add isInitialized to dependencies
-
-    // 3. Handle browser back/forward navigation
-    // useEffect(() => {
-    //     const handlePopState = (event: PopStateEvent) => {
-    //         // console.log('🔙 Browser navigation detected');
-
-    //         // Reset initialization to allow fresh URL read
-    //         setIsInitialized(false);
-
-    //         const urlState = getInitialStateFromURL();
-    //         // console.log('🔄 Restoring state from URL:', urlState);
-
-    //         // Update all state at once
-    //         setSelectedCategories(urlState.categories);
-    //         setSearchQuery(urlState.search);
-    //         setCurrentPage(urlState.page);
-
-    //         if (urlState.search && urlState.search.trim()) {
-    //             setIsSearchMode(true);
-    //             performSearchForGridWithPage(urlState.search, urlState.page);
-    //         } else {
-    //             setIsSearchMode(false);
-    //             fetchFiguresWithCategories(urlState.page, urlState.categories);
-    //         }
-
-    //         // Mark as initialized again
-    //         setIsInitialized(true);
-    //     };
-
-    //     window.addEventListener('popstate', handlePopState);
-
-    //     return () => {
-    //         window.removeEventListener('popstate', handlePopState);
-    //     };
-    // }, [getInitialStateFromURL]);
+    }, [getInitialStateFromURL]); // Only run once on mount
 
     // Helper function to build category filters for the API
     const buildCategoryParams = (params: URLSearchParams) => {
@@ -431,128 +335,6 @@ function AllFiguresContent() {
         }
         return params;
     };
-
-    // const fetchFigures = async (page: number) => {
-    //     // Add stack trace to see what's calling this function
-    //     // console.log('🔍 fetchFigures called with page:', page);
-    //     // console.log('📍 Called from:', new Error().stack?.split('\n')[2]?.trim());
-    //     // console.log('🏷️ Current state:', {
-    //     //     selectedCategories,
-    //     //     searchQuery,
-    //     //     currentPage,
-    //     //     isSearchMode
-    //     // });
-
-    //     try {
-    //         setLoading(true);
-    //         let params = new URLSearchParams({
-    //             page: page.toString(),
-    //             pageSize: itemsPerPage.toString(),
-    //         });
-
-    //         // Add category filters
-    //         params = buildCategoryParams(params);
-
-    //         if (searchQuery && !isSearchMode) {
-    //             params.append('search', searchQuery);
-    //         }
-
-    //         // DEBUG: Log the URL being called
-    //         const apiUrl = `/api/public-figures?${params}`;
-    //         // console.log('🌐 Fetching URL:', apiUrl);
-
-    //         const response = await fetch(`/api/public-figures?${params}`);
-
-    //         if (!response.ok) {
-    //             throw new Error(`HTTP error! status: ${response.status}`);
-    //         }
-
-    //         const data = await response.json();
-
-    //         setFigures(data.publicFigures || []);
-    //         setCurrentPage(data.currentPage || page);
-    //         setTotalPages(data.totalPages || 1);
-    //         setTotalCount(data.totalCount || 0);
-
-    //         // console.log('✅ fetchFigures completed successfully');
-
-    //     } catch (err) {
-    //         console.error('Fetch error:', err);
-    //         if (err instanceof Error) {
-    //             setError(`Failed to load figures: ${err.message}`);
-    //         } else {
-    //             setError('Failed to load figures: Unknown error');
-    //         }
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
-
-    // const fetchFiguresWithCategories = async (page: number, categories: string[]) => {
-    //     // console.log('🔍 fetchFiguresWithCategories called with:', { page, categories });
-
-    //     try {
-    //         setLoading(true);
-    //         const params = new URLSearchParams({
-    //             page: page.toString(),
-    //             pageSize: itemsPerPage.toString(),
-    //         });
-
-    //         // Build category params with the provided categories (not current state)
-    //         if (categories.length > 0 && !categories.includes('All')) {
-    //             const fieldFilters: Record<string, string[]> = {};
-
-    //             categories.forEach(category => {
-    //                 const mappings = categoryToFieldMap[category];
-    //                 if (mappings) {
-    //                     mappings.forEach(mapping => {
-    //                         if (!fieldFilters[mapping.field]) {
-    //                             fieldFilters[mapping.field] = [];
-    //                         }
-    //                         if (!fieldFilters[mapping.field].includes(mapping.value)) {
-    //                             fieldFilters[mapping.field].push(mapping.value);
-    //                         }
-    //                     });
-    //                 }
-    //             });
-
-    //             Object.entries(fieldFilters).forEach(([field, values]) => {
-    //                 values.forEach(value => {
-    //                     params.append(field, value);
-    //                 });
-    //             });
-    //         }
-
-    //         const apiUrl = `/api/public-figures?${params}`;
-    //         // console.log('🌐 Fetching URL with categories:', apiUrl);
-
-    //         const response = await fetch(apiUrl);
-
-    //         if (!response.ok) {
-    //             throw new Error(`HTTP error! status: ${response.status}`);
-    //         }
-
-    //         const data = await response.json();
-
-    //         setFigures(data.publicFigures || []);
-    //         setCurrentPage(data.currentPage || page);
-    //         setTotalPages(data.totalPages || 1);
-    //         setTotalCount(data.totalCount || 0);
-
-    //         // console.log('✅ fetchFiguresWithCategories completed successfully');
-
-    //     } catch (err) {
-    //         console.error('❌ Fetch error:', err);
-    //         if (err instanceof Error) {
-    //             setError(`Failed to load figures: ${err.message}`);
-    //         } else {
-    //             setError('Failed to load figures: Unknown error');
-    //         }
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
-
 
     // Build Algolia filter string from selected categories
     const buildAlgoliaFilterString = () => {
@@ -593,99 +375,6 @@ function AllFiguresContent() {
         // Join different field types with AND
         return filterConditions.join(' AND ');
     };
-
-    // Algolia search functionality for grid
-    // const performSearchForGrid = async (query: string) => {
-    //     if (!query.trim()) {
-    //         setIsSearchMode(false);
-    //         // fetchFigures(1);
-    //         setCurrentPage(1);
-    //         return;
-    //     }
-
-    //     setIsSearchMode(true);
-    //     setLoading(true);
-
-    //     try {
-    //         // Create filter string for categories
-    //         const filterString = buildAlgoliaFilterString();
-    //         // console.log("Algolia filter string:", filterString); // For debugging
-
-    //         const { hits, nbHits, nbPages } = await searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(query, {
-    //             hitsPerPage: itemsPerPage,
-    //             page: currentPage - 1, // Algolia uses 0-based indexing
-    //             attributesToHighlight: ['name', 'name_kr'],
-    //             filters: filterString,
-    //             queryType: 'prefixAll',
-    //             typoTolerance: true
-    //         });
-
-    //         // Transform Algolia results to match Figure interface
-    //         const transformedResults: Figure[] = hits.map(hit => ({
-    //             id: hit.objectID,
-    //             name: hit.name || '',
-    //             profilePic: hit.profilePic,
-    //             occupation: hit.occupation || [],
-    //             gender: hit.gender,
-    //             categories: hit.categories
-    //         }));
-
-    //         setFigures(transformedResults);
-    //         setTotalCount(nbHits);
-    //         setTotalPages(nbPages || 1);
-    //         setCurrentPage(1);
-
-    //     } catch (error) {
-    //         console.error('Algolia search error:', error);
-    //         setError('Search failed. Please try again.');
-    //         setFigures([]);
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
-
-    // const performSearchForGridWithPage = async (query: string, page: number = 1) => {
-    //     if (!query.trim()) {
-    //         setIsSearchMode(false);
-    //         return;
-    //     }
-
-    //     setIsSearchMode(true);
-    //     setLoading(true);
-
-    //     try {
-    //         const filterString = buildAlgoliaFilterString();
-
-    //         const { hits, nbHits, nbPages } = await searchClient.initIndex('selected-figures').search<AlgoliaPublicFigure>(query, {
-    //             hitsPerPage: itemsPerPage,
-    //             page: page - 1, // Algolia uses 0-based indexing
-    //             attributesToHighlight: ['name', 'name_kr'],
-    //             filters: filterString,
-    //             queryType: 'prefixAll',
-    //             typoTolerance: true
-    //         });
-
-    //         const transformedResults: Figure[] = hits.map(hit => ({
-    //             id: hit.objectID,
-    //             name: hit.name || '',
-    //             profilePic: hit.profilePic,
-    //             occupation: hit.occupation || [],
-    //             gender: hit.gender,
-    //             categories: hit.categories
-    //         }));
-
-    //         setFigures(transformedResults);
-    //         setTotalCount(nbHits);
-    //         setTotalPages(nbPages || 1);
-
-    //     } catch (error) {
-    //         console.error('Algolia search error:', error);
-    //         setError('Search failed. Please try again.');
-    //         setFigures([]);
-    //     } finally {
-    //         setLoading(false);
-    //     }
-    // };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const query = e.target.value;
@@ -886,28 +575,6 @@ function AllFiguresContent() {
                             )}
                         </div>
                     </div>
-
-                    {/* <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <label className="text-gray-700 dark:text-gray-300 whitespace-nowrap">Sort By :</label>
-                        <div className="relative flex-1 sm:flex-auto">
-                            <select
-                                value={sortBy}
-                                onChange={handleSortChange}
-                                className="w-full sm:w-auto appearance-none bg-white dark:bg-gray-800 border-2 border-key-color rounded-full px-4 sm:px-8 py-1 pr-8 focus:outline-none focus:border-pink-500 dark:text-white"
-                                disabled={isSearchMode} // Disable sorting when in search mode if Algolia doesn't support it
-                            >
-                                <option value="A-Z">A-Z</option>
-                                <option value="Z-A">Z-A</option>
-                                <option value="Recent">Most Recent</option>
-                                <option value="Popular">Most Popular</option>
-                            </select>
-                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-                                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                                </svg>
-                            </div>
-                        </div>
-                    </div> */}
                 </div>
 
                 {/* Selected Categories Display with removal functionality */}
@@ -969,20 +636,6 @@ function AllFiguresContent() {
                 {/* Figures Grid - Now shows search results directly */}
                 {!isLoading && figures.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
-                        {/* Create a hidden div with all images to force them to be loaded once */}
-                        <div className="hidden">
-                            {figures.map(figure => (
-                                figure.profilePic && (
-                                    <img
-                                        key={`preload-${figure.id}`}
-                                        src={figure.profilePic}
-                                        alt=""
-                                        aria-hidden="true"
-                                    />
-                                )
-                            ))}
-                        </div>
-
                         {figures.map((figure) => (
                             <Link
                                 href={`/${figure.id}`}
@@ -990,16 +643,13 @@ function AllFiguresContent() {
                                 className="flex flex-col items-center group"
                             >
                                 <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-40 lg:h-40 relative mb-2 sm:mb-3 rounded-full overflow-hidden border-2 border-gray-200 group-hover:border-[#E4287C] transition-colors">
-                                    <img
+                                    <Image
                                         src={figure.profilePic || '/images/default-profile.png'}
                                         alt={figure.name}
-                                        className="w-full h-full object-cover rounded-full"
-                                        referrerPolicy="no-referrer"
-                                        loading="eager"
-                                        onError={(e) => {
-                                            const target = e.target as HTMLImageElement;
-                                            target.src = '/images/default-profile.png';
-                                        }}
+                                        fill
+                                        sizes="(max-width: 640px) 6rem, (max-width: 768px) 7rem, (max-width: 1024px) 8rem, 10rem"
+                                        className="object-cover"
+                                        priority={true} // Prioritize images in the viewport
                                     />
                                 </div>
                                 <span className="text-center text-gray-900 dark:text-white font-medium text-sm sm:text-base truncate w-full">

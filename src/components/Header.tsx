@@ -7,6 +7,7 @@ import SlidingMenu from './SlidingMenu';
 import SearchSlider from './SearchSlider';
 import algoliasearch from 'algoliasearch';
 import { useRouter, usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 const searchClient = algoliasearch(
   "B1QF6MLIU5",
@@ -151,11 +152,15 @@ export default function Header() {
       }}
     >
       {result.profilePic && (
-        <img
-          src={result.profilePic}
-          alt={result.name}
-          className="w-16 h-16 rounded-full object-cover"
-        />
+        <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
+          <Image
+            src={result.profilePic}
+            alt={result.name || 'Profile picture'}
+            fill
+            sizes="64px"
+            className="object-cover"
+          />
+        </div>
       )}
       <div className="flex-1 pl-2">
         <div className="font-medium text-md dark:text-gray-100">
@@ -186,17 +191,19 @@ export default function Header() {
 
             {/* Center section with logo */}
             <div className="w-1/3 flex-1 flex justify-center items-center">
-              <Link
-                href="/"
-                onClick={handleLogoClick}
-                className='w-24 h-full'
-              >
-                {/* <Image src='/ehco_branding_bi_fin_ehcio_bi_color-6.png' alt='EHCO logo' width={100} height={80} className='h-full object-contain' priority /> */}
-                <img
-                  src="/ehco_branding_bi_fin_ehcio_bi_color-6.png"
-                  alt="EHCO logo"
-                  className="object-cover w-24 h-full"
-                />
+              <Link href="/" className="inline-block">
+
+                {/* The sizing div now matches the header's height, making it as large as possible. */}
+                <div className="relative w-20 h-16"> {/* <-- Final size adjustment */}
+                  <Image
+                    src="/ehco_logo-02.png"
+                    alt="EHCO logo"
+                    fill
+                    className="object-contain"
+                    sizes="80px" // <-- Adjusted sizes to match new width
+                  />
+                </div>
+
               </Link>
             </div>
 

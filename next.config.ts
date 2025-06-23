@@ -4,64 +4,168 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
+        protocol: 'http',
+        hostname: '*.yna.co.kr',
+      },
+      // Consolidated with wildcard
+      {
+        protocol: 'https',
+        hostname: '*.yna.co.kr',
+      },
+      // Consolidated with wildcard
+      {
+        protocol: 'https',
+        hostname: '*.redd.it',
+      },
+      // Unique hostnames
+      {
         protocol: 'https',
         hostname: 'wimg.heraldcorp.com',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'koreajoongangdaily.joins.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'img.yna.co.kr',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'image.genie.co.kr',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'i.scdn.co',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'i.namu.wiki',
-        pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'upload.wikimedia.org',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'image.url',
-        pathname: '/**'
       },
       {
         protocol: 'https',
         hostname: 'www.instagram.com',
-        pathname: '/**'
       },
       {
         protocol: 'https',
         hostname: 'ibighit.com',
-        pathname: '/**'
       },
       {
         protocol: 'https',
         hostname: 'www.billieeilish.com',
-        pathname: '/**'
       },
       {
         protocol: 'https',
         hostname: 'i.imgur.com',
-        pathname: '/**'
+      },
+      {
+        protocol: 'https',
+        hostname: 'm.media-amazon.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.imageimg.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.smlounge.co.kr',
+      },
+      {
+        protocol: 'https',
+        hostname: 'asianwiki.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'api.time.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'news.vocofm.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'static.wikia.nocookie.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'voguesg.s3.ap-southeast-1.amazonaws.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'idolinsights.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'entertainimg.kbsmedia.co.kr',
+      },
+      {
+        protocol: 'https',
+        hostname: 'talkimg.imbc.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.mydramalist.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.famousbirthdays.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img1.daumcdn.net',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.dkilbo.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.srtimes.kr',
+      },
+      {
+        protocol: 'https',
+        hostname: 'b3903846.smushcdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'file2.nocutnews.co.kr',
+      },
+      {
+        protocol: 'https',
+        hostname: 'image.kmib.co.kr',
+      },
+      {
+        protocol: 'https',
+        hostname: 'hips.hearstapps.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '1.vikiplatform.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'deadline.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'rukminim2.flixcart.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'pbs.twimg.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'wimg.mk.co.kr',
+      },
+      {
+        protocol: 'https',
+        hostname: 'magazine.weverse.io',
+      },
+      // Placeholder - remove if not needed
+      {
+        protocol: 'https',
+        hostname: 'image.url',
       },
     ],
   },
