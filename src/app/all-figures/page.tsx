@@ -61,9 +61,9 @@ const CATEGORY_ORDER = [
 
 const LoadingOverlay = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
-            <Loader2 className="animate-spin text-slate-600 dark:text-white" size={24} />
-            <span className="text-slate-600 dark:text-white font-medium">Loading...</span>
+        <div className="bg-white p-6 rounded-lg flex items-center space-x-3">
+            <Loader2 className="animate-spin text-slate-600" size={24} />
+            <span className="text-slate-600 font-medium">Loading...</span>
         </div>
     </div>
 );
@@ -496,9 +496,9 @@ function AllFiguresContent() {
     };
 
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-900">
+        <div className="min-h-screen bg-white">
             <main className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12 text-gray-900 dark:text-white">All Figures</h1>
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12 text-gray-900">All Figures</h1>
 
                 {/* Search Section - Now integrated with main grid */}
                 <div className="flex justify-center mb-6 sm:mb-8">
@@ -509,7 +509,7 @@ function AllFiguresContent() {
                             value={searchQuery}
                             onChange={handleInputChange}
                             // onKeyDown={handleKeyDown}
-                            className="w-full px-4 sm:px-6 py-2.5 sm:py-3 text-base border-2 border-key-color rounded-full focus:outline-none focus:border-pink-700 pl-10 sm:pl-12 dark:bg-gray-800 dark:text-white"
+                            className="w-full px-4 sm:px-6 py-2.5 sm:py-3 text-base border-2 border-key-color rounded-full focus:outline-none focus:border-pink-700 pl-10 sm:pl-12 text-black"
                         />
 
                         {searchQuery ? (
@@ -532,11 +532,11 @@ function AllFiguresContent() {
                 <div className="flex justify-center items-center mb-6 sm:mb-8">
                     {/* Category Filter - Now with multiple selection dropdown */}
                     <div className="flex items-center gap-2 w-full sm:w-auto relative" ref={categoryDropdownRef}>
-                        <label className="text-gray-700 dark:text-gray-300 whitespace-nowrap">Categories :</label>
+                        <label className="text-gray-700 whitespace-nowrap">Categories :</label>
                         <div className="relative flex-1 sm:flex-auto">
                             <button
                                 onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                                className="w-full sm:w-auto bg-white dark:bg-gray-800 border-2 border-key-color rounded-full px-4 sm:px-8 py-1 text-left flex items-center justify-between focus:outline-none focus:border-pink-500 dark:text-white"
+                                className="w-full sm:w-auto bg-white border-2 border-key-color rounded-full px-4 sm:px-8 py-1 text-left flex items-center justify-between focus:outline-none focus:border-key-color text-gray-500"
                             >
                                 <span className="truncate">
                                     {selectedCategories.includes('All')
@@ -552,12 +552,12 @@ function AllFiguresContent() {
 
                             {/* Dropdown for categories with checkboxes */}
                             {showCategoryDropdown && (
-                                <div className="absolute z-10 mt-1 w-full sm:w-64 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                <div className="absolute z-10 mt-1 w-full sm:w-64 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                                     <ul className="py-1">
                                         {categories.map(category => (
                                             <li
                                                 key={category}
-                                                className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center"
+                                                className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
                                                 onClick={() => handleCategoryChange(category)}
                                             >
                                                 {category === 'All' && selectedCategories.includes('All') ? (
@@ -567,7 +567,7 @@ function AllFiguresContent() {
                                                 ) : (
                                                     <Square className="mr-2 h-5 w-5 text-gray-400" />
                                                 )}
-                                                <span className="text-gray-800 dark:text-gray-200">{category}</span>
+                                                <span className="text-gray-800">{category}</span>
                                             </li>
                                         ))}
                                     </ul>
@@ -611,7 +611,7 @@ function AllFiguresContent() {
                     <div className="flex justify-center mb-6">
                         <button
                             onClick={clearAllFilters}
-                            className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline transition-colors"
+                            className="text-sm text-gray-500 hover:text-gray-700 underline transition-colors"
                         >
                             Clear all filters
                         </button>
@@ -622,13 +622,13 @@ function AllFiguresContent() {
                 {isLoading && (
                     <div className="text-center py-8 sm:py-12">
                         <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-key-color mx-auto"></div>
-                        <p className="mt-4 text-gray-600 dark:text-gray-400">Loading figures...</p>
+                        <p className="mt-4 text-gray-600">Loading figures...</p>
                     </div>
                 )}
 
                 {/* Error State */}
                 {isError && (
-                    <div className="text-center py-8 sm:py-12 text-red-600 dark:text-red-400">
+                    <div className="text-center py-8 sm:py-12 text-red-600">
                         {error.message}
                     </div>
                 )}
@@ -642,7 +642,7 @@ function AllFiguresContent() {
                                 key={figure.id}
                                 className="flex flex-col items-center group"
                             >
-                                <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-40 lg:h-40 relative mb-2 sm:mb-3 rounded-full overflow-hidden border-2 border-gray-200 group-hover:border-[#E4287C] transition-colors">
+                                <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-40 lg:h-40 relative mb-2 sm:mb-3 rounded-full overflow-hidden border-2 border-gray-200 group-hover:border-key-color transition-colors">
                                     <Image
                                         src={figure.profilePic || '/images/default-profile.png'}
                                         alt={figure.name}
@@ -652,11 +652,11 @@ function AllFiguresContent() {
                                         priority={true} // Prioritize images in the viewport
                                     />
                                 </div>
-                                <span className="text-center text-gray-900 dark:text-white font-medium text-sm sm:text-base truncate w-full">
+                                <span className="text-center text-gray-900 font-medium text-sm sm:text-base truncate w-full">
                                     {figure.name}
                                 </span>
                                 {figure.occupation && figure.occupation.length > 0 && (
-                                    <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate w-full text-center">
+                                    <span className="text-xs text-gray-500 mt-1 truncate w-full text-center">
                                         {figure.occupation[0]}
                                     </span>
                                 )}
@@ -667,7 +667,7 @@ function AllFiguresContent() {
 
                 {/* No Results */}
                 {!isLoading && figures.length === 0 && !error && (
-                    <div className="text-center py-8 sm:py-12 text-gray-600 dark:text-gray-400">
+                    <div className="text-center py-8 sm:py-12 text-gray-600">
                         {searchQuery ? `No figures found matching "${searchQuery}"` : 'No figures found'}
                     </div>
                 )}
@@ -678,7 +678,7 @@ function AllFiguresContent() {
                         <button
                             onClick={() => handlePageChange(1)}
                             disabled={currentPage === 1}
-                            className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400 disabled:opacity-50"
+                            className="px-2 sm:px-3 py-1 text-gray-600 disabled:opacity-50"
                             aria-label="First page"
                         >
                             «
@@ -686,7 +686,7 @@ function AllFiguresContent() {
                         <button
                             onClick={() => handlePageChange(currentPage - 1)}
                             disabled={currentPage === 1}
-                            className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400 disabled:opacity-50"
+                            className="px-2 sm:px-3 py-1 text-gray-600 disabled:opacity-50"
                             aria-label="Previous page"
                         >
                             ‹
@@ -704,14 +704,14 @@ function AllFiguresContent() {
                                     {firstVisiblePage > 1 && (
                                         <button
                                             onClick={() => handlePageChange(1)}
-                                            className="px-2 sm:px-3 py-1 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            className="px-2 sm:px-3 py-1 rounded-full text-gray-600 hover:bg-gray-100"
                                             aria-label="Page 1"
                                         >
                                             1
                                         </button>
                                     )}
                                     {firstVisiblePage > 2 && (
-                                        <span className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400">...</span>
+                                        <span className="px-2 sm:px-3 py-1 text-gray-600">...</span>
                                     )}
 
                                     {/* Page number buttons */}
@@ -721,7 +721,7 @@ function AllFiguresContent() {
                                             onClick={() => handlePageChange(page)}
                                             className={`px-2 sm:px-3 py-1 rounded-full ${currentPage === page
                                                 ? 'bg-key-color text-white'
-                                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                                : 'text-gray-600 hover:bg-gray-100'
                                                 }`}
                                             aria-label={`Page ${page}`}
                                             aria-current={currentPage === page ? 'page' : undefined}
@@ -732,14 +732,14 @@ function AllFiguresContent() {
 
                                     {/* Ellipsis and last page at the end */}
                                     {lastVisiblePage < totalPages - 1 && (
-                                        <span className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400">...</span>
+                                        <span className="px-2 sm:px-3 py-1 text-gray-600">...</span>
                                     )}
                                     {lastVisiblePage < totalPages && (
                                         <button
                                             onClick={() => handlePageChange(totalPages)}
                                             className={`px-2 sm:px-3 py-1 rounded-full ${currentPage === totalPages
                                                 ? 'bg-key-color text-white'
-                                                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                                : 'text-gray-600 hover:bg-gray-100'}`}
                                             aria-label={`Page ${totalPages}`}
                                         >
                                             {totalPages}
@@ -752,7 +752,7 @@ function AllFiguresContent() {
                         <button
                             onClick={() => handlePageChange(currentPage + 1)}
                             disabled={currentPage === totalPages}
-                            className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400 disabled:opacity-50"
+                            className="px-2 sm:px-3 py-1 text-gray-600 disabled:opacity-50"
                             aria-label="Next page"
                         >
                             ›
@@ -760,7 +760,7 @@ function AllFiguresContent() {
                         <button
                             onClick={() => handlePageChange(totalPages)}
                             disabled={currentPage === totalPages}
-                            className="px-2 sm:px-3 py-1 text-gray-600 dark:text-gray-400 disabled:opacity-50"
+                            className="px-2 sm:px-3 py-1 text-gray-600 disabled:opacity-50"
                             aria-label="Last page"
                         >
                             »
@@ -770,7 +770,7 @@ function AllFiguresContent() {
 
                 {/* Results Count */}
                 {!isLoading && figures.length > 0 && (
-                    <div className="text-center mt-4 text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-center mt-4 text-sm text-gray-500">
                         {isSearchMode ?
                             `Search results: ${figures.length} of ${totalCount} figures | Page ${currentPage} of ${totalPages}` :
                             `Showing ${figures.length} of ${totalCount} figures | Page ${currentPage} of ${totalPages}`

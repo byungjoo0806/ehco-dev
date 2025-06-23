@@ -5,7 +5,7 @@ from setup_firebase_deepseek import NewsManager
 from typing import Union, Optional, Dict, Any
 
 # --- CONFIGURATION ---
-TARGET_FIGURE_ID = "iu(leejieun)"
+TARGET_FIGURE_ID = "ive"
 CURATED_TIMELINE_COLLECTION = "curated-timeline"
 
 class CurationEngine:

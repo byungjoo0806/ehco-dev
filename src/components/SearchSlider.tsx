@@ -74,7 +74,7 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
             const { hits } = await searchClient.initIndex('selected-figures').search<Celebrity>(query, {
                 hitsPerPage: 5,
                 attributesToHighlight: ['name', 'koreanName'],
-                highlightPreTag: '<mark class="bg-yellow-200 dark:bg-yellow-400">',
+                highlightPreTag: '<mark class="bg-yellow-200">',
                 highlightPostTag: '</mark>',
                 queryType: 'prefixAll',
                 typoTolerance: true
@@ -115,7 +115,7 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
         <Link
             key={result.objectID}
             href={`/${result.objectID}`}
-            className="flex flex-row items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-700"
+            className="flex flex-row items-center px-3 py-2 hover:bg-gray-100"
             onClick={handleCelebrityClick}
         >
             {result.profilePic && (
@@ -130,13 +130,13 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
                 </div>
             )}
             <div className="flex-1 pl-2">
-                <div className="font-medium text-md text-slate-800 dark:text-slate-200">
+                <div className="font-medium text-md text-slate-800">
                     {result._highlightResult?.name ?
                         renderHighlightedText(result._highlightResult.name.value) :
                         result.name}
                 </div>
                 {result.koreanName && (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                    <div className="text-sm text-gray-500">
                         {result._highlightResult?.koreanName ?
                             renderHighlightedText(result._highlightResult.koreanName.value) :
                             result.koreanName}
@@ -158,15 +158,15 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
             {/* Navigation Loading Overlay */}
             {isNavigating && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
-                        <Loader2 className="animate-spin text-slate-600 dark:text-white" size={24} />
-                        <span className="text-slate-600 dark:text-white font-medium">Loading...</span>
+                    <div className="bg-white p-6 rounded-lg flex items-center space-x-3">
+                        <Loader2 className="animate-spin text-slate-600" size={24} />
+                        <span className="text-slate-600 font-medium">Loading...</span>
                     </div>
                 </div>
             )}
 
             <div
-                className={`fixed top-0 right-0 h-full w-full bg-white dark:bg-slate-800 shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
+                className={`fixed top-0 right-0 h-full w-full bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
                     }`}
             >
                 <div className="h-16 px-4 flex items-center border-b">
@@ -177,7 +177,7 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
                             value={searchQuery}
                             onChange={handleInputChange}
                             placeholder="Search celebrities"
-                            className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm dark:bg-slate-700 dark:border-slate-600"
+                            className="pl-8 pr-8 py-1.5 border rounded-lg w-full text-sm text-black"
                             autoFocus
                         />
                         {searchQuery && (

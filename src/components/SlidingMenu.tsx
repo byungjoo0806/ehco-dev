@@ -42,14 +42,14 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
 
             {/* Sliding Menu */}
             <div
-                className={`fixed top-0 left-0 h-full w-80 bg-white dark:bg-slate-800 shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
+                className={`fixed top-0 left-0 h-full w-80 bg-white shadow-lg z-50 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'
                     }`}
             >
                 {/* Header with close button */}
                 <div className="flex justify-end items-center p-6">
                     <button
                         onClick={onClose}
-                        className="text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-white transition-colors"
+                        className="text-gray-600 hover:text-gray-800 transition-colors"
                         aria-label="Close menu"
                     >
                         <X size={24} />

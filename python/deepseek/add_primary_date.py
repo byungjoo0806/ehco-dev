@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 from setup_firebase_deepseek import NewsManager
 
-TARGET_FIGURE_ID = "iu(leejieun)"
+TARGET_FIGURE_ID = "ive"
 
 def get_earliest_date(dates_array):
     """Finds the earliest date from an array of date strings."""

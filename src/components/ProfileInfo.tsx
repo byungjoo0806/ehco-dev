@@ -48,7 +48,7 @@ interface ProfileInfoProps {
 const InfoField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div>
     <p className="text-xs font-semibold text-gray-500">{label}</p>
-    <p className="text-sm text-gray-800 dark:text-gray-200">{value}</p>
+    <p className="text-sm text-gray-800">{value}</p>
   </div>
 );
 
@@ -59,7 +59,7 @@ const SocialLink: React.FC<{ href?: string; icon: React.ReactNode; label: string
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-500 transition-colors dark:text-gray-400 dark:hover:text-blue-400"
+      className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-blue-500 transition-colors"
     >
       {icon}
       {label}
@@ -96,7 +96,7 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
 
       {/* --- LEFT COLUMN: PROFILE IMAGE --- */}
       <div className="w-full sm:w-1/3 md:w-48 lg:w-56 flex-shrink-0">
-        <div className="aspect-square w-full bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
+        <div className="aspect-square w-full bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
           {publicFigureData.profilePic ? (
             <Image
               src={publicFigureData.profilePic}
@@ -119,8 +119,8 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
       <div className="flex flex-col flex-grow">
 
         {/* Name and Description */}
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{publicFigureData.name}</h1>
-        <h2>{publicFigureData.name_kr}</h2>
+        <h1 className="text-3xl font-bold text-gray-900">{publicFigureData.name}</h1>
+        <h2 className='text-xl font-bold text-gray-500'>{publicFigureData.name_kr}</h2>
 
         {/* Info Grid */}
         <div className="grid grid-cols-2 gap-y-4 gap-x-8 mt-6">
@@ -139,7 +139,7 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
         </div>
 
         {/* Official Links */}
-        <div className="mt-8 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-8 pt-4 border-t border-gray-200">
           <h3 className="text-sm font-semibold text-gray-500 mb-3">Official Links</h3>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <SocialLink href={publicFigureData.companyUrl} icon={<Globe size={16} />} label="Website" />

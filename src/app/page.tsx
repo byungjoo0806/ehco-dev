@@ -42,9 +42,9 @@ type AlgoliaPublicFigure = {
 
 const LoadingOverlay = () => (
   <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
-      <Loader2 className="animate-spin text-slate-600 dark:text-white" size={24} />
-      <span className="text-slate-600 dark:text-white font-medium">Loading...</span>
+    <div className="bg-white p-6 rounded-lg flex items-center space-x-3">
+      <Loader2 className="animate-spin text-slate-600" size={24} />
+      <span className="text-slate-600 font-medium">Loading...</span>
     </div>
   </div>
 );
@@ -318,15 +318,15 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50">
       {/* Main content */}
       <main className="w-[92%] sm:w-[90%] md:w-[80%] mx-auto px-2 sm:px-4 py-12 sm:py-16">
         {/* Title section */}
         <section className="text-center mb-8 sm:mb-12">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-4 text-black dark:text-white">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 sm:mb-4 text-black">
             Understand Their <span className="text-key-color">Story</span>
           </h2>
-          <p className="text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-300 mb-6 sm:mb-8">
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-6 sm:mb-8">
             Structured information from trusted sources.
           </p>
 
@@ -339,7 +339,7 @@ export default function Home() {
                 onChange={handleInputChange}
                 onKeyDown={handleKeyDown}
                 placeholder="Search for a public figure..."
-                className="w-full px-4 md:px-6 py-2.5 md:py-3 text-base md:text-lg border-2 border-key-color rounded-full focus:outline-none focus:border-key-color dark:bg-slate-800 dark:text-white dark:border-white pl-12"
+                className="w-full px-4 md:px-6 py-2.5 md:py-3 text-black text-base md:text-lg border-2 border-key-color rounded-full focus:outline-none focus:border-key-color pl-12"
               />
               {searchQuery ? (
                 <X
@@ -358,21 +358,21 @@ export default function Home() {
 
             {/* Search Results Dropdown */}
             {isSearching ? (
-              <div className="absolute z-50 mt-2 bg-white dark:bg-slate-800 border rounded-lg shadow-lg w-full left-0 right-0">
-                <div className="px-3 py-3 text-sm text-gray-500 dark:text-gray-300 text-center">
+              <div className="absolute z-50 mt-2 bg-white border rounded-lg shadow-lg w-full left-0 right-0">
+                <div className="px-3 py-3 text-sm text-gray-500 text-center">
                   Loading...
                 </div>
               </div>
             ) : (
               <>
                 {showResults && searchResults.length > 0 && (
-                  <div className="absolute z-50 mt-2 bg-white dark:bg-slate-800 border rounded-lg shadow-lg w-full left-0 right-0 max-h-96 overflow-y-auto">
+                  <div className="absolute z-50 mt-2 bg-white border rounded-lg shadow-lg w-full left-0 right-0 max-h-96 overflow-y-auto">
                     <div className="grid grid-cols-1 md:grid-cols-2">
                       {searchResults.map((result) => (
                         <Link
                           key={result.objectID}
                           href={`/${result.objectID}`}
-                          className="flex flex-row items-center px-4 py-3 hover:bg-gray-100 dark:hover:bg-slate-700"
+                          className="flex flex-row items-center px-4 py-3 hover:bg-gray-100"
                           onClick={(e) => {
                             e.preventDefault();
                             setShowResults(false);
@@ -396,13 +396,13 @@ export default function Home() {
                           </div>
 
                           <div className="flex-1 pl-4">
-                            <div className="font-medium text-sm md:text-md text-black dark:text-white truncate">
+                            <div className="font-medium text-sm md:text-md text-black truncate">
                               {result._highlightResult?.name ?
                                 renderHighlightedText(result._highlightResult.name.value) :
                                 result.name}
                             </div>
                             {result.name_kr && (
-                              <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 truncate">
+                              <div className="text-xs md:text-sm text-gray-500 truncate">
                                 {result._highlightResult?.name_kr ?
                                   renderHighlightedText(result._highlightResult.name_kr.value) :
                                   result.name_kr}
@@ -416,8 +416,8 @@ export default function Home() {
                 )}
 
                 {showResults && searchQuery && searchResults.length === 0 && (
-                  <div className="absolute z-50 mt-2 bg-white dark:bg-slate-800 border rounded-lg shadow-lg w-full left-0 right-0">
-                    <div className="px-3 py-3 text-sm text-gray-500 dark:text-gray-300 text-center">
+                  <div className="absolute z-50 mt-2 bg-white border rounded-lg shadow-lg w-full left-0 right-0">
+                    <div className="px-3 py-3 text-sm text-gray-500 text-center">
                       No results found
                     </div>
                   </div>
@@ -429,7 +429,7 @@ export default function Home() {
 
         {/* Explore Figures section */}
         <section className="mt-16 sm:mt-24">
-          <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-center mb-8 sm:mb-12 text-black dark:text-white">
+          <h3 className="text-xl sm:text-2xl md:text-3xl font-bold text-center mb-8 sm:mb-12 text-black">
             Explore Figures
           </h3>
 
@@ -437,13 +437,13 @@ export default function Home() {
             <div className="flex justify-center items-center gap-2 sm:gap-4 md:gap-8 px-4 md:px-16">
               {[...Array(isMobile ? 3 : 6)].map((_, index) => (
                 <div key={index} className="text-center">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full bg-gray-200 dark:bg-gray-700 animate-pulse mb-2 md:mb-3 mx-auto" />
-                  <div className="h-4 w-16 sm:w-20 md:w-24 bg-gray-200 dark:bg-gray-700 animate-pulse rounded mx-auto" />
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-full bg-gray-200 animate-pulse mb-2 md:mb-3 mx-auto" />
+                  <div className="h-4 w-16 sm:w-20 md:w-24 bg-gray-200 animate-pulse rounded mx-auto" />
                 </div>
               ))}
             </div>
           ) : error ? (
-            <div className="text-center text-red-500 dark:text-red-400 py-8">
+            <div className="text-center text-red-500 py-8">
               <p className="mb-4">{error}</p>
               <button
                 onClick={() => window.location.reload()}
@@ -453,7 +453,7 @@ export default function Home() {
               </button>
             </div>
           ) : figures.length === 0 ? (
-            <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+            <div className="text-center text-gray-500 py-8">
               <p>No figures available at the moment.</p>
             </div>
           ) : (
@@ -479,7 +479,7 @@ export default function Home() {
                         className="object-cover"
                       />
                     </div>
-                    <p className="text-xs md:text-sm font-medium text-black dark:text-white truncate max-w-[80px] sm:max-w-[100px] md:max-w-full mx-auto">
+                    <p className="text-xs md:text-sm font-medium text-black truncate max-w-[80px] sm:max-w-[100px] md:max-w-full mx-auto">
                       {figure.name}
                     </p>
                   </Link>
@@ -493,17 +493,17 @@ export default function Home() {
             <div className="flex justify-center items-center space-x-4 sm:space-x-6 mt-6">
               <button
                 onClick={handlePrevious}
-                className="bg-white dark:bg-slate-700 rounded-full p-2 sm:p-2.5 shadow-md hover:shadow-lg transition-shadow focus:outline-none"
+                className="bg-white rounded-full p-2 sm:p-2.5 shadow-md hover:shadow-lg transition-shadow focus:outline-none"
                 disabled={isLoading || imagesLoading}
               >
-                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-white" />
+                <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
               </button>
               <button
                 onClick={handleNext}
-                className="bg-white dark:bg-slate-700 rounded-full p-2 sm:p-2.5 shadow-md hover:shadow-lg transition-shadow focus:outline-none"
+                className="bg-white rounded-full p-2 sm:p-2.5 shadow-md hover:shadow-lg transition-shadow focus:outline-none"
                 disabled={isLoading || imagesLoading}
               >
-                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 dark:text-white" />
+                <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
               </button>
             </div>
           )}

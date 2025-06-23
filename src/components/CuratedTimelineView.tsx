@@ -127,41 +127,41 @@ const YearFilter: React.FC<{
         : `${selectedYears.length} year${selectedYears.length > 1 ? 's' : ''} selected`;
 
     return (
-        <div className='relative p-4 border-b border-gray-200 dark:border-gray-700/60' ref={dropdownRef}>
-            <label className="font-semibold text-sm mb-2 block text-gray-800 dark:text-gray-200">Filter by Year</label>
+        <div className='relative p-4 border-b border-gray-200' ref={dropdownRef}>
+            <label className="font-semibold text-sm mb-2 block text-gray-800">Filter by Year</label>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full p-2 border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors flex justify-between items-center"
+                className="w-full p-2 text-black border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-key-color focus:border-key-color transition-colors flex justify-between items-center"
             >
                 <span>{buttonText}</span>
                 <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
-                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                     <ul className="py-1">
                         <li
-                            className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center"
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
                             onClick={onSelectAll}
                         >
                             {selectedYears.length === 0 ? (
-                                <CheckSquare className="mr-2 h-5 w-5 text-red-500" />
+                                <CheckSquare className="mr-2 h-5 w-5 text-key-color" />
                             ) : (
                                 <Square className="mr-2 h-5 w-5 text-gray-400" />
                             )}
-                            <span className="text-gray-800 dark:text-gray-200">All Years</span>
+                            <span className="text-gray-800">All Years</span>
                         </li>
                         {years.map(year => (
                             <li
                                 key={year}
-                                className="px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer flex items-center"
+                                className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
                                 onClick={() => onToggleYear(year)}
                             >
                                 {selectedYears.includes(year) ? (
-                                    <CheckSquare className="mr-2 h-5 w-5 text-red-500" />
+                                    <CheckSquare className="mr-2 h-5 w-5 text-key-color" />
                                 ) : (
                                     <Square className="mr-2 h-5 w-5 text-gray-400" />
                                 )}
-                                <span className="text-gray-800 dark:text-gray-200">{year}</span>
+                                <span className="text-gray-800">{year}</span>
                             </li>
                         ))}
                     </ul>
@@ -174,19 +174,19 @@ const YearFilter: React.FC<{
 // Navigation component for events in the current view
 const EventNavigator: React.FC<{ eventList: CuratedEvent[], onNavigate: (id: string) => void }> = ({ eventList, onNavigate }) => {
     if (!eventList || eventList.length === 0) {
-        return <div className="p-3 text-center text-xs text-gray-500 dark:text-gray-400">No events in this section.</div>;
+        return <div className="p-3 text-center text-xs text-gray-500">No events in this section.</div>;
     }
 
     return (
         <div className="w-full">
-            <h3 className="font-semibold text-sm p-3 text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700">On This Page</h3>
+            <h3 className="font-semibold text-sm p-3 text-gray-800 border-b border-gray-200">On This Page</h3>
             <nav>
                 <ul className="py-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 250px)' }}>
                     {eventList.map(event => (
                         <li key={event.event_title}>
                             <button
                                 onClick={() => onNavigate(slugify(event.event_title))}
-                                className="w-full text-left text-sm px-3 py-2.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-gray-200 transition-colors duration-200 rounded-md"
+                                className="w-full text-left text-sm px-3 py-2.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 rounded-md"
                             >
                                 {event.event_title}
                             </button>
@@ -221,7 +221,7 @@ const EventSources: React.FC<EventSourcesProps> = ({ articleIds, articlesMap }) 
     return (
         <div className="mt-3 pt-3 border-t border-gray-200/80 "><div className="grid grid-cols-1 gap-4">
             {relevantArticles.map(article => (
-                <a key={article.id} href={article.link} target="_blank" rel="noopener noreferrer" className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 border rounded-lg hover:bg-gray-50/80 transition-all duration-200 shadow-sm dark:bg-gray-400 dark:hover:bg-gray-300">
+                <a key={article.id} href={article.link} target="_blank" rel="noopener noreferrer" className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 border rounded-lg hover:bg-gray-50/80 transition-all duration-200 shadow-sm">
                     {article.imageUrls?.[0] && (<img src={article.imageUrls[0]} alt={article.subTitle || 'Source image'} className="w-full h-32 sm:w-20 sm:h-20 object-cover rounded-md flex-shrink-0 bg-gray-100" />)}
                     <div className="flex flex-col">
                         <h6 className="font-semibold text-sm text-blue-700 hover:underline leading-tight">{article.subTitle || article.title || 'Source Article'}</h6>
@@ -244,11 +244,11 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
     const toggleSources = () => setIsSourcesVisible(prev => !prev);
     return (
         <div className="relative pb-4">
-            <div className="absolute w-3 h-3 bg-red-500 rounded-full left-[-20px] top-1 border-2 border-white dark:border-none"></div>
+            <div className="absolute w-3 h-3 bg-red-500 rounded-full left-[-20px] top-1 border-2 border-white"></div>
             {!isLast && <div className="absolute w-px h-full bg-gray-200 left-[-14px] top-4"></div>}
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-200">{formatTimelineDate(point.date)}</p>
+            <p className="text-sm font-medium text-gray-500">{formatTimelineDate(point.date)}</p>
             <div className="flex justify-between items-start gap-4">
-                <p className="text-base text-gray-700 dark:text-gray-300">{point.description}</p>
+                <p className="text-base text-gray-700">{point.description}</p>
                 {hasSources && (<button onClick={toggleSources} className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors flex-shrink-0" aria-label="Toggle sources">{isSourcesVisible ? <ChevronUp size={20} /> : <ChevronDown size={20} />}</button>)}
             </div>
             {isSourcesVisible && <EventSources articlesMap={articlesMap} articleIds={point.sourceIds || []} />}
@@ -419,12 +419,12 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     };
 
     return (
-        <div className="w-full max-w-[100vw] flex flex-row justify-start dark:bg-gray-800">
+        <div className="w-full max-w-[100vw] flex flex-row justify-start">
             {/* ================================================================== */}
             {/* --- Sticky Left Navigation ---                                     */}
             {/* ================================================================== */}
             <div className='hidden sm:flex w-[25%] max-w-xs flex-col'>
-                <div className="sticky top-16 self-start w-full h-screen overflow-y-auto border-r border-gray-200 dark:border-gray-700/60 bg-white dark:bg-gray-800">
+                <div className="sticky top-16 self-start w-full h-screen overflow-y-auto border-r border-gray-200 bg-white">
                     <YearFilter 
                         years={availableYears} 
                         selectedYears={selectedYears} 
@@ -443,10 +443,10 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                 {/* --- DESKTOP VIEW (sm screens and up) ---                           */}
                 {/* ================================================================== */}
                 <div className="hidden sm:block">
-                    <div className="w-full mt-3 mb-6 sticky top-16 z-10 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
-                        <div className="flex flex-row flex-wrap gap-x-2 gap-y-1 pb-2 border-b border-gray-200 dark:border-gray-600">
+                    <div className="w-full mt-3 mb-6 sticky top-16 z-10 bg-white/80 backdrop-blur-sm">
+                        <div className="flex flex-row flex-wrap gap-x-2 gap-y-1 pb-2 border-b border-gray-200">
                             {mainCategories.map(category => (
-                                <button key={category} onClick={() => handleSelectCategory(category)} className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${localActiveCategory === category ? 'text-red-500 border-b-2 border-red-500' : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-300'}`}>
+                                <button key={category} onClick={() => handleSelectCategory(category)} className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${localActiveCategory === category ? 'text-red-500 border-b-2 border-red-500' : 'text-gray-500 hover:text-gray-800'}`}>
                                     {category}
                                 </button>
                             ))}
@@ -460,9 +460,9 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                         )}
 
                         {getAvailableSubCategories(localActiveCategory).length > 0 && (
-                            <div className="flex flex-row overflow-x-auto space-x-2 py-2 hide-scrollbar border-b border-gray-200 dark:border-gray-600">
+                            <div className="flex flex-row overflow-x-auto space-x-2 py-2 hide-scrollbar border-b border-gray-200">
                                 {getAvailableSubCategories(localActiveCategory).map(subCategory => (
-                                    <button key={subCategory} onClick={() => handleSelectCategory(localActiveCategory, subCategory)} className={`px-3 py-1.5 whitespace-nowrap text-xs font-medium rounded-full transition-colors ${localActiveSubCategory === subCategory ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}>
+                                    <button key={subCategory} onClick={() => handleSelectCategory(localActiveCategory, subCategory)} className={`px-3 py-1.5 whitespace-nowrap text-xs font-medium rounded-full transition-colors ${localActiveSubCategory === subCategory ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                                         {subCategory}
                                     </button>
                                 ))}
@@ -474,9 +474,9 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                             <div key={subCategory} className="space-y-8">
                                 {eventList.map(event => (
                                     // MODIFIED: Added id and scroll-mt for navigation
-                                    <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-700 scroll-mt-40">
-                                        <h4 className="font-semibold text-lg text-gray-900 dark:text-white">{event.event_title}</h4>
-                                        <p className="text-sm text-gray-600 dark:text-gray-200 italic mt-1 mb-3">{event.event_summary}</p>
+                                    <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white scroll-mt-40">
+                                        <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
+                                        <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
                                         <div className="relative pl-5">
                                             {event.timeline_points.map((point, index) => (<TimelinePointWithSources key={index} point={point} articlesMap={articlesMap} isLast={index === event.timeline_points.length - 1} />))}
                                         </div>
@@ -501,12 +501,12 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
 
                             return (
                                 <div key={category} className="border border-gray-200/80 rounded-lg shadow-sm overflow-hidden transition-all duration-300">
-                                    <button onClick={() => handleToggleCategory(category)} className="w-full flex justify-between items-center px-4 py-3 text-left font-semibold text-gray-800 bg-gray-50/80 hover:bg-gray-100 dark:text-gray-400 dark:bg-slate-500 dark:hover:bg-slate-300">
-                                        <span className='text-lg dark:text-gray-300'>{category}</span>
+                                    <button onClick={() => handleToggleCategory(category)} className="w-full flex justify-between items-center px-4 py-3 text-left font-semibold text-gray-800 bg-gray-50/80 hover:bg-gray-100">
+                                        <span className='text-lg'>{category}</span>
                                         {isOpen ? <ChevronUp size={22} /> : <ChevronDown size={22} />}
                                     </button>
                                     {isOpen && (
-                                        <div className="px-4 pt-4 pb-2 bg-white dark:bg-slate-500 border-t border-gray-200/80">
+                                        <div className="px-4 pt-4 pb-2 bg-white border-t border-gray-200/80">
                                             <div className="flex flex-wrap gap-2 mb-4">
                                                 {availableSubCats.map(subCat => (
                                                     <button
@@ -514,7 +514,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                                         onClick={(e) => { e.stopPropagation(); handleSelectCategory(category, subCat); }}
                                                         className={`px-3 py-1.5 whitespace-nowrap text-xs font-medium rounded-full transition-colors ${localActiveCategory === category && localActiveSubCategory === subCat
                                                             ? 'bg-red-500 text-white'
-                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                             }`}
                                                     >
                                                         {subCat}
@@ -526,9 +526,9 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                                 <div className="space-y-6 pt-4 border-t border-gray-200/80">
                                                     {Object.values(displayedContent)[0].map(event => (
                                                         // FIXED: Added id and scroll-mt for navigation on mobile
-                                                        <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white dark:bg-gray-600 scroll-mt-16">
-                                                            <h4 className="font-semibold text-lg text-gray-900 dark:text-white">{event.event_title}</h4>
-                                                            <p className="text-sm text-gray-600 italic mt-1 mb-3 dark:text-gray-200">{event.event_summary}</p>
+                                                        <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white scroll-mt-16">
+                                                            <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
+                                                            <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
                                                             <div className="relative pl-5">
                                                                 {event.timeline_points.map((point, index) => (
                                                                     <TimelinePointWithSources key={index} point={point} articlesMap={articlesMap} isLast={index === event.timeline_points.length - 1} />

@@ -3,7 +3,7 @@ from setup_firebase_deepseek import NewsManager # Assuming this is your setup fi
 
 # --- CONFIGURATION ---
 # Make sure this matches the figure you want to update
-TARGET_FIGURE_ID = "iu(leejieun)" 
+TARGET_FIGURE_ID = "ive" 
 
 class BackfillProcessor:
     """
@@ -40,7 +40,7 @@ class BackfillProcessor:
 
             for doc in docs:
                 # Add the update operation to the batch
-                batch.update(doc.reference, {"is_processed_for_timeline": True})
+                batch.update(doc.reference, {"is_processed_for_timeline": False})
                 count += 1
                 
                 # Firestore batches have a limit of 500 operations.

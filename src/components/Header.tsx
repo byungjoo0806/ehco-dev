@@ -35,9 +35,9 @@ type PublicFigure = {
 
 const LoadingOverlay = () => (
   <div className="fixed inset-0 bg-black bg-opacity-50 z-[60] flex items-center justify-center">
-    <div className="bg-white dark:bg-slate-800 p-6 rounded-lg flex items-center space-x-3">
-      <Loader2 className="animate-spin text-slate-600 dark:text-white" size={24} />
-      <span className="text-slate-600 dark:text-white font-medium">Loading...</span>
+    <div className="bg-white p-6 rounded-lg flex items-center space-x-3">
+      <Loader2 className="animate-spin text-slate-600" size={24} />
+      <span className="text-slate-600 font-medium">Loading...</span>
     </div>
   </div>
 );
@@ -138,7 +138,7 @@ export default function Header() {
     <Link
       key={result.objectID}
       href={`/${result.objectID}`}
-      className="w-64 flex flex-row items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-slate-500"
+      className="w-64 flex flex-row items-center px-3 py-2 hover:bg-gray-100"
       onClick={(e) => {
         e.preventDefault();
         setShowResults(false);
@@ -163,13 +163,13 @@ export default function Header() {
         </div>
       )}
       <div className="flex-1 pl-2">
-        <div className="font-medium text-md dark:text-gray-100">
+        <div className="font-medium text-md text-black">
           {result._highlightResult?.name ?
             renderHighlightedText(result._highlightResult.name.value) :
             result.name}
         </div>
         {result.name_kr && (
-          <div className="text-sm text-gray-500 dark:text-gray-300">
+          <div className="text-sm text-gray-500">
             {result._highlightResult?.name_kr ?
               renderHighlightedText(result._highlightResult.name_kr.value) :
               result.name_kr}
@@ -181,11 +181,11 @@ export default function Header() {
 
   return (
     <>
-      <header className="w-full border-b dark:border-b-white bg-white dark:bg-black">
+      <header className="w-full border-b bg-white">
         <div className="w-[90%] md:w-[80%] mx-auto px-4 h-16 flex justify-center items-center">
           <div className="w-full h-full flex">
             {/* Left section with menu */}
-            <div className="flex justify-start items-center w-1/3 text-black dark:text-white">
+            <div className="flex justify-start items-center w-1/3 text-black">
               <Menu onClick={() => setIsMenuOpen(!isMenuOpen)} className="cursor-pointer" />
             </div>
 
@@ -237,13 +237,13 @@ export default function Header() {
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                         placeholder="Search public figures"
-                        className="pl-4 pr-8 py-1.5 border border-key-color rounded-full w-full text-sm dark:bg-black"
+                        className="pl-4 pr-8 py-1.5 border border-key-color rounded-full w-full text-sm text-black"
                       />
                     </div>
 
                     {/* Search Results Dropdown */}
                     {isSearching ? (
-                      <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border rounded-lg shadow-lg w-64 z-50">
+                      <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 z-50">
                         <div className="px-3 py-3 text-sm text-gray-500 text-center">
                           Loading...
                         </div>
@@ -251,7 +251,7 @@ export default function Header() {
                     ) : (
                       <>
                         {showResults && searchResults.length > 0 && (
-                          <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto z-50">
+                          <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 max-h-96 overflow-y-auto z-50">
                             {searchResults.map(renderSearchResult)}
                             <div className="border-t border-gray-200 px-3 py-2 text-center">
                               <Link
@@ -266,7 +266,7 @@ export default function Header() {
                         )}
 
                         {showResults && searchQuery && searchResults.length === 0 && (
-                          <div className="absolute top-full right-0 mt-1 bg-white dark:bg-slate-800 border rounded-lg shadow-lg w-64 z-50">
+                          <div className="absolute top-full right-0 mt-1 bg-white border rounded-lg shadow-lg w-64 z-50">
                             <div className="px-3 py-3 text-sm text-gray-500 text-center">
                               No results found
                             </div>
@@ -277,7 +277,7 @@ export default function Header() {
                   </div>
 
                   {/* Mobile search icon */}
-                  <div className="sm:hidden">
+                  <div className="sm:hidden text-black">
                     <Search
                       className="cursor-pointer"
                       onClick={() => setIsSearchOpen(true)}
@@ -293,9 +293,9 @@ export default function Header() {
       {isLoading && <LoadingOverlay />}
 
       <Suspense fallback={
-        <div className="fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-500 shadow-lg z-50 transform -translate-x-full">
-          <div className='w-full h-16 px-8 flex justify-start items-center border-b border-b-black dark:border-b-white'>
-            <p className='text-xl font-bold text-black dark:text-white'>Loading...</p>
+        <div className="fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 transform -translate-x-full">
+          <div className='w-full h-16 px-8 flex justify-start items-center border-b border-b-black'>
+            <p className='text-xl font-bold text-black'>Loading...</p>
           </div>
         </div>
       }>

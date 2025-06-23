@@ -129,17 +129,17 @@ export default function RootLayout({
           <div className="fixed top-0 left-0 right-0 z-50 shadow-md">
             <Header />
           </div>
-          <main className="min-h-screen pt-16">
+          <main className="min-h-screen pt-16 bg-white">
             {children}
             <JsonLd data={websiteSchema} />
           </main>
 
           {/* Footer - white background with only copyright and links */}
-          <footer className="mt-0 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-gray-700 py-8">
+          <footer className="mt-0 bg-white border-t border-gray-200 py-8">
             <div className="w-[90%] md:w-[80%] mx-auto px-4">
               <div className="text-center">
-                <p className="text-xs md:text-sm mb-4 text-gray-600 dark:text-gray-300">© 2025 EHCO. All rights reserved.</p>
-                <div className="flex flex-col md:flex-row flex-wrap justify-center items-center gap-3 md:gap-4 text-xs md:text-sm text-gray-600 dark:text-gray-300">
+                <p className="text-xs md:text-sm mb-4 text-gray-600">© 2025 EHCO. All rights reserved.</p>
+                <div className="flex flex-col md:flex-row flex-wrap justify-center items-center gap-3 md:gap-4 text-xs md:text-sm text-gray-600">
                   <Link
                     href="/about-ehco"
                     className='hover:underline'
