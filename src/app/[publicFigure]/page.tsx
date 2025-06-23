@@ -202,8 +202,8 @@ async function getPublicFigureContent(publicFigureId: string): Promise<ApiConten
     try {
         const contentResponse = await fetch(
             `${protocol}://${host}/api/public-figure-content/${publicFigureId}`,
-            // { cache: 'force-cache', next: { revalidate: 3600 } }
-            { cache: 'no-store' }
+            { cache: 'force-cache', next: { revalidate: 3600 } }
+            // { cache: 'no-store' }
         );
         if (!contentResponse.ok) throw new Error('Failed to fetch content');
         return await contentResponse.json();
