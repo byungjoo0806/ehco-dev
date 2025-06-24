@@ -12,6 +12,8 @@ const MainCategorySummary: React.FC<MainCategorySummaryProps> = ({ content }) =>
         return null;
     }
 
+    const polishedContent = content.replaceAll("*", "'");
+
     return (
         <div className="my-4 border border-gray-200 shadow-sm rounded-md ">
             <button
@@ -36,7 +38,7 @@ const MainCategorySummary: React.FC<MainCategorySummaryProps> = ({ content }) =>
             >
                 <div className="p-4 bg-white">
                     <p className="text-gray-600 text-sm">
-                        {content}
+                        {polishedContent}
                     </p>
                 </div>
             </div>

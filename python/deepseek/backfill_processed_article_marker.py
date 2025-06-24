@@ -3,7 +3,7 @@ from setup_firebase_deepseek import NewsManager # Assuming this is your setup fi
 
 # --- CONFIGURATION ---
 # Make sure this matches the figure you want to update
-TARGET_FIGURE_ID = "ive" 
+TARGET_FIGURE_ID = "seventeen" 
 
 class BackfillProcessor:
     """

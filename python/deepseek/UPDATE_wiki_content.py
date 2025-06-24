@@ -130,7 +130,8 @@ class PublicFigureWikiUpdater:
                 if new_content and new_content.strip() != existing_content.strip():
                     wiki_doc_ref.update({
                         "content": new_content,
-                        "lastUpdated": firestore.SERVER_TIMESTAMP
+                        "lastUpdated": firestore.SERVER_TIMESTAMP,
+                        "is_compacted": False
                     })
                     print(f"  - Updated wiki document: '{doc_id}'")
                 else:
@@ -180,7 +181,7 @@ You are a meticulous editor responsible for updating the biographical profile of
 """
 
         try:
-            response = self.news_manager.client.chat.completions.create(
+            response = await self.news_manager.client.chat.completions.create(
                 model=self.news_manager.model,
                 messages=[
                     {"role": "system", "content": "You are a skilled editor updating biographical content based on new source material."},

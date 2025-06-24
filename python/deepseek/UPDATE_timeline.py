@@ -5,7 +5,7 @@ from setup_firebase_deepseek import NewsManager # Assuming this is your setup fi
 from typing import Union, Optional, Dict, Any
 
 # --- CONFIGURATION ---
-TARGET_FIGURE_ID = "iu(leejieun)" # Make sure this matches your figure ID
+TARGET_FIGURE_ID = "ateez" # Make sure this matches your figure ID
 CURATED_TIMELINE_COLLECTION = "curated-timeline"
 
 class CurationEngine:
@@ -52,52 +52,51 @@ class CurationEngine:
             print(f"    Error during event re-categorization: {e}")
             return None, None
 
-    async def _extract_events_from_article(self, raw_entry: dict) -> list[dict]:
+
+    async def _generate_initial_event(self, raw_entry: dict) -> Union[dict, None]:
         """
-        NEW: Reads an article's content and extracts a list of distinct timeline events.
+        Takes a single raw entry and asks the AI to generate ONE structured event JSON.
+        This logic is copied directly from the reliable initial_migration.py script.
         """
-        system_prompt = "You are an expert timeline curator. Your task is to read the provided text and extract all distinct, self-contained timeline events. For example, winning an award and releasing a new album are two separate events, even if mentioned in the same article. Respond with a single JSON object containing a key 'events', which is an array of event objects."
+        system_prompt = "You are an expert data entry assistant. Your sole job is to take the provided text and convert it into a single, structured JSON object representing a timeline event. Follow all formatting rules precisely. The final output must be only the JSON object."
         
         user_prompt = f"""
-        Please read the following content and extract all distinct timeline events into a JSON array.
-
-        CRITICAL INSTRUCTIONS for EACH event object in the array:
-        1. Each event object must have 'event_title', 'event_summary', and a 'timeline_points' array. An event should be self-contained.
-        2. The 'date' for each timeline point MUST be formatted based on the information available:
-           - Use "YYYY-MM-DD" if the full date is known (e.g., "2015-05-25").
-           - Use "YYYY-MM" if only the year and month are known (e.g., "2015-05").
-           - Use "YYYY" if only the year is known (e.g., "2015").
-        3. The 'sourceIds' field in each timeline point MUST be an array containing ONLY the single source ID provided below.
+        Please convert the following information into a single event JSON object.
+        The event object must have 'event_title', 'event_summary', and a 'timeline_points' array.
+        
+        CRITICAL INSTRUCTION: Each object inside the 'timeline_points' array must have three keys: 'date', 'description', and 'sourceIds'.
+        The 'sourceIds' field MUST be an array containing ONLY the single source ID provided below.
 
         Information to process:
         - sourceId: "{raw_entry['sourceId']}"
         - content: {json.dumps(raw_entry['content'])}
         ---
-        Your response must be a single JSON object with a single key "events" that contains a list of the event objects you found. If no specific events are found, return an empty list.
-        Example response format: {{ "events": [ {{...event 1...}}, {{...event 2...}} ] }}
+        Now, generate the complete JSON object for the event based on the content provided.
         """
+        
         try:
             response = await self.ai_client.chat.completions.create(
                 model=self.ai_model,
                 messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                 response_format={"type": "json_object"}
             )
-            result = json.loads(response.choices[0].message.content)
-            events = result.get("events", [])
-
-            # Validate and clean the extracted events
-            valid_events = []
-            if isinstance(events, list):
-                for event in events:
-                    if 'event_title' in event and 'timeline_points' in event:
-                        for point in event.get('timeline_points', []):
-                            point.setdefault('sourceIds', [raw_entry['sourceId']])
-                        valid_events.append(event)
-            return valid_events
+            event_json = json.loads(response.choices[0].message.content)
             
+            # Basic validation to ensure the returned JSON is a valid event
+            if 'event_title' in event_json and 'timeline_points' in event_json:
+                for point in event_json.get('timeline_points', []):
+                    # Defensive check for malformed points
+                    if isinstance(point, dict):
+                        point.setdefault('sourceIds', [raw_entry['sourceId']])
+                return event_json
+            else:
+                print(f"    Warning: AI response was not in the expected event format for {raw_entry['sourceId']}. Skipping.")
+                return None
+
         except Exception as e:
-            print(f"    Error during event extraction: {e}")
-            return []
+            print(f"    Error during initial event generation for {raw_entry['sourceId']}: {e}")
+            return None
+
 
     async def _call_curation_api(self, subcategory_name: str, existing_events: list, new_event: dict) -> Union[dict, None]:
         # This function is identical to the one in your migration script.
@@ -170,10 +169,12 @@ class CurationEngine:
         print(f"Found {len(raw_entries)} new articles to process.")
         return raw_entries
 
+    # In UPDATE_timeline.py, REPLACE the entire run_incremental_update function with this
+
     async def run_incremental_update(self):
         """
-        UPDATED: Fetches unprocessed articles, extracts MULTIPLE events from each,
-        and intelligently merges them into the existing curated timeline.
+        REVERTED: Fetches unprocessed articles, generates ONE event from each,
+        and intelligently merges it into the existing curated timeline.
         """
         print(f"--- Starting Incremental Timeline Update for {self.figure_id} ---")
         
@@ -187,84 +188,80 @@ class CurationEngine:
         for article in new_articles:
             print(f"\nProcessing article with sourceId: {article['sourceId']}")
             
-            # 1. NEW: Extract a LIST of events from the article.
-            # This replaces the old `_generate_initial_event` call.
-            extracted_events = await self._extract_events_from_article(article)
+            # 1. Generate a SINGLE event from the article using the trusted function.
+            new_event = await self._generate_initial_event(article)
             
-            if not extracted_events:
-                print(f"  -> No distinct events found in {article['sourceId']}. Marking as processed.")
-                # Mark the article as processed even if no events were found to prevent reprocessing
+            # If no event could be generated, mark as processed and skip to the next article.
+            if not new_event:
                 article_ref = self.db.collection('selected-figures').document(self.figure_id).collection('article-summaries').document(article['sourceId'])
                 article_ref.update({"is_processed_for_timeline": True})
                 continue
             
-            print(f"  -> Extracted {len(extracted_events)} distinct events from the article.")
+            print(f"  -> Generated event: '{new_event.get('event_title')}'")
 
-            # NEW: Loop through each event found in the article
-            for new_event in extracted_events:
-                print(f"\n  --- Processing new event: '{new_event.get('event_title')}'")
-                
-                # 2. Re-categorize the new event to find its correct home (REUSE)
-                main_cat, sub_cat = await self._recategorize_event(new_event, all_categories)
-                if not main_cat or not sub_cat:
-                    print(f"    -> Failed to classify event. Skipping.")
-                    continue
-                print(f"    -> Classified into: [{main_cat}] > [{sub_cat}]")
+            # 2. Re-categorize the new event to find its correct home
+            main_cat, sub_cat = await self._recategorize_event(new_event, all_categories)
+            if not main_cat or not sub_cat:
+                print(f"    -> Failed to classify event. Skipping article.")
+                article_ref = self.db.collection('selected-figures').document(self.figure_id).collection('article-summaries').document(article['sourceId'])
+                article_ref.update({"is_processed_for_timeline": True})
+                continue
+            print(f"    -> Classified into: [{main_cat}] > [{sub_cat}]")
 
-                # 3. Fetch EXISTING curated events for the target subcategory
-                timeline_doc_ref = self.db.collection('selected-figures').document(self.figure_id).collection(CURATED_TIMELINE_COLLECTION).document(main_cat)
-                timeline_doc = timeline_doc_ref.get()
-                
-                existing_main_category_data = timeline_doc.to_dict() or {}
-                curated_events_for_subcategory = existing_main_category_data.get(sub_cat, [])
+            # 3. Fetch EXISTING curated events for the target subcategory
+            timeline_doc_ref = self.db.collection('selected-figures').document(self.figure_id).collection(CURATED_TIMELINE_COLLECTION).document(main_cat)
+            timeline_doc = timeline_doc_ref.get()
+            
+            existing_main_category_data = timeline_doc.to_dict() or {}
+            curated_events_for_subcategory = existing_main_category_data.get(sub_cat, [])
 
-                # 4. Use the Curation AI to decide what to do (REUSE)
-                if not curated_events_for_subcategory:
-                    ai_decision = {"decision": "ADD_AS_NEW"}
-                    print("      Action: No existing events in this subcategory. Creating first event.")
-                else:
-                    ai_decision = await self._call_curation_api(sub_cat, curated_events_for_subcategory, new_event)
-                
-                if not ai_decision:
-                    print("      Action: Curation AI failed. Adding event as new by default.")
-                    ai_decision = {"decision": "ADD_AS_NEW"}
+            # 4. Use the Curation AI to decide what to do
+            if not curated_events_for_subcategory:
+                ai_decision = {"decision": "ADD_AS_NEW"}
+                print("      Action: No existing events in this subcategory. Creating first event.")
+            else:
+                ai_decision = await self._call_curation_api(sub_cat, curated_events_for_subcategory, new_event)
+            
+            if not ai_decision:
+                print("      Action: Curation AI failed. Adding event as new by default.")
+                ai_decision = {"decision": "ADD_AS_NEW"}
 
-                # 5. Apply the AI's decision
-                decision_type = ai_decision.get("decision")
-                if decision_type == "MERGE":
-                    target_title = ai_decision.get("target_event_title")
-                    updated_event = ai_decision.get("updated_event_json")
-                    if target_title and updated_event:
-                        found = False
-                        for idx, event in enumerate(curated_events_for_subcategory):
-                            if event.get("event_title") == target_title:
-                                curated_events_for_subcategory[idx] = self._add_event_years(updated_event)
-                                found = True
-                                print(f"      Action: MERGED into '{target_title}'")
-                                break
-                        if not found:
-                            curated_events_for_subcategory.append(self._add_event_years(updated_event))
-                            print(f"      Action: MERGE failed (target not found). Added merged event as new.")
-                    else:
-                        curated_events_for_subcategory.append(self._add_event_years(new_event))
-                        print("      Action: MERGE decision received, but data was incomplete. Added event as new.")
-                
-                elif decision_type == "ADD_AS_NEW":
-                    curated_events_for_subcategory.append(self._add_event_years(new_event))
-                    print(f"      Action: ADDED AS NEW event.")
+            # 5. Apply the AI's decision
+            decision_type = ai_decision.get("decision")
+            if decision_type == "MERGE":
+                target_title = ai_decision.get("target_event_title")
+                updated_event = ai_decision.get("updated_event_json")
+                if target_title and updated_event:
+                    found = False
+                    for idx, event in enumerate(curated_events_for_subcategory):
+                        if event.get("event_title") == target_title:
+                            curated_events_for_subcategory[idx] = self._add_event_years(updated_event)
+                            found = True
+                            print(f"      Action: MERGED into '{target_title}'")
+                            break
+                    if not found:
+                        curated_events_for_subcategory.append(self._add_event_years(updated_event))
+                        print(f"      Action: MERGE failed (target not found). Added merged event as new.")
                 else:
                     curated_events_for_subcategory.append(self._add_event_years(new_event))
-                    print(f"      Action: Decision unclear ('{decision_type}'). Added event as new by default.")
-                
-                # 6. Save the updated subcategory data back to Firestore
-                existing_main_category_data[sub_cat] = curated_events_for_subcategory
-                timeline_doc_ref.set(existing_main_category_data, merge=True)
-                print(f"    -> Successfully updated timeline for [{main_cat}] > [{sub_cat}]")
+                    print("      Action: MERGE decision received, but data was incomplete. Added event as new.")
+            
+            elif decision_type == "ADD_AS_NEW":
+                curated_events_for_subcategory.append(self._add_event_years(new_event))
+                print(f"      Action: ADDED AS NEW event.")
+            else:
+                curated_events_for_subcategory.append(self._add_event_years(new_event))
+                print(f"      Action: Decision unclear ('{decision_type}'). Added event as new by default.")
+            
+            # 6. Save the updated subcategory data back to Firestore
+            existing_main_category_data[sub_cat] = curated_events_for_subcategory
+            timeline_doc_ref.set(existing_main_category_data, merge=True)
+            print(f"    -> Successfully updated timeline for [{main_cat}] > [{sub_cat}]")
 
-            # 7. CRITICAL: Mark the article as processed AFTER all its events are handled
+            # 7. CRITICAL: Mark the article as processed
             article_ref = self.db.collection('selected-figures').document(self.figure_id).collection('article-summaries').document(article['sourceId'])
             article_ref.update({"is_processed_for_timeline": True})
-            print(f"\n  -> Finished processing all events for sourceId {article['sourceId']} and marked as processed.")
+            print(f"  -> Finished processing article {article['sourceId']} and marked as processed.")
 
         print("\n--- Incremental Update Complete ---")
 
