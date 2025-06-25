@@ -1,6 +1,6 @@
 // src/app/[publicFigure]/page.tsx
 import { Suspense } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
@@ -12,6 +12,7 @@ import type { JsonLdObject } from '@/components/JsonLd';
 import JsonLd from '@/components/JsonLd';
 import { getArticlesByIds } from '@/lib/article-service';
 import { notFound } from 'next/navigation';
+import YouMightAlsoLike from '@/components/YouMightAlsoLike';
 
 // --- IMPORTED TYPES ---
 // All shared types are now imported from the central definitions file.
@@ -20,7 +21,6 @@ import {
     ArticleSummary,
     WikiContentItem
 } from '@/types/definitions';
-import YouMightAlsoLike from '@/components/YouMightAlsoLike';
 
 // --- PAGE-SPECIFIC TYPES ---
 // These types are only used for fetching data on this page, so they can remain here.
@@ -83,37 +83,51 @@ export async function generateMetadata({ params }: { params: Promise<{ publicFig
     try {
         const publicFigureData = await getPublicFigureData(resolvedParams.publicFigure);
 
+        const primaryOccupation = publicFigureData.occupation[0] || '';
+        const baseTitle = `${publicFigureData.name} (${publicFigureData.name_kr})`;
         const title = publicFigureData.is_group
-            ? `${publicFigureData.name} (${publicFigureData.name_kr}) - K-pop Group Profile & Information`
-            : `${publicFigureData.name} (${publicFigureData.name_kr}) Profile & Information`;
+            ? `${baseTitle} - K-Pop Group Profile & Timeline`
+            : `${baseTitle} - ${primaryOccupation} Profile & Timeline`;
 
-        let description;
         const figureName = publicFigureData.name;
-
-        if (publicFigureData.is_group) {
-            // Better description for groups: More active, highlights unique features.
-            description = `The complete profile for ${figureName}. Explore their members, debut history, discography, and a real-time timeline of verified news and events on EHCO.`;
-        } else {
-            // Better description for individuals: Engages with a question, highlights biography and facts.
-            description = `Who is ${figureName}? Discover their full biography, official profile, timeline of major life events, and all the latest fact-checked news.`;
-        }
+        const description = publicFigureData.is_group
+            ? `Explore the complete profile for ${figureName}. Discover members, debut history, discography, and a real-time timeline of verified news on EHCO.`
+            : `Who is ${figureName}? Get their official profile, full biography, career timeline, and the latest fact-checked news and updates on EHCO.`;
 
         return {
             title,
             description,
             keywords: [
-                `${publicFigureData.name}`, `${publicFigureData.name_kr}`, `${publicFigureData.name} info`,
-                `${publicFigureData.name} biography`, ...publicFigureData.occupation.map(occ => `${publicFigureData.name} ${occ}`),
-                `${publicFigureData.nationality} ${publicFigureData.occupation[0] || ''}`,
-                ...(publicFigureData.is_group ? ['kpop group', 'korean idol group'] : ['kpop idol', 'korean celebrity'])
+                publicFigureData.name,
+                publicFigureData.name_kr,
+                `${publicFigureData.name} profile`,
+                `${publicFigureData.name} timeline`,
+                `${publicFigureData.name} facts`,
+                `${publicFigureData.name} news`,
+                ...publicFigureData.occupation.map(occ => `${publicFigureData.name} ${occ}`),
+                `${publicFigureData.nationality} ${primaryOccupation}`,
+                ...(publicFigureData.is_group
+                    ? ['kpop group', 'korean idol group', 'kpop group profiles']
+                    : ['kpop idol', 'korean celebrity', 'korean actor', 'korean singer'])
             ],
             alternates: { canonical: `https://ehco.ai/${resolvedParams.publicFigure}` },
             openGraph: {
-                title: `${title} - EHCO`, description, url: `https://ehco.ai/${resolvedParams.publicFigure}`,
-                type: 'profile', images: publicFigureData.profilePic ? [{ url: publicFigureData.profilePic }] : [],
+                title: title, // Use the new dynamic title
+                description,
+                url: `https://ehco.ai/${resolvedParams.publicFigure}`,
+                siteName: 'EHCO', // Explicitly state the site name
+                type: 'profile',
+                images: publicFigureData.profilePic ? [{
+                    url: publicFigureData.profilePic,
+                    width: 800, // Example width, adjust if you know the size
+                    height: 800, // Example height
+                    alt: `${publicFigureData.name}'s profile picture`,
+                }] : [],
             },
             twitter: {
-                card: 'summary', title: `${title} - EHCO`, description,
+                card: 'summary_large_image', // More engaging than 'summary'
+                title: title,
+                description,
                 images: publicFigureData.profilePic ? [publicFigureData.profilePic] : [],
             }
         }
@@ -219,6 +233,37 @@ async function getPublicFigureContent(publicFigureId: string): Promise<ApiConten
     }
 }
 
+async function getFiguresByIds(ids: string[]): Promise<Array<{ id: string; name: string; name_kr: string; profilePic?: string; }>> {
+    if (!ids || ids.length === 0) {
+        return [];
+    }
+
+    // NOTE: Firestore 'in' queries are limited to a maximum of 30 documents.
+    // This is perfect for a "You Might Also Like" section.
+    const collectionRef = collection(db, 'selected-figures');
+    const q = query(collectionRef, where('__name__', 'in', ids));
+
+    try {
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) {
+            return [];
+        }
+
+        return snapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                name: data.name || '',
+                name_kr: data.name_kr || '',
+                profilePic: data.profilePic || '',
+            };
+        });
+    } catch (error) {
+        console.error("Error fetching figures by IDs:", error);
+        return [];
+    }
+}
+
 // NOTE: The 'processContentData' function and its 'WikiContentResponse' interface
 // were removed as they did not appear to be used in the component's rendering logic.
 
@@ -226,6 +271,8 @@ async function getPublicFigureContent(publicFigureId: string): Promise<ApiConten
 
 async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: string }) {
     try {
+        const similarFigureIds = ['akmu', 'kimsoohyun', 'iu(leejieun)'];
+
         const publicFigureData = await getPublicFigureData(publicFigureId);
         const apiResponse = await getPublicFigureContent(publicFigureId);
 
@@ -261,9 +308,12 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
         }
         const uniqueArticleIds = allArticleIds.filter((id, index, self) => self.indexOf(id) === index);
 
-        const [articles, articleSummaries] = await Promise.all([
+        const [articles, articleSummaries, similarProfiles] = await Promise.all([
             getArticlesByIds(uniqueArticleIds),
-            getArticleSummaries(publicFigureId, uniqueArticleIds)
+            getArticleSummaries(publicFigureId, uniqueArticleIds),
+            getFiguresByIds(
+                similarFigureIds.filter(id => id !== publicFigureId).slice(0, 2)
+            )
         ]);
 
         // ... rest of the function (schemaData, JSX return) remains unchanged ...
@@ -327,7 +377,7 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
 
                     {/* --- RIGHT (SIDEBAR) COLUMN --- */}
                     <div className="hidden lg:block lg:sticky lg:top-20 mt-8 lg:mt-0 space-y-6 self-start">
-                        <YouMightAlsoLike />
+                        <YouMightAlsoLike similarProfiles={similarProfiles} />
                         <div className="h-96 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500">
                             Vertical Ad Placeholder
                         </div>

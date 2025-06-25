@@ -7,7 +7,6 @@ import { Analytics } from '@vercel/analytics/next';
 import AnalyticsProvider from './AnalyticsProvider';
 import JsonLd from '@/components/JsonLd';
 import Link from 'next/link';
-import { FiguresProvider } from '@/context/FiguresContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Providers } from './providers';
 

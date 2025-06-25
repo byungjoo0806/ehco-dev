@@ -1,6 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'About Us',
+    description: "Discover EHCO's mission to provide verified, real-time facts and timelines for Korean celebrities. Learn more about your trusted source for K-entertainment news.",
+};
 
 export default function AboutPage() {
     return (

@@ -2,6 +2,12 @@
 
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Contact Us',
+    description: "Have questions, feedback, or a correction? Get in touch with the EHCO team. We're here to help with inquiries about our K-entertainment facts and timelines.",
+};
 
 export default function ContactPage() {
     const [formData, setFormData] = useState({

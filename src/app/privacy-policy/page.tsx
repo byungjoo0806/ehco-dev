@@ -1,6 +1,13 @@
 // app/privacy-policy/page.tsx
 'use client';
 
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Privacy Policy",
+    description: 'Review the EHCO Privacy Policy to understand how we collect, use, and protect your personal data. Your privacy and trust are important to us.',
+};
+
 export default function PrivacyPolicy() {
     return (
         <div className="min-h-screen bg-white">

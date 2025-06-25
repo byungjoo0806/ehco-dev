@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import algoliasearch from 'algoliasearch';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import Image from 'next/image';
+import { Metadata } from 'next';
 
 // Setup Algolia client - same as in page.tsx
 const searchClient = algoliasearch(
@@ -53,6 +54,11 @@ type AlgoliaPublicFigure = {
         };
     };
 }
+
+export const metadata: Metadata = {
+    title: 'Korean Celebrity Directory',
+    description: 'Browse the complete EHCO directory of Korean celebrities. Find profiles, facts, and timelines for every K-Pop idol, actor, and artist we cover. Search or filter by category to explore.',
+};
 
 const CATEGORY_ORDER = [
     'Male', 'Female', 'Group', 'South Korean', 'Singer', 'Singer-Songwriter',

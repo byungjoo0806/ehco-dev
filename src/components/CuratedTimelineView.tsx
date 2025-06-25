@@ -259,7 +259,7 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
 
 // --- MAIN COMPONENT ---
 const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, articles }) => {
-    console.log("Data received by CuratedTimelineView:", data);
+    // console.log("Data received by CuratedTimelineView:", data);
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();

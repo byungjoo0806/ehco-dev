@@ -1,5 +1,6 @@
 import asyncio
 import argparse
+import re # Import the regular expressions module
 from setup_firebase_deepseek import NewsManager
 
 class CompanyUrlFinder:
@@ -65,18 +66,22 @@ class CompanyUrlFinder:
                     chat_completion = await self.manager.client.chat.completions.create(
                         model=self.manager.model,
                         messages=[{"role": "user", "content": prompt}],
-                        max_tokens=50 # Restrict token length for a URL
+                        max_tokens=100 # Increased max_tokens slightly to not cut off conversational text
                     )
-                    found_url = chat_completion.choices[0].message.content.strip()
+                    raw_output = chat_completion.choices[0].message.content.strip()
 
-                    # Basic validation for the URL
-                    if found_url and (found_url.startswith('http://') or found_url.startswith('https://')):
-                        print(f"  - Found URL: {found_url}")
+                    # Use a regular expression to find the first URL in the model's output
+                    url_match = re.search(r'https?://[^\s]+', raw_output)
+
+                    if url_match:
+                        found_url = url_match.group(0).strip(".,") # Get the matched URL and remove trailing punctuation
+                        print(f"  - Extracted URL: {found_url}")
+                        
                         # Update the document in Firestore
                         figure_doc.reference.update({'companyUrl': found_url})
                         print(f"  - Successfully updated {figure_id} with company URL.")
                     else:
-                        print(f"  - Could not find a valid URL for '{company_name}'. Received: '{found_url}'")
+                        print(f"  - Could not extract a valid URL for '{company_name}'. Received: '{raw_output}'")
 
                 except Exception as e:
                     print(f"  - An error occurred while processing {figure_id}: {e}")

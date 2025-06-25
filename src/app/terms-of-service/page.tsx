@@ -1,6 +1,13 @@
 // app/terms-of-service/page.tsx
 'use client';
 
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: 'Terms of Service',
+    description: 'Read the official Terms of Service for using EHCO. This page outlines the rules and user agreement for accessing our K-entertainment data and services.',
+};
+
 export default function TermsOfService() {
     return (
         <div className="min-h-screen bg-white">
