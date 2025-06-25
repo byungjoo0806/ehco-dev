@@ -1,5 +1,4 @@
 // app/privacy-policy/page.tsx
-'use client';
 
 import { Metadata } from "next";
 

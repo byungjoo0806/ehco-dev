@@ -5,10 +5,11 @@ import { Loader2 } from 'lucide-react';
 import { Metadata } from 'next';
 
 export async function generateMetadata(
-    { searchParams }: { searchParams: { q?: string } }
+    { searchParams }: { searchParams: Promise<{ q?: string }> }
 ): Promise<Metadata> {
     // Extract the search query from the URL.
-    const query = searchParams.q || '';
+    const resolvedParams = await searchParams;
+    const query = resolvedParams.q || '';
 
     // If a query exists, create a dynamic title and description.
     if (query) {

@@ -1,5 +1,4 @@
 // app/terms-of-service/page.tsx
-'use client';
 
 import { Metadata } from "next";
 
