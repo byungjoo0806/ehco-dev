@@ -13,8 +13,8 @@ import Image from 'next/image';
 
 // Setup Algolia client
 const searchClient = algoliasearch(
-    process.env.NEXT_PUBLIC_ALGOLIA_APP_ID!,
-    process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_API_KEY!
+    "B1QF6MLIU5",
+    "ef0535bdd12e549ffa7c9541395432a1"
 );
 
 // --- Component-Specific Interfaces ---
