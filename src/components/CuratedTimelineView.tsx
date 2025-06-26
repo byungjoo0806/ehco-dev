@@ -474,7 +474,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                             <div key={subCategory} className="space-y-8">
                                 {eventList.map(event => (
                                     // MODIFIED: Added id and scroll-mt for navigation
-                                    <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white scroll-mt-40">
+                                    <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white scroll-mt-80">
                                         <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
                                         <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
                                         <div className="relative pl-5">

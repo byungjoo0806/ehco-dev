@@ -207,9 +207,11 @@ export default function Home() {
     performSearch(query);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && searchQuery.trim()) {
-      e.preventDefault();
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    // Prevent the browser's default behavior of reloading the page
+    e.preventDefault();
+
+    if (searchQuery.trim()) {
       setShowResults(false);
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
@@ -332,29 +334,35 @@ export default function Home() {
 
           {/* Search bar - shown only on homepage */}
           <div className="w-full max-w-xl mx-auto mb-6 relative" ref={searchRef}>
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleInputChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Search for a public figure..."
-                className="w-full px-4 md:px-6 py-2.5 md:py-3 text-black text-base md:text-lg border-2 border-key-color rounded-full focus:outline-none focus:border-key-color pl-12"
-              />
-              {searchQuery ? (
-                <X
-                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
-                  size={20}
-                  onClick={() => {
-                    setSearchQuery('');
-                    setSearchResults([]);
-                    setShowResults(false);
-                  }}
+            <form onSubmit={handleSearchSubmit}>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={handleInputChange}
+                  // You no longer need onKeyDown for submission
+                  // onKeyDown={handleKeyDown} 
+                  placeholder="Search for a public figure..."
+                  className="w-full px-4 md:px-6 py-2.5 md:py-3 text-black text-base md:text-lg border-2 border-key-color rounded-full focus:outline-none focus:border-key-color pl-12"
                 />
-              ) : (
-                <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 md:w-6 md:h-6 text-key-color" />
-              )}
-            </div>
+                {searchQuery ? (
+                  <X
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
+                    size={20}
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchResults([]);
+                      setShowResults(false);
+                    }}
+                  />
+                ) : (
+                  // It's good practice to make the search icon a submit button for accessibility
+                  <button type="submit" aria-label="Search" className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                    <Search className="w-5 h-5 md:w-6 md:h-6 text-key-color" />
+                  </button>
+                )}
+              </div>
+            </form>
 
             {/* Search Results Dropdown */}
             {isSearching ? (
