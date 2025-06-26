@@ -1,11 +1,12 @@
 import asyncio
+import argparse  # Added import
 from setup_firebase_deepseek import NewsManager  # Assuming this sets up your clients
 
 # --- CONFIGURATION ---
-TARGET_FIGURE_ID = "newjeans"  # <-- Change this to the figure you want to update
+# TARGET_FIGURE_ID = "newjeans"  # This is now a command-line argument
 CURATED_TIMELINE_COLLECTION = "curated-timeline"
 
-class DataUpdater: # --- MODIFIED --- Renamed class for clarity
+class DataUpdater:
     def __init__(self, figure_id: str):
         self.figure_id = figure_id
         self.news_manager = NewsManager()
@@ -43,8 +44,6 @@ class DataUpdater: # --- MODIFIED --- Renamed class for clarity
             print(f"    ! AI description summarization failed: {e}. Returning original text.")
             return text_to_summarize
 
-    # --- NEW ---
-    # A new function specifically for summarizing the event_summary field.
     async def _summarize_event_summary(self, text_to_summarize: str) -> str:
         """Uses the AI to rewrite an event summary to be more compact (2-3 sentences)."""
         if len(text_to_summarize.split()) < 20: # Don't shorten already-short summaries
@@ -69,21 +68,22 @@ class DataUpdater: # --- MODIFIED --- Renamed class for clarity
         all_events_data = self._fetch_timeline_events()
 
         if not all_events_data:
-            print("! No timeline data found for this figure. Exiting.")
+            print(f"! No timeline data found for figure '{self.figure_id}'. Exiting.")
             return
 
         print("\n-> Starting description and summary update process...")
-        total_events = sum(len(sub_cat_data) for main_cat_data in all_events_data.values() for sub_cat_data in main_cat_data.values())
+        total_events = sum(len(sub_cat_data.get(sub_cat_name, [])) for main_cat_id, sub_cat_data in all_events_data.items() for sub_cat_name in sub_cat_data)
         events_processed = 0
 
         for main_cat_id, main_cat_data in all_events_data.items():
             for sub_cat_name, events in main_cat_data.items():
+                if not isinstance(events, list): continue # Skip if data is not a list of events
+
                 for event in events:
                     events_processed += 1
                     print(f"  Processing event {events_processed}/{total_events}: '{event.get('event_title')}'...")
                     
                     tasks = []
-                    # --- MODIFIED ---
                     # Create tasks for all descriptions AND for the event summary.
                     if 'timeline_points' in event:
                         for point in event['timeline_points']:
@@ -97,7 +97,6 @@ class DataUpdater: # --- MODIFIED --- Renamed class for clarity
                     # Run all AI calls for the current event concurrently
                     results = await asyncio.gather(*tasks)
                     
-                    # --- MODIFIED ---
                     # Distribute the results back to the correct fields.
                     num_points = len(event.get('timeline_points', []))
                     new_descriptions = results[:num_points]
@@ -112,15 +111,47 @@ class DataUpdater: # --- MODIFIED --- Renamed class for clarity
         print("\n✓ All descriptions and summaries processed in memory.")
         print("-> Uploading updated data to Firestore...")
 
+        batch = self.db.batch()
         for main_cat_id, main_cat_data in all_events_data.items():
-            self.timeline_ref.document(main_cat_id).set(main_cat_data)
+            doc_ref = self.timeline_ref.document(main_cat_id)
+            batch.set(doc_ref, main_cat_data)
+        
+        batch.commit()
         
         print(f"✓ Successfully updated {len(all_events_data)} documents in Firestore for figure '{self.figure_id}'.")
 
 
 async def main():
-    updater = DataUpdater(figure_id=TARGET_FIGURE_ID) # --- MODIFIED ---
+    """
+    Parses command-line arguments and runs the data updater.
+    """
+    parser = argparse.ArgumentParser(
+        description="""
+        Fetches timeline data for a specific figure, uses an AI to compact
+        both the main event summaries and the descriptions of individual
+
+        timeline points, and then updates the data in Firestore.
+        """
+    )
+    parser.add_argument(
+        "figure_id",
+        type=str,
+        help="The ID of the figure whose timeline data you want to update (e.g., 'newjeans')."
+    )
+
+    args = parser.parse_args()
+
+    # Initialize the updater with the figure_id from the command-line arguments
+    updater = DataUpdater(figure_id=args.figure_id)
     await updater.run_update()
 
 if __name__ == "__main__":
+    # To run this script, execute it from your terminal with the
+    # figure ID as an argument.
+    #
+    # Example:
+    # python compact_event_summaries_descriptions.py newjeans
+    #
+    # or for another figure:
+    # python compact_event_summaries_descriptions.py another_figure_id
     asyncio.run(main())

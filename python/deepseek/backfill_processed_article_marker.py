@@ -1,17 +1,21 @@
 import sys
+import argparse
 from setup_firebase_deepseek import NewsManager # Assuming this is your setup file
-
-# --- CONFIGURATION ---
-# Make sure this matches the figure you want to update
-TARGET_FIGURE_ID = "newjeans" 
 
 class BackfillProcessor:
     """
     A utility class to perform a one-time update on the 'article-summaries'
-    collection. It adds the 'is_processed_for_timeline' field to all
-    documents and sets its value to False.
+    collection for a specific figure. It adds the 'is_processed_for_timeline' 
+    field to all documents and sets its value to False.
     """
     def __init__(self, figure_id: str):
+        """
+        Initializes the processor for a given figure ID.
+        """
+        if not figure_id:
+            print("Error: A figure ID must be provided.")
+            sys.exit(1)
+            
         self.figure_id = figure_id
         try:
             self.news_manager = NewsManager()
@@ -24,9 +28,9 @@ class BackfillProcessor:
     def run_backfill(self):
         """
         Iterates through all documents in the article-summaries collection
-        and updates them with the new field.
+        for the specified figure and updates them with the new field.
         """
-        print("\n--- Starting Backfill Process ---")
+        print(f"\n--- Starting Backfill Process for figure: {self.figure_id} ---")
         print("This script will add 'is_processed_for_timeline: false' to all articles.")
         
         try:
@@ -45,7 +49,7 @@ class BackfillProcessor:
                 
                 # Firestore batches have a limit of 500 operations.
                 # Commit every 400 operations to be safe.
-                if count % 400 == 0:
+                if count > 0 and count % 400 == 0:
                     print(f"Committing batch of 400 documents...")
                     batch.commit()
                     commit_count += 400
@@ -58,17 +62,49 @@ class BackfillProcessor:
                 batch.commit()
 
             print("\n--- Backfill Complete ---")
-            print(f"Successfully updated a total of {count} documents.")
+            if count == 0:
+                print(f"No documents found for figure '{self.figure_id}' to update.")
+            else:
+                print(f"Successfully updated a total of {count} documents for figure '{self.figure_id}'.")
+
 
         except Exception as e:
             print(f"\nAn error occurred during the backfill process: {e}")
             print("The process may be partially complete.")
 
 def main():
-    processor = BackfillProcessor(figure_id=TARGET_FIGURE_ID)
+    """
+    Parses command-line arguments and runs the backfill process.
+    """
+    # Set up argument parser
+    parser = argparse.ArgumentParser(
+        description="""
+        A utility to perform a one-time update on the 'article-summaries'
+        collection for a specific figure. It adds the 'is_processed_for_timeline'
+        field to all documents and sets its value to False.
+        """
+    )
+    # Add the required figure_id positional argument
+    parser.add_argument(
+        "figure_id",
+        type=str,
+        help="The ID of the figure whose articles you want to process (e.g., 'younha')."
+    )
+    
+    # Parse the command-line arguments
+    args = parser.parse_args()
+    
+    # Initialize and run the processor with the figure_id from the arguments
+    processor = BackfillProcessor(figure_id=args.figure_id)
     processor.run_backfill()
 
 if __name__ == "__main__":
-    # To run this script, save it as `backfill_processed_flag.py`
-    # and execute it from your terminal.
+    # To run this script, execute it from your terminal with the 
+    # figure ID as an argument.
+    #
+    # Example:
+    # python backfill_processed_article_marker.py younha
+    #
+    # or for another figure:
+    # python backfill_processed_article_marker.py another_figure_id
     main()

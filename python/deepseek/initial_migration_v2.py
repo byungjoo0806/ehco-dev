@@ -1,11 +1,12 @@
 import asyncio
 import json
+import argparse # Added import
 from collections import defaultdict
 from setup_firebase_deepseek import NewsManager
 from typing import Union, Optional, Dict, Any, List
 
 # --- CONFIGURATION ---
-TARGET_FIGURE_ID = "newjeans"
+# TARGET_FIGURE_ID = "newjeans" # This is now a command-line argument
 CURATED_TIMELINE_COLLECTION = "curated-timeline"
 
 class CurationEngine:
@@ -354,8 +355,35 @@ class CurationEngine:
 
 
 async def main():
-    engine = CurationEngine(figure_id=TARGET_FIGURE_ID)
+    """
+    Parses command-line arguments and runs the migration engine.
+    """
+    parser = argparse.ArgumentParser(
+        description="""
+        Runs the V2 timeline migration process for a specific figure.
+        This script extracts events from articles, categorizes them, curates them
+        into a structured timeline, and saves the result to Firestore.
+        """
+    )
+    parser.add_argument(
+        "figure_id",
+        type=str,
+        help="The ID of the figure to process (e.g., 'newjeans')."
+    )
+    
+    args = parser.parse_args()
+    
+    # Initialize the engine with the figure_id from the command-line arguments
+    engine = CurationEngine(figure_id=args.figure_id)
     await engine.run_initial_migration()
 
 if __name__ == "__main__":
+    # To run this script, execute it from your terminal with the 
+    # figure ID as an argument.
+    #
+    # Example:
+    # python initial_migration_v2.py newjeans
+    #
+    # or for another figure:
+    # python initial_migration_v2.py another_figure_id
     asyncio.run(main())

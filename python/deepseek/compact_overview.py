@@ -4,7 +4,7 @@ from setup_firebase_deepseek import NewsManager
 
 class CompactOverview:
     """
-    A class to fetch, compact, and update figure overviews in Firestore.
+    A class to fetch, compact, and update the overview for a specific figure in Firestore.
     """
     def __init__(self):
         """
@@ -13,97 +13,84 @@ class CompactOverview:
         self.manager = NewsManager()
         self.db = self.manager.db
 
-    async def compact_figure_overviews(self, figure_id_to_test: str = None):
+    async def compact_figure_overview(self, figure_id: str):
         """
-        Fetches overviews for all documents in the 'wiki-content' subcollection, 
-        generates a compact version using an AI model, and updates the Firestore documents.
+        Fetches the overview for a single specified figure, generates a compact
+        version using an AI model, and updates the Firestore document.
 
         Args:
-            figure_id_to_test (str, optional): If provided, only this figure will be processed.
-                                              Defaults to None.
+            figure_id (str): The ID of the figure to process.
         """
-        print("Starting the process to compact figure overviews...")
+        print(f"--- Starting process to compact overview for figure: {figure_id} ---")
 
         try:
-            figures_ref = self.db.collection('selected-figures')
+            # Get a reference to the specific figure document
+            figure_doc_ref = self.db.collection('selected-figures').document(figure_id)
+            
+            # Check if the figure exists
+            if not figure_doc_ref.get().exists:
+                print(f"\n❌ Error: Figure with ID '{figure_id}' not found.")
+                return
 
-            if figure_id_to_test:
-                print(f"--- RUNNING IN TEST MODE FOR FIGURE: {figure_id_to_test} ---")
-                figure_doc_to_test = figures_ref.document(figure_id_to_test).get()
-                if not figure_doc_to_test.exists:
-                    print(f"Error: Test figure with ID '{figure_id_to_test}' not found.")
-                    return
-                figures_stream = [figure_doc_to_test]
-            else:
-                print("--- RUNNING IN FULL MIGRATION MODE ---")
-                figures_stream = figures_ref.stream()
+            # Get a stream for all documents in the 'wiki-content' subcollection
+            wiki_content_ref = figure_doc_ref.collection('wiki-content')
+            wiki_content_stream = wiki_content_ref.stream()
 
-
-            for figure_doc in figures_stream:
-                figure_id = figure_doc.id
-                print(f"\n--- Processing Figure: {figure_id} ---")
-
+            documents_processed = 0
+            for content_doc in wiki_content_stream:
+                doc_id = content_doc.id
+                documents_processed += 1
+                print(f"\n  -- Processing document: {doc_id} --")
+                
                 try:
-                    # Get a stream for all documents in the 'wiki-content' subcollection
-                    wiki_content_ref = figures_ref.document(figure_id).collection('wiki-content')
-                    wiki_content_stream = wiki_content_ref.stream()
+                    # Extract the content from the document
+                    data = content_doc.to_dict()
+                    content = data.get('content')
+                    is_compacted = data.get('is_compacted', False)
 
-                    for content_doc in wiki_content_stream:
-                        doc_id = content_doc.id
-                        print(f"\n  -- Processing document: {doc_id} --")
+                    if is_compacted:
+                        print(f"    - Document '{doc_id}' has already been compacted. Skipping.")
+                        continue
+
+                    # Only process content that is reasonably long
+                    if content and isinstance(content, str) and len(content.split()) > 50:
+                        print(f"    - Original content found. Length: {len(content)} characters.")
+
+                        # Create a prompt for the AI model
+                        prompt = f"Summarize the following text into a concise overview of 2-3 sentences:\n\n{content}"
+
+                        # Call the AI API to get the compacted overview
+                        chat_completion = await self.manager.client.chat.completions.create(
+                            model=self.manager.model,
+                            messages=[{"role": "user", "content": prompt}],
+                        )
+                        compacted_content = chat_completion.choices[0].message.content
                         
-                        try:
-                            # Extract the content from the document
-                            data = content_doc.to_dict()
-                            content = data.get('content')
-                            is_compacted = data.get('is_compacted', False)
+                        print(f"    - Compacted content generated. Length: {len(compacted_content)} characters.")
 
-                            if is_compacted:
-                                print(f"    - Document '{doc_id}' has already been compacted. Skipping.")
-                                continue
+                        # Update the document in Firestore with the compacted content
+                        content_doc.reference.update({
+                            'content': compacted_content,
+                            'original_content': content,  # Back up the original content
+                            'is_compacted': True  # Add a flag
+                        })
+                        print(f"    - Successfully updated document '{doc_id}'.")
 
-                            if content and isinstance(content, str) and len(content.split()) > 50: # Only process longer content
-                                print(f"    - Original content found. Length: {len(content)} characters.")
-
-                                # Create a prompt for the AI model
-                                prompt = f"Summarize the following text into a concise overview of 2-3 sentences:\n\n{content}"
-
-                                # Call the DeepSeek API to get the compacted overview
-                                chat_completion = await self.manager.client.chat.completions.create(
-                                    model=self.manager.model,
-                                    messages=[{"role": "user", "content": prompt}],
-                                )
-                                compacted_content = chat_completion.choices[0].message.content
-                                
-                                print(f"    - Compacted content generated. Length: {len(compacted_content)} characters.")
-
-                                # Get a reference to the specific document to update it
-                                doc_ref_to_update = wiki_content_ref.document(doc_id)
-                                
-                                # Update the document in Firestore with the compacted content
-                                doc_ref_to_update.update({
-                                    'content': compacted_content,
-                                    'original_content': content, # Back up the original content
-                                    'is_compacted': True # Add a flag
-                                })
-                                print(f"    - Successfully updated document '{doc_id}' for {figure_id}.")
-
-                            elif content:
-                                print(f"    - Content in '{doc_id}' is already short, skipping.")
-                            else:
-                                print(f"    - 'content' field is empty or missing in '{doc_id}'. Skipping.")
-                        
-                        except Exception as e:
-                            print(f"    - An error occurred while processing document '{doc_id}': {e}")
-
-
+                    elif content:
+                        print(f"    - Content in '{doc_id}' is already short, skipping compaction.")
+                    else:
+                        print(f"    - 'content' field is empty or missing in '{doc_id}'. Skipping.")
+                
                 except Exception as e:
-                    print(f"  - An error occurred while processing subcollection for {figure_id}: {e}")
+                    print(f"    - An error occurred while processing document '{doc_id}': {e}")
+            
+            if documents_processed == 0:
+                 print(f"\n- No 'wiki-content' documents found for figure '{figure_id}'.")
 
-            print("\n✅ All figure overviews have been processed.")
+            print(f"\n✅ Process complete for figure: {figure_id}.")
 
         except Exception as e:
-            print(f"\n❌ An error occurred: {e}")
+            print(f"\n❌ An unexpected error occurred: {e}")
         finally:
             # Close any open connections
             await self.manager.close()
@@ -113,13 +100,23 @@ async def main():
     """
     Main function to parse arguments and run the compaction process.
     """
-    parser = argparse.ArgumentParser(description="Compact content in all 'wiki-content' documents in Firestore.")
-    parser.add_argument("--figure", type=str, help="The ID of a single figure to process for testing.")
+    parser = argparse.ArgumentParser(description="Compacts the 'wiki-content' documents for a specific figure.")
+    
+    # Changed to a required positional argument to match the other scripts
+    parser.add_argument(
+        "figure_id", 
+        type=str, 
+        help="The required ID of the single figure to process."
+    )
+    
     args = parser.parse_args()
     
     compactor = CompactOverview()
-    await compactor.compact_figure_overviews(figure_id_to_test=args.figure)
+    # Call the method with the new argument name
+    await compactor.compact_figure_overview(figure_id=args.figure_id)
 
 if __name__ == "__main__":
-    # Run the asynchronous main function
+    # To run this script, provide the figure_id as a command-line argument.
+    # Example:
+    # python compact_overview.py your_figure_id
     asyncio.run(main())
