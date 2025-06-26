@@ -81,11 +81,11 @@ const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ onClose }) => {
 
                 <h2 className="text-2xl font-bold text-gray-800">Welcome, friend!</h2>
                 <p className="mt-2 text-gray-600">
-                    We're a small team trying to build something valuable. Thank you for checking us out!
+                    We&apos;re a small team trying to build something valuable. Thank you for checking us out!
                 </p>
                 <div className="mt-4 p-3 bg-yellow-100 text-yellow-800 text-sm rounded-lg">
                     <p>
-                        <span className="font-bold">EHCO is in Beta.</span> This means our data isn't perfect yet, but we're working hard to improve it every day.
+                        <span className="font-bold">EHCO is in Beta.</span> This means our data isn&apos;t perfect yet, but we&apos;re working hard to improve it every day.
                     </p>
                 </div>
 
@@ -93,7 +93,7 @@ const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ onClose }) => {
                 {isSubscribed ? (
                     <div className="mt-6 p-4 bg-green-100 text-green-800 rounded-lg">
                         <p className="font-bold">Thank you for subscribing!</p>
-                        <p className="text-sm">You're all set.</p>
+                        <p className="text-sm">You&apos;re all set.</p>
                     </div>
                 ) : (
                     <form onSubmit={handleSubscribe} className="mt-6">
