@@ -122,8 +122,8 @@ const YearFilter: React.FC<{
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [dropdownRef]);
 
-    const buttonText = selectedYears.length === 0 
-        ? 'All Years' 
+    const buttonText = selectedYears.length === 0
+        ? 'All Years'
         : `${selectedYears.length} year${selectedYears.length > 1 ? 's' : ''} selected`;
 
     return (
@@ -302,6 +302,8 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
 
     const [selectedYears, setSelectedYears] = useState<number[]>([]);
 
+    const [openEvents, setOpenEvents] = useState<string[]>([]);
+
     useEffect(() => {
         setLocalActiveCategory(urlActiveCategory);
         setLocalActiveSubCategory(urlActiveSubCategory);
@@ -386,20 +388,28 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
         });
     };
 
+    const handleToggleEvent = useCallback((eventTitle: string) => {
+        const eventId = slugify(eventTitle); // Use the same slugify helper
+        setOpenEvents(prevOpen => {
+            const isOpen = prevOpen.includes(eventId);
+            return isOpen ? prevOpen.filter(id => id !== eventId) : [...prevOpen, eventId];
+        });
+    }, []);
+
     const displayedContent = useMemo(() => {
         // CHANGED: Accesses data through the new .subCategories path
         if (!localActiveCategory || !localActiveSubCategory || !processedData[localActiveCategory]?.subCategories?.[localActiveSubCategory]) {
             return null;
         }
-        
+
         let events = processedData[localActiveCategory].subCategories[localActiveSubCategory];
-        
+
         if (selectedYears.length > 0) {
-            events = events.filter(event => 
+            events = events.filter(event =>
                 event.event_years?.some(year => selectedYears.includes(year))
             );
         }
-        
+
         return { [localActiveSubCategory]: events };
     }, [localActiveCategory, localActiveSubCategory, processedData, selectedYears]);
 
@@ -425,11 +435,11 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
             {/* ================================================================== */}
             <div className='hidden sm:flex w-[25%] max-w-xs flex-col'>
                 <div className="sticky top-16 self-start w-full h-screen overflow-y-auto border-r border-gray-200 bg-white">
-                    <YearFilter 
-                        years={availableYears} 
-                        selectedYears={selectedYears} 
+                    <YearFilter
+                        years={availableYears}
+                        selectedYears={selectedYears}
                         onToggleYear={handleToggleYear}
-                        onSelectAll={handleSelectAllYears} 
+                        onSelectAll={handleSelectAllYears}
                     />
                     <div className='p-2'>
                         <EventNavigator eventList={eventListForNavigator} onNavigate={handleEventNavigation} />
@@ -456,7 +466,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                         {/* ADDED: Main Category Description is placed here           */}
                         {/* ========================================================= */}
                         {localActiveCategory && processedData[localActiveCategory] && (
-                             <MainCategorySummary content={processedData[localActiveCategory].description} />
+                            <MainCategorySummary content={processedData[localActiveCategory].description} />
                         )}
 
                         {getAvailableSubCategories(localActiveCategory).length > 0 && (
@@ -513,7 +523,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                                         key={subCat}
                                                         onClick={(e) => { e.stopPropagation(); handleSelectCategory(category, subCat); }}
                                                         className={`px-3 py-1.5 whitespace-nowrap text-xs font-medium rounded-full transition-colors ${localActiveCategory === category && localActiveSubCategory === subCat
-                                                            ? 'bg-red-500 text-white'
+                                                            ? 'bg-key-color text-white'
                                                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                                             }`}
                                                     >
@@ -524,18 +534,33 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
 
                                             {localActiveCategory === category && displayedContent && (
                                                 <div className="space-y-6 pt-4 border-t border-gray-200/80">
-                                                    {Object.values(displayedContent)[0].map(event => (
-                                                        // FIXED: Added id and scroll-mt for navigation on mobile
-                                                        <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white scroll-mt-16">
-                                                            <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
-                                                            <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
-                                                            <div className="relative pl-5">
-                                                                {event.timeline_points.map((point, index) => (
-                                                                    <TimelinePointWithSources key={index} point={point} articlesMap={articlesMap} isLast={index === event.timeline_points.length - 1} />
-                                                                ))}
+                                                    {Object.values(displayedContent)[0].map(event => {
+                                                        const isEventOpen = openEvents.includes(slugify(event.event_title));
+                                                        return (
+                                                            // MODIFIED: Each event is now its own accordion
+                                                            <div key={event.event_title} className="border rounded-lg overflow-hidden bg-white">
+                                                                <button
+                                                                    onClick={() => handleToggleEvent(event.event_title)}
+                                                                    className="w-full flex justify-between items-center p-4 text-left"
+                                                                >
+                                                                    <h4 className="font-semibold text-base text-gray-800">{event.event_title}</h4>
+                                                                    {isEventOpen ? <ChevronUp size={20} className="text-gray-500" /> : <ChevronDown size={20} className="text-gray-500" />}
+                                                                </button>
+
+                                                                {/* MODIFIED: Conditionally render event details */}
+                                                                {isEventOpen && (
+                                                                    <div className="px-4 pb-4">
+                                                                        <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
+                                                                        <div className="relative pl-5 border-t pt-4">
+                                                                            {event.timeline_points.map((point, index) => (
+                                                                                <TimelinePointWithSources key={index} point={point} articlesMap={articlesMap} isLast={index === event.timeline_points.length - 1} />
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                        </div>
-                                                    ))}
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
                                         </div>

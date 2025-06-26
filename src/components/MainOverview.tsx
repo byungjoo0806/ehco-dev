@@ -13,7 +13,7 @@ interface MainOverviewProps {
 
 export default function MainOverview({ mainOverview }: MainOverviewProps) {
     return (
-        <div className="w-full mt-6">
+        <div className="w-full mt-6 px-2">
             <h2 className="text-xl font-bold mb-4 text-black">
                 Overview
             </h2>
