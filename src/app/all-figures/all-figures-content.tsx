@@ -252,7 +252,7 @@ export default function AllFiguresContent() {
         <div className="min-h-screen bg-white">
             <main className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-8 sm:mb-12 text-gray-900">
-                    Korean Celebrity Directory
+                    All Figures
                 </h1>
 
                 {/* Filters and Search Bar */}
