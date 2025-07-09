@@ -248,7 +248,7 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
             {!isLast && <div className="absolute w-px h-full bg-gray-200 left-[-14px] top-4"></div>}
             <p className="text-sm font-medium text-gray-500">{formatTimelineDate(point.date)}</p>
             <div className="flex justify-between items-start gap-4">
-                <p className="text-base text-gray-700">{point.description}</p>
+                <p className="text-base text-gray-700">{point.description.replaceAll("*","'")}</p>
                 {hasSources && (<button onClick={toggleSources} className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors flex-shrink-0" aria-label="Toggle sources">{isSourcesVisible ? <ChevronUp size={20} /> : <ChevronDown size={20} />}</button>)}
             </div>
             {isSourcesVisible && <EventSources articlesMap={articlesMap} articleIds={point.sourceIds || []} />}
@@ -486,7 +486,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                     // MODIFIED: Added id and scroll-mt for navigation
                                     <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white scroll-mt-80">
                                         <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
-                                        <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
+                                        <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary.replaceAll("*","'")}</p>
                                         <div className="relative pl-5">
                                             {event.timeline_points.map((point, index) => (<TimelinePointWithSources key={index} point={point} articlesMap={articlesMap} isLast={index === event.timeline_points.length - 1} />))}
                                         </div>
