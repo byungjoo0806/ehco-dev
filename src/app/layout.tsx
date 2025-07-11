@@ -54,13 +54,13 @@ export const metadata: Metadata = {
   publisher: 'EHCO',
   icons: {
     icon: [
-      { url: '/ehco_branding_bi_fin_ehcio_bi_color-6.png' }, // Path in /public
-      { url: '/ehco_logo-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/ehco_logo-32x32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
     ],
-    apple: '/ehco_logo-02.png', // Path in /public
-    shortcut: '/ehco_branding_bi_fin_ehcio_bi_color-6.png' // for legacy browsers
+    apple: '/apple-touch-icon.png',
   },
+  manifest: '/site.webmanifest',
   formatDetection: {
     email: false,
     address: false,

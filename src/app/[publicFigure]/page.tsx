@@ -39,6 +39,7 @@ interface PublicFigureBase {
     gender: string;
     company?: string;
     debutDate?: string;
+    related_figures?: Record<string, number>
 }
 
 interface IndividualPerson extends PublicFigureBase {
@@ -189,6 +190,7 @@ async function getPublicFigureData(publicFigureId: string): Promise<PublicFigure
         company: data.company || '',
         debutDate: data.debutDate || '',
         lastUpdated: data.lastUpdated || '',
+        related_figures: data.related_figures || {},
     };
 
     if (publicFigureData.is_group) {
@@ -271,8 +273,6 @@ async function getFiguresByIds(ids: string[]): Promise<Array<{ id: string; name:
 
 async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: string }) {
     try {
-        const similarFigureIds = ['akmu', 'kimsoohyun', 'iu(leejieun)'];
-
         const publicFigureData = await getPublicFigureData(publicFigureId);
         const apiResponse = await getPublicFigureContent(publicFigureId);
 
@@ -308,12 +308,21 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
         }
         const uniqueArticleIds = allArticleIds.filter((id, index, self) => self.indexOf(id) === index);
 
+        const relatedFiguresObject = publicFigureData.related_figures || {};
+
+        // 1. Get [key, value] pairs: [['akmu', 25], ['kimsoohyun', 18]]
+        const similarFigureIds = Object.entries(relatedFiguresObject)
+            // 2. Sort pairs by count (the value) in descending order
+            .sort(([, countA], [, countB]) => countB - countA)
+            // 3. Extract just the ID (the key) from the sorted pairs
+            .map(([figureId]) => figureId)
+            // 4. Get the top 2
+            .slice(0, 2);
+
         const [articles, articleSummaries, similarProfiles] = await Promise.all([
             getArticlesByIds(uniqueArticleIds),
             getArticleSummaries(publicFigureId, uniqueArticleIds),
-            getFiguresByIds(
-                similarFigureIds.filter(id => id !== publicFigureId).slice(0, 2)
-            )
+            getFiguresByIds(similarFigureIds) 
         ]);
 
         // ... rest of the function (schemaData, JSX return) remains unchanged ...
@@ -366,7 +375,7 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
                             mainOverview={apiResponse.main_overview}
                         />
                         <div className="mt-8 border-t border-gray-200 pt-8">
-                            <h2 className="text-xl font-bold mb-4 text-black">Career Journey</h2>
+                            <h2 className="text-xl font-bold mb-4 pl-2 text-black">Career Journey</h2>
                             <CareerJourney
                                 apiResponse={apiResponse.timeline_content}
                                 articles={articles}
@@ -378,9 +387,9 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
                     {/* --- RIGHT (SIDEBAR) COLUMN --- */}
                     <div className="hidden lg:block lg:sticky lg:top-20 mt-8 lg:mt-0 space-y-6 self-start">
                         <YouMightAlsoLike similarProfiles={similarProfiles} />
-                        <div className="h-96 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500">
+                        {/* <div className="h-96 bg-gray-200 rounded-lg flex items-center justify-center text-gray-500">
                             Vertical Ad Placeholder
-                        </div>
+                        </div> */}
                     </div>
 
                 </div>

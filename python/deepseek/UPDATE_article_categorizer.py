@@ -3,7 +3,6 @@ import asyncio
 import json
 import re
 import argparse # Import argparse for command-line arguments
-import firebase_admin
 from firebase_admin import firestore
 
 
@@ -156,7 +155,8 @@ class PublicFigureSummaryCategorizer:
                     {"role": "system", "content": "You are a helpful assistant that analyzes text and categorizes content accurately."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.2
+                temperature=0.2,
+                timeout=30.0
             )
             
             result = response.choices[0].message.content.strip()
