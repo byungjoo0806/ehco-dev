@@ -10,6 +10,8 @@ from typing import Union, Optional, Dict, Any, List
 CURATED_TIMELINE_COLLECTION = "curated-timeline"
 
 class CurationEngine:
+    RECENT_EVENTS_CONTEXT_LIMIT = 50
+    
     def __init__(self, figure_id: str):
         self.figure_id = figure_id
         self.news_manager = NewsManager()
@@ -67,6 +69,15 @@ class CurationEngine:
             "event_summary": f"On {date}, an event occurred: {summary}",
             "timeline_points": [{"date": date, "description": summary, "sourceIds": [source_id]}]
         }
+        
+    def _get_sort_date(self, event: dict) -> str:
+        """Safely retrieves the first date from an event's timeline points for sorting."""
+        try:
+            # Assumes the first point's date is representative
+            return event.get('timeline_points', [{}])[0].get('date', '1900-01-01')
+        except (IndexError, TypeError):
+            # Return a very old date if the structure is unexpected
+            return '1900-01-01'
 
     # --- MODIFIED ---
     async def _call_curation_api(self, subcategory_name: str, existing_events: list, new_event_data_point: dict) -> Union[dict, None]:
@@ -141,20 +152,17 @@ class CurationEngine:
 
     # --- MODIFIED ---
     def _fetch_unprocessed_articles(self) -> list:
-        """Fetches unprocessed articles that have the structured 'event_contents' map."""
-        print("Fetching unprocessed articles with 'event_contents'...")
+        """Fetches ALL unprocessed articles, regardless of their content."""
+        print("Fetching ALL unprocessed articles...")
         from google.cloud.firestore_v1.base_query import FieldFilter
         
         articles_ref = self.db.collection('selected-figures').document(self.figure_id).collection('article-summaries')
         query = articles_ref.where(filter=FieldFilter('is_processed_for_timeline', '!=', True))
-        docs = query.stream()
         
-        articles = []
-        for doc in docs:
-            data = doc.to_dict()
-            if 'event_contents' in data and isinstance(data['event_contents'], dict):
-                articles.append({"sourceId": doc.id, "event_contents": data['event_contents']})
-        print(f"Found {len(articles)} new articles to process.")
+        # We return the full document object now, not a custom dictionary
+        articles = [doc for doc in query.stream()]
+        
+        print(f"Found {len(articles)} unprocessed articles to check.")
         return articles
 
     # --- REWRITTEN to align with migration script ---
@@ -163,87 +171,102 @@ class CurationEngine:
         print(f"--- Starting Incremental Timeline Update for {self.figure_id} ---")
         
         all_categories = self._get_all_subcategories()
+        # This now gets ALL unprocessed articles
         articles_to_process = self._fetch_unprocessed_articles()
 
         if not articles_to_process:
             print("No new articles to process. Update complete.")
+            await self.news_manager.close() # Close connection if nothing to do
             return
 
-        for article in articles_to_process:
-            source_id = article['sourceId']
-            event_contents = article.get('event_contents', {})
-            print(f"\nProcessing article with sourceId: {source_id} ({len(event_contents)} event points)")
+        for article_snapshot in articles_to_process:
+            source_id = article_snapshot.id
+            article_data = article_snapshot.to_dict()
+            
+            # Use .get() to safely access the field. It returns None if the key doesn't exist.
+            event_contents = article_data.get('event_contents')
 
-            if not event_contents:
-                # Mark articles with no events as processed and skip
+            # --- THIS IS THE CORE OF THE FIX ---
+            # Check if event_contents is missing, not a dictionary, or empty.
+            if not event_contents or not isinstance(event_contents, dict):
+                print(f"  -> Article {source_id} has no 'event_contents'. Marking as processed.")
+                # Mark it as processed and immediately continue to the next article
                 article_ref = self.db.collection('selected-figures').document(self.figure_id).collection('article-summaries').document(source_id)
                 article_ref.update({"is_processed_for_timeline": True})
-                continue
+                continue # Skip to the next item in the main 'for' loop
+            # --- END OF FIX ---
+
+            # If the script reaches here, it means event_contents exists and is valid.
+            # The original processing logic now runs.
+            print(f"\nProcessing article with sourceId: {source_id} ({len(event_contents)} event points)")
             
             # Process each granular event point within the article
             for date, summary in event_contents.items():
                 if not date or not summary: continue
                 
-                # 1. Create a "mini-event" from the data point (no AI)
+                # 1. Create a "mini-event"
                 new_event_point = self._create_mini_event(source_id, date, summary)
                 print(f"  -> Processing event point: '{new_event_point.get('event_title')}'")
 
-                # 2. Re-categorize the new event to find its correct home
+                # 2. Re-categorize the event
                 main_cat, sub_cat = await self._recategorize_event(new_event_point, all_categories)
                 if not main_cat or not sub_cat:
                     print("    -> Failed to classify event point. Skipping.")
                     continue
                 print(f"    -> Classified into: [{main_cat}] > [{sub_cat}]")
 
-                # 3. Fetch EXISTING curated events for the target subcategory
+                # 3. Fetch existing events and apply context limit
                 timeline_doc_ref = self.db.collection('selected-figures').document(self.figure_id).collection(CURATED_TIMELINE_COLLECTION).document(main_cat)
-                timeline_doc = timeline_doc_ref.get()
-                
-                existing_main_category_data = timeline_doc.to_dict() or {}
+                existing_main_category_data = timeline_doc_ref.get().to_dict() or {}
                 curated_events_for_subcategory = existing_main_category_data.get(sub_cat, [])
 
-                # 4. Use the Curation AI to decide what to do
-                ai_decision = await self._call_curation_api(sub_cat, curated_events_for_subcategory, new_event_point)
+                # --- START OF MODIFICATION ---
+                limited_context_events = curated_events_for_subcategory
+                if len(curated_events_for_subcategory) > self.RECENT_EVENTS_CONTEXT_LIMIT:
+                    print(f"    -> Context reduction: Original event count is {len(curated_events_for_subcategory)}. Limiting to {self.RECENT_EVENTS_CONTEXT_LIMIT}.")
+                    # Sort events chronologically (oldest to newest)
+                    sorted_events = sorted(curated_events_for_subcategory, key=self._get_sort_date)
+                    # Slice the list to get only the last N (most recent) events
+                    limited_context_events = sorted_events[-self.RECENT_EVENTS_CONTEXT_LIMIT:]
+                # --- END OF MODIFICATION ---
+
+                # 4. Curation AI call (now with the limited list)
+                ai_decision = await self._call_curation_api(sub_cat, limited_context_events, new_event_point)
                 
                 if not ai_decision or "action" not in ai_decision or "event_json" not in ai_decision:
                     print("    Action: Curation AI failed or returned invalid format. Skipping point.")
                     continue
 
-                # 5. Apply the AI's decision (using the new standardized format)
+                # 5. Apply AI decision
                 action = ai_decision.get("action")
                 event_json = ai_decision.get("event_json")
 
                 if action == "CREATE_NEW":
                     curated_events_for_subcategory.append(self._add_event_years(event_json))
-                    print(f"      Action: CREATED NEW event with title '{event_json.get('event_title')}'")
-                
                 elif action == "UPDATE_EXISTING":
                     target_title = ai_decision.get("target_event_title")
+                    found_and_updated = False
                     if target_title:
-                        found_and_updated = False
                         for idx, event in enumerate(curated_events_for_subcategory):
                             if event.get("event_title") == target_title:
                                 curated_events_for_subcategory[idx] = self._add_event_years(event_json)
                                 found_and_updated = True
-                                print(f"      Action: UPDATED event, new title is '{event_json.get('event_title')}'")
                                 break
-                        if not found_and_updated:
-                            curated_events_for_subcategory.append(self._add_event_years(event_json))
-                            print(f"      Action: UPDATE failed (target '{target_title}' not found). Added as new.")
-                    else:
-                        print("    Action: UPDATE decision received, but no target title provided. Adding as new.")
+                    if not found_and_updated:
                         curated_events_for_subcategory.append(self._add_event_years(event_json))
                 
-                # 6. Save the updated subcategory data back to Firestore
+                # 6. Save data back to Firestore
                 existing_main_category_data[sub_cat] = curated_events_for_subcategory
                 timeline_doc_ref.set(existing_main_category_data)
                 print(f"    -> Successfully updated timeline for [{main_cat}] > [{sub_cat}]")
 
-            # 7. CRITICAL: Mark the entire article as processed
+            # 7. CRITICAL: Mark the entire article as processed after all its events are handled
             article_ref = self.db.collection('selected-figures').document(self.figure_id).collection('article-summaries').document(source_id)
             article_ref.update({"is_processed_for_timeline": True})
             print(f"  -> Finished processing article {source_id} and marked as processed.")
-
+        
+        # Close the connection after the loop finishes
+        await self.news_manager.close()
         print("\n--- Incremental Update Complete ---")
 
 

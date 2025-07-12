@@ -644,8 +644,76 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
                     print(f"Warning: Could not parse date '{earliest_date_str}' in doc {article_id}. Skipping date field.")
         
         summary_doc_ref.set(summary_data)
-        print(f"Saved new summary for '{public_figure_name}' in article '{article_id}'.") 
+        print(f"Saved new summary for '{public_figure_name}' in article '{article_id}'.")
         
+        
+    async def process_new_articles(self, limit=None):
+        """
+        Finds and processes only new articles, identified by the 'public_figures_processed' flag.
+        This is now a method of the class.
+        """
+        updated_figures_in_run = set() 
+        try:
+            print("Searching for new articles to process...")
+            
+            # Use 'self' instead of 'extractor'
+            query = self.news_manager.db.collection("newsArticles").where(
+                filter=firestore.FieldFilter("public_figures_processed", "==", False)
+            )
+            query = query.order_by("contentID", direction=firestore.Query.DESCENDING)
+
+            if limit:
+                query = query.limit(limit)
+
+            articles = [{"id": doc.id, "data": doc.to_dict()} for doc in query.stream()]
+            
+            if not articles:
+                print("No new articles found to process.")
+                return [] # <- MODIFICATION: Return an empty list
+
+            print(f"Found {len(articles)} new articles to process.")
+            
+            for i, article in enumerate(articles):
+                article_id = article["id"]
+                article_data = article.get("data", {})
+                body = article_data.get("body", "")
+
+                print(f"\nProcessing new article {i+1}/{len(articles)} (ID: {article_id})")
+
+                if not body:
+                    # Mark as processed to avoid re-processing a bad article
+                    self.news_manager.db.collection("newsArticles").document(article_id).update({
+                        "public_figures": [],
+                        "public_figures_processed": True
+                    })
+                    continue
+
+                # Use 'self' to call the other method in this class
+                mentioned_figures = await self._find_mentioned_figures(body)
+                
+                self.news_manager.db.collection("newsArticles").document(article_id).update({
+                    "public_figures": mentioned_figures,
+                    "public_figures_processed": True
+                })
+
+                if not mentioned_figures:
+                    print(f"No predefined figures found in article {article_id}. Marked as processed.")
+                    continue
+
+                print(f"Found {len(mentioned_figures)} figures: {', '.join(mentioned_figures)}")
+                
+                updated_figures_in_run.update(mentioned_figures)
+                
+                for public_figure_name in mentioned_figures:
+                    # Use 'self' to call the other method
+                    await self.process_single_figure_mention(public_figure_name, article_id, article_data)
+        
+        except Exception as e:
+            print(f"An error occurred during new article processing: {e}")
+        finally:
+            await self.news_manager.close()
+        
+        return list(updated_figures_in_run)
                     
 # Main function
 async def main():
