@@ -44,7 +44,7 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
         return min(dates_array)
     
     
-    def _load_predefined_names_from_csv(self, csv_filepath="k_celebrities_master.csv"):
+    def _load_predefined_names_from_csv(self, csv_filepath="./python/deepseek/k_celebrities_master.csv"):
         """
         Load predefined public figure names from a CSV file.
         

@@ -39,5 +39,4 @@ jobs:
         echo "FIREBASE_DEFAULT_DATABASE_URL=${{ secrets.FIREBASE_DEFAULT_DATABASE_URL }}" >> $GITHUB_ENV
         
     - name: Run master updater script
-      working-directory: ./python/deepseek
-      run: python run_full_update.py
+      run: python python/deepseek/run_full_update.py

@@ -124,7 +124,7 @@ async def main():
     parser.add_argument(
         '--csv',
         type=str,
-        default="k_celebrities_master.csv",
+        default="./python/deepseek/k_celebrities_master.csv",
         help="Path to the CSV file for the article ingestion process."
     )
 
