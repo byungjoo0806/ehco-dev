@@ -1,12 +1,12 @@
-name: Run News Crawler
+name: Auto update
 
 on:
   schedule:
-    - cron: '55 13 * * 1-5'
+    - cron: '31 9 * * 1-5'
   workflow_dispatch:  # Allows manual triggers
 
 jobs:
-  crawl:
+  update:
     environment: crawler
 
     runs-on: ubuntu-latest
@@ -39,4 +39,5 @@ jobs:
         echo "FIREBASE_DEFAULT_DATABASE_URL=${{ secrets.FIREBASE_DEFAULT_DATABASE_URL }}" >> $GITHUB_ENV
         
     - name: Run master updater script
-      run: python python/deepseek/run_full_update.py
+      working-directory: ./python/deepseek
+      run: python run_full_update.py
