@@ -6,7 +6,8 @@
 export interface TimelinePoint {
     date: string;
     description: string;
-    sourceIds: string[]; // The required property
+    sourceIds?: string[]; // The required property
+    sources?: { id?: string }[];
 }
 
 export interface CuratedEvent {

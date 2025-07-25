@@ -182,8 +182,8 @@ const EventNavigator: React.FC<{ eventList: CuratedEvent[], onNavigate: (id: str
             <h3 className="font-semibold text-sm p-3 text-gray-800 border-b border-gray-200">On This Page</h3>
             <nav>
                 <ul className="py-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 250px)' }}>
-                    {eventList.map(event => (
-                        <li key={event.event_title}>
+                    {eventList.map((event, index) => (
+                        <li key={`nav-${index}-${event.event_title}`}>
                             <button
                                 onClick={() => onNavigate(slugify(event.event_title))}
                                 className="w-full text-left text-sm px-3 py-2.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors duration-200 rounded-md"
@@ -238,9 +238,13 @@ const EventSources: React.FC<EventSourcesProps> = ({ articleIds, articlesMap }) 
     );
 };
 
+// NEW CODE
 const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ point, isLast, articlesMap }) => {
     const [isSourcesVisible, setIsSourcesVisible] = useState(false);
-    const hasSources = point.sourceIds && point.sourceIds.length > 0;
+
+    // Fix: Check for both sourceIds and sources array
+    const sourceIds = point.sourceIds || (point.sources?.map((source: { id?: string }) => source.id).filter((id): id is string => Boolean(id))) || [];
+    const hasSources = sourceIds.length > 0;
     const toggleSources = () => setIsSourcesVisible(prev => !prev);
     return (
         <div className="relative pb-4">
@@ -248,10 +252,12 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
             {!isLast && <div className="absolute w-px h-full bg-gray-200 left-[-14px] top-4"></div>}
             <p className="text-sm font-medium text-gray-500">{formatTimelineDate(point.date)}</p>
             <div className="flex justify-between items-start gap-4">
-                <p className="text-base text-gray-700">{point.description.replaceAll("*","'")}</p>
+                <p className="text-base text-gray-700">{point.description.replaceAll("*", "'")}</p>
                 {hasSources && (<button onClick={toggleSources} className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors flex-shrink-0" aria-label="Toggle sources">{isSourcesVisible ? <ChevronUp size={20} /> : <ChevronDown size={20} />}</button>)}
             </div>
-            {isSourcesVisible && <EventSources articlesMap={articlesMap} articleIds={point.sourceIds || []} />}
+            {isSourcesVisible && hasSources && (
+                <EventSources articlesMap={articlesMap} articleIds={sourceIds} />
+            )}
         </div>
     );
 };
@@ -260,6 +266,7 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
 // --- MAIN COMPONENT ---
 const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, articles }) => {
     // console.log("Data received by CuratedTimelineView:", data);
+
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -378,14 +385,29 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     }, [localActiveCategory, localActiveSubCategory, getAvailableSubCategories, handleSelectCategory]);
 
 
+    // const handleToggleCategory = (category: string) => {
+    //     if (!openCategories.includes(category)) {
+    //         handleSelectCategory(category);
+    //     }
+    //     setOpenCategories(prevOpen => {
+    //         const isOpen = prevOpen.includes(category);
+    //         return isOpen ? prevOpen.filter(c => c !== category) : [...prevOpen, category];
+    //     });
+    // };
+
     const handleToggleCategory = (category: string) => {
-        if (!openCategories.includes(category)) {
+        const isCurrentlyOpen = openCategories.includes(category);
+
+        if (isCurrentlyOpen) {
+            // Close this category
+            setOpenCategories([]);
+            setLocalActiveCategory('');
+            setLocalActiveSubCategory('');
+        } else {
+            // Open this category and close all others
+            setOpenCategories([category]);
             handleSelectCategory(category);
         }
-        setOpenCategories(prevOpen => {
-            const isOpen = prevOpen.includes(category);
-            return isOpen ? prevOpen.filter(c => c !== category) : [...prevOpen, category];
-        });
     };
 
     const handleToggleEvent = useCallback((eventTitle: string) => {
@@ -414,10 +436,22 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     }, [localActiveCategory, localActiveSubCategory, processedData, selectedYears]);
 
     // Memoize the list of events for the navigator
+    // NEW CODE
     const eventListForNavigator = useMemo(() => {
-        if (!displayedContent) return [];
-        return Object.values(displayedContent)[0] || [];
-    }, [displayedContent]);
+        if (!localActiveCategory || !localActiveSubCategory || !processedData[localActiveCategory]?.subCategories?.[localActiveSubCategory]) {
+            return [];
+        }
+
+        let events = processedData[localActiveCategory].subCategories[localActiveSubCategory];
+
+        if (selectedYears.length > 0) {
+            events = events.filter(event =>
+                event.event_years?.some(year => selectedYears.includes(year))
+            );
+        }
+
+        return events;
+    }, [localActiveCategory, localActiveSubCategory, processedData, selectedYears]);
 
     // Handler for smooth scrolling
     const handleEventNavigation = (id: string) => {
@@ -482,11 +516,10 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                     <div className="pb-12">
                         {displayedContent && Object.entries(displayedContent).map(([subCategory, eventList]) => (
                             <div key={subCategory} className="space-y-8">
-                                {eventList.map(event => (
-                                    // MODIFIED: Added id and scroll-mt for navigation
-                                    <div id={slugify(event.event_title)} key={event.event_title} className="p-4 border rounded-lg shadow-sm bg-white scroll-mt-80">
+                                {eventList.map((event, eventIndex) => (
+                                    <div id={slugify(event.event_title)} key={`${localActiveCategory}-${localActiveSubCategory}-${eventIndex}`} className="p-4 border rounded-lg shadow-sm bg-white scroll-mt-80">
                                         <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
-                                        <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary.replaceAll("*","'")}</p>
+                                        <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary.replaceAll("*", "'")}</p>
                                         <div className="relative pl-5">
                                             {event.timeline_points.map((point, index) => (<TimelinePointWithSources key={index} point={point} articlesMap={articlesMap} isLast={index === event.timeline_points.length - 1} />))}
                                         </div>
@@ -534,11 +567,10 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
 
                                             {localActiveCategory === category && displayedContent && (
                                                 <div className="space-y-6 pt-4 border-t border-gray-200/80">
-                                                    {Object.values(displayedContent)[0].map(event => {
+                                                    {Object.values(displayedContent)[0].map((event, eventIndex) => {
                                                         const isEventOpen = openEvents.includes(slugify(event.event_title));
                                                         return (
-                                                            // MODIFIED: Each event is now its own accordion
-                                                            <div key={event.event_title} className="border rounded-lg overflow-hidden bg-white">
+                                                            <div key={`${localActiveCategory}-${localActiveSubCategory}-${eventIndex}`} className="border rounded-lg overflow-hidden bg-white">
                                                                 <button
                                                                     onClick={() => handleToggleEvent(event.event_title)}
                                                                     className="w-full flex justify-between items-center p-4 text-left"
