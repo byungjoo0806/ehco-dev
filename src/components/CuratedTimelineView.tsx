@@ -436,7 +436,6 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
     }, [localActiveCategory, localActiveSubCategory, processedData, selectedYears]);
 
     // Memoize the list of events for the navigator
-    // NEW CODE
     const eventListForNavigator = useMemo(() => {
         if (!localActiveCategory || !localActiveSubCategory || !processedData[localActiveCategory]?.subCategories?.[localActiveSubCategory]) {
             return [];
@@ -582,7 +581,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                                                 {/* MODIFIED: Conditionally render event details */}
                                                                 {isEventOpen && (
                                                                     <div className="px-4 pb-4">
-                                                                        <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary}</p>
+                                                                        <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary.replaceAll("*", "'")}</p>
                                                                         <div className="relative pl-5 border-t pt-4">
                                                                             {event.timeline_points.map((point, index) => (
                                                                                 <TimelinePointWithSources key={index} point={point} articlesMap={articlesMap} isLast={index === event.timeline_points.length - 1} />
