@@ -92,7 +92,7 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                                 onClick={onClose}
                                 className="block text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
                             >
-                                Contact
+                                Contact Us
                             </Link>
                         </li>
                     </ul>
