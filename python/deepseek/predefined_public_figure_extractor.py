@@ -24,12 +24,26 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
         super().__init__()
         self.predefined_names = predefined_names or []
         self.celebrity_data = {}  # Dictionary mapping names to their attributes
+
+        # Define group hierarchies - parent group -> list of sub-groups
+        self.group_hierarchies = {
+            "NCT": ["NCT 127", "NCT Dream", "NCT Wish", "WayV"],
+            # You can add more hierarchies here if needed
+            # "SEVENTEEN": ["SEVENTEEN Hip-hop Team", "SEVENTEEN Vocal Team", "SEVENTEEN Performance Team"],
+        }
+
+        # Create reverse mapping for quick lookup: sub-group -> parent group
+        self.subgroup_to_parent = {}
+        for parent, subgroups in self.group_hierarchies.items():
+            for subgroup in subgroups:
+                self.subgroup_to_parent[subgroup] = parent
         
         # Load from CSV if no names are provided
         if not self.predefined_names:
             self.predefined_names, self.celebrity_data = self._load_predefined_names_from_csv(csv_filepath)
             
         print(f"Initialized with {len(self.predefined_names)} predefined public figures")
+        print(f"Group hierarchies configured: {list(self.group_hierarchies.keys())}")
         
         # Show a preview of names
         preview_count = min(5, len(self.predefined_names))
@@ -42,6 +56,28 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
             return None
         # The min() function works correctly on 'YYYY-MM-DD' formatted strings
         return min(dates_array)
+    
+
+    def _expand_mentioned_figures_with_hierarchy(self, mentioned_figures):
+        """
+        Expand the list of mentioned figures to include parent groups when sub-groups are mentioned.
+        
+        Args:
+            mentioned_figures (list): Original list of mentioned public figures
+            
+        Returns:
+            list: Expanded list including parent groups for any mentioned sub-groups
+        """
+        expanded_figures = set(mentioned_figures)  # Use set to avoid duplicates
+        
+        for figure in mentioned_figures:
+            # Check if this figure is a sub-group that has a parent group
+            if figure in self.subgroup_to_parent:
+                parent_group = self.subgroup_to_parent[figure]
+                expanded_figures.add(parent_group)
+                print(f"Adding parent group '{parent_group}' because sub-group '{figure}' was mentioned")
+        
+        return list(expanded_figures)
     
     
     def _load_predefined_names_from_csv(self, csv_filepath="./python/deepseek/k_celebrities_master.csv"):
@@ -444,12 +480,10 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
         
     async def extract_for_predefined_figures(self, limit=None, reverse_order=True, start_after_doc_id=None):
         """
-        REVISED FINAL VERSION: Processes articles to find mentions of predefined public figures.
-        This function now fetches articles and calls the reusable 'process_single_figure_mention' 
-        method for each figure found.
+        MODIFIED VERSION: Now includes hierarchy expansion for NCT and other groups.
         """
         try:
-            # Step 1: Fetch articles with ordering and limiting (This part is unchanged)
+            # Step 1: Fetch articles (unchanged)
             print("Fetching articles...")
             query = self.news_manager.db.collection("newsArticles")
             
@@ -483,7 +517,8 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
                 "articles_processed": 0,
                 "articles_with_figures": 0,
                 "figure_mentions": 0,
-                "summaries_created": 0
+                "summaries_created": 0,
+                "hierarchy_expansions": 0  # New stat
             }
 
             # Step 2: Process each article
@@ -497,15 +532,21 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
 
                 if not body:
                     print(f"Skipping article {article_id} - No body content.")
-                    # Mark as processed to avoid picking it up again
                     self.news_manager.db.collection("newsArticles").document(article_id).update({"public_figures": []})
                     continue
 
                 # Find which predefined public figures are mentioned in this article
                 mentioned_figures = await self._find_mentioned_figures(body)
                 
-                # IMPORTANT: Update the article with the list of found figures (even if empty).
-                # This marks the article as "processed" for future update runs.
+                # NEW: Expand with hierarchy (NCT sub-groups -> also include NCT)
+                original_count = len(mentioned_figures)
+                mentioned_figures = self._expand_mentioned_figures_with_hierarchy(mentioned_figures)
+                
+                if len(mentioned_figures) > original_count:
+                    stats["hierarchy_expansions"] += (len(mentioned_figures) - original_count)
+                    print(f"Expanded from {original_count} to {len(mentioned_figures)} figures due to hierarchies")
+                
+                # Update the article with the EXPANDED list of found figures
                 self.news_manager.db.collection("newsArticles").document(article_id).update(
                     {"public_figures": mentioned_figures}
                 )
@@ -518,30 +559,28 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
                 stats["articles_with_figures"] += 1
                 stats["figure_mentions"] += len(mentioned_figures)
                 
-                # THE KEY CHANGE: The large block of logic that was here is now gone.
-                # Instead, we loop through the names and call our new reusable method.
+                # Process each figure (including newly added parent groups)
                 for public_figure_name in mentioned_figures:
                     await self.process_single_figure_mention(
                         public_figure_name=public_figure_name,
                         article_id=article_id,
                         article_data=article_data
                     )
-                    # We can track summary creation here
                     stats["summaries_created"] += 1
 
-            # Print final statistics (Unchanged)
+            # Print final statistics
             print("\n=== Processing Statistics ===")
             print(f"Total articles processed: {stats['articles_processed']}")
             print(f"Articles with predefined figures: {stats['articles_with_figures']}")
             print(f"Total public figure mentions: {stats['figure_mentions']}")
             print(f"Article summaries created: {stats['summaries_created']}")
+            print(f"Hierarchy expansions applied: {stats['hierarchy_expansions']}")
             print("===========================\n")
 
         except Exception as e:
             print(f"An error occurred in extract_for_predefined_figures: {e}")
             raise
         finally:
-            # Close the connection (Unchanged)
             await self.news_manager.close()
     
            
@@ -649,14 +688,12 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
         
     async def process_new_articles(self, limit=None):
         """
-        Finds and processes only new articles, identified by the 'public_figures_processed' flag.
-        This is now a method of the class.
+        MODIFIED VERSION: Now includes hierarchy expansion for new articles too.
         """
         updated_figures_in_run = set() 
         try:
             print("Searching for new articles to process...")
             
-            # Use 'self' instead of 'extractor'
             query = self.news_manager.db.collection("newsArticles").where(
                 filter=firestore.FieldFilter("public_figures_processed", "==", False)
             )
@@ -669,7 +706,7 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
             
             if not articles:
                 print("No new articles found to process.")
-                return [] # <- MODIFICATION: Return an empty list
+                return []
 
             print(f"Found {len(articles)} new articles to process.")
             
@@ -681,15 +718,16 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
                 print(f"\nProcessing new article {i+1}/{len(articles)} (ID: {article_id})")
 
                 if not body:
-                    # Mark as processed to avoid re-processing a bad article
                     self.news_manager.db.collection("newsArticles").document(article_id).update({
                         "public_figures": [],
                         "public_figures_processed": True
                     })
                     continue
 
-                # Use 'self' to call the other method in this class
                 mentioned_figures = await self._find_mentioned_figures(body)
+                
+                # NEW: Apply hierarchy expansion here too
+                mentioned_figures = self._expand_mentioned_figures_with_hierarchy(mentioned_figures)
                 
                 self.news_manager.db.collection("newsArticles").document(article_id).update({
                     "public_figures": mentioned_figures,
@@ -705,7 +743,6 @@ class PredefinedPublicFigureExtractor(PublicFigureExtractor):
                 updated_figures_in_run.update(mentioned_figures)
                 
                 for public_figure_name in mentioned_figures:
-                    # Use 'self' to call the other method
                     await self.process_single_figure_mention(public_figure_name, article_id, article_data)
         
         except Exception as e:
