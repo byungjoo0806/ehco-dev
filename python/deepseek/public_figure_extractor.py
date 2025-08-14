@@ -920,7 +920,7 @@ class PublicFigureExtractor:
         formatted_prompt = prompt.format(target_name=name)
         
         try:
-            response = self.news_manager.client.chat.completions.create(
+            response = await self.news_manager.client.chat.completions.create(
                 model=self.news_manager.model,
                 messages=[
                     {"role": "system", "content": "You are a knowledgeable assistant that provides accurate information about public figures."},
@@ -1133,7 +1133,7 @@ class PublicFigureExtractor:
             """
             
             # Call DeepSeek API
-            response = self.news_manager.client.chat.completions.create(
+            response = await self.news_manager.client.chat.completions.create(
                 model=self.news_manager.model,
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant that creates concise, focused summaries and extracts specific dates with event descriptions from content."},
