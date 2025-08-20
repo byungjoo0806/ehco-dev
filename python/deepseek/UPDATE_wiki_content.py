@@ -65,6 +65,7 @@ class PublicFigureWikiUpdater:
     async def update_wiki_content_for_figure(self, figure_id, figure_name):
         """
         Updates wiki content for a single public figure if new summaries are found.
+        Creates new wiki documents if they don't exist.
         """
         try:
             # 1. Find new article summaries that haven't been processed yet
@@ -110,34 +111,50 @@ class PublicFigureWikiUpdater:
                         updates_to_process[subcat_doc_id] = []
                     updates_to_process[subcat_doc_id].append(summary_text)
 
-            # 3. For each wiki document that has new information, perform the update
+            # 3. For each wiki document that has new information, perform the update or creation
             wiki_content_ref = summaries_ref.parent.collection("wiki-content")
             for doc_id, new_summaries in updates_to_process.items():
                 
                 wiki_doc_ref = wiki_content_ref.document(doc_id)
                 existing_doc = wiki_doc_ref.get()
 
-                if not existing_doc.exists:
-                    print(f"  - Warning: Wiki document '{doc_id}' not found. Cannot update.")
-                    continue
+                if existing_doc.exists:
+                    # Document exists - update it
+                    existing_content = existing_doc.to_dict().get("content", "")
+                    
+                    # Call the LLM to get potentially updated content
+                    new_content = await self._get_updated_content_from_llm(figure_name, existing_content, new_summaries)
 
-                existing_content = existing_doc.to_dict().get("content", "")
-                
-                # Call the LLM to get potentially updated content
-                new_content = await self._get_updated_content_from_llm(figure_name, existing_content, new_summaries)
-
-                # 4. Update Firestore only if the content has changed
-                if new_content and new_content.strip() != existing_content.strip():
-                    wiki_doc_ref.update({
-                        "content": new_content,
-                        "lastUpdated": firestore.SERVER_TIMESTAMP,
-                        "is_compacted": False
-                    })
-                    print(f"  - Updated wiki document: '{doc_id}'")
+                    # Update Firestore only if the content has changed
+                    if new_content and new_content.strip() != existing_content.strip():
+                        wiki_doc_ref.update({
+                            "content": new_content,
+                            "lastUpdated": firestore.SERVER_TIMESTAMP,
+                            "is_compacted": False
+                        })
+                        print(f"  - Updated existing wiki document: '{doc_id}'")
+                    else:
+                        print(f"  - No significant changes needed for existing wiki document: '{doc_id}'")
                 else:
-                    print(f"  - No significant changes needed for wiki document: '{doc_id}'")
+                    # Document doesn't exist - create it
+                    print(f"  - Wiki document '{doc_id}' not found. Creating new document...")
+                    
+                    # Generate new content based on the summaries
+                    new_content = await self._create_new_content_from_llm(figure_name, doc_id, new_summaries)
+                    
+                    if new_content:
+                        # Create the new document
+                        wiki_doc_ref.set({
+                            "content": new_content,
+                            "lastUpdated": firestore.SERVER_TIMESTAMP,
+                            "is_compacted": False,
+                            "created": firestore.SERVER_TIMESTAMP
+                        })
+                        print(f"  - Successfully created new wiki document: '{doc_id}'")
+                    else:
+                        print(f"  - Failed to generate content for new wiki document: '{doc_id}'")
 
-            # 5. Mark all new summaries as processed in a batch
+            # 4. Mark all new summaries as processed in a batch
             # batch = self.news_manager.db.batch()
             # for doc in new_summary_docs:
             #     batch.update(doc.reference, {self.processing_flag_field: True})
@@ -149,6 +166,53 @@ class PublicFigureWikiUpdater:
         except Exception as e:
             print(f"Error updating content for {figure_name}: {e}")
             return False
+        
+    async def _create_new_content_from_llm(self, figure_name, doc_id, summaries):
+        """
+        Calls the LLM to create new wiki content from scratch based on article summaries.
+        """
+        summaries_str = "\n\n".join(f"- {s}" for s in summaries)
+        
+        # Determine the type of content to create based on doc_id
+        content_type = "general biographical overview"
+        if doc_id != "main-overview":
+            # Convert doc_id back to readable format
+            readable_category = doc_id.replace('-', ' ').title()
+            content_type = f"information about {figure_name}'s {readable_category.lower()}"
+
+        prompt = f"""
+    You are a skilled biographical writer creating a new Wikipedia-style entry for {figure_name}. You need to create {content_type} based on the provided information.
+
+    **Source Information:**
+    ---
+    {summaries_str}
+    ---
+
+    **Instructions:**
+    1. Create a comprehensive, well-structured biographical text based solely on the provided information.
+    2. Write in a neutral, encyclopedic tone similar to Wikipedia articles.
+    3. Organize the information logically with smooth transitions between topics.
+    4. Focus on factual content and avoid speculation or editorial commentary.
+    5. If this is for a specific category (not main-overview), focus the content on that particular aspect of {figure_name}'s life and career.
+    6. Do not include titles, headings, or section markers - provide only the body text.
+    7. Ensure the content is substantial enough to be informative but concise enough to be readable.
+
+    **New Content:**
+    """
+
+        try:
+            response = await self.news_manager.client.chat.completions.create(
+                model=self.news_manager.model,
+                messages=[
+                    {"role": "system", "content": "You are an expert biographical writer creating encyclopedic content."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.6  # Slightly higher temperature for creative content generation
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            print(f"Error calling LLM for new content creation: {e}")
+            return None
 
     async def _get_updated_content_from_llm(self, figure_name, existing_content, new_summaries):
         """
