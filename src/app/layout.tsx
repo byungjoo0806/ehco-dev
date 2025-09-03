@@ -132,6 +132,7 @@ export default function RootLayout({
           <div className="fixed top-0 left-0 right-0 z-50 shadow-md">
             <Header />
           </div>
+          {/* <ProfileCompletionBanner /> */}
           <main className="min-h-screen pt-16 bg-white">
             {children}
             <JsonLd data={websiteSchema} />

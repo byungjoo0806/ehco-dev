@@ -3,6 +3,8 @@
 import { X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useLoading } from '@/context/LoadingContext'; // Import the loading hook
 
 interface SlidingMenuProps {
     isOpen: boolean;
@@ -10,6 +12,9 @@ interface SlidingMenuProps {
 }
 
 export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
+    const router = useRouter(); // Add router for programmatic navigation
+    const { showLoading } = useLoading(); // Use the loading context
+
     // Handle escape key press
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
@@ -29,6 +34,13 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
             document.body.style.overflow = 'unset';
         };
     }, [isOpen, onClose]);
+
+    // Handle navigation with loading
+    const handleNavigation = (path: string, loadingMessage: string) => {
+        onClose(); // Close the menu first
+        showLoading(loadingMessage);
+        router.push(path);
+    };
 
     return (
         <>
@@ -60,40 +72,52 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                 <nav className="px-8 py-4">
                     <ul className="space-y-8">
                         <li>
-                            <Link
-                                href="/"
-                                onClick={onClose}
-                                className="block text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
+                            <button
+                                onClick={() => handleNavigation('/', 'Loading home...')}
+                                className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
                             >
                                 Home
-                            </Link>
+                            </button>
                         </li>
                         <li>
-                            <Link
-                                href="/all-figures"
-                                onClick={onClose}
-                                className="block text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
+                            <button
+                                onClick={() => handleNavigation('/all-figures', 'Loading all figures...')}
+                                className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
                             >
                                 Explore All
-                            </Link>
+                            </button>
                         </li>
                         <li>
-                            <Link
-                                href="/about-ehco"
-                                onClick={onClose}
-                                className="block text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
+                            <button
+                                onClick={() => handleNavigation('/favorites', 'Loading your favorites...')}
+                                className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
+                            >
+                                My Favorites
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                onClick={() => handleNavigation('/scrapped', 'Loading scrapped events...')}
+                                className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
+                            >
+                                Scrapped Events
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                onClick={() => handleNavigation('/about-ehco', 'Loading about us...')}
+                                className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
                             >
                                 About Us
-                            </Link>
+                            </button>
                         </li>
                         <li>
-                            <Link
-                                href="/contact-us"
-                                onClick={onClose}
-                                className="block text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
+                            <button
+                                onClick={() => handleNavigation('/contact-us', 'Loading contact page...')}
+                                className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
                             >
                                 Contact Us
-                            </Link>
+                            </button>
                         </li>
                     </ul>
                 </nav>

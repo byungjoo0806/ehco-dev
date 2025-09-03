@@ -167,7 +167,37 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'image.url',
       },
+      {
+        protocol: 'https',
+        hostname: 'image.kpopmap.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'kprofiles.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'resource-cdn.ygenterprise.co.kr',
+      },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+      },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            // IMPORTANT: Add https://www.google.com to frame-ancestors
+            value: "frame-ancestors 'self' https://www.google.com;",
+          },
+        ],
+      },
+    ];
   },
 };
 

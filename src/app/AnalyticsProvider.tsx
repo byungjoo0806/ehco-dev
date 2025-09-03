@@ -25,7 +25,7 @@ export default function AnalyticsProvider() {
 
     // Inside your component
     useEffect(() => {
-        if (analytics) {
+        if (analytics && process.env.NODE_ENV === 'production') {
             logEvent(analytics, 'page_view', {
                 page_title: document.title,
                 page_location: window.location.href,

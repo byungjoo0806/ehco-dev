@@ -276,6 +276,9 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
         const publicFigureData = await getPublicFigureData(publicFigureId);
         const apiResponse = await getPublicFigureContent(publicFigureId);
 
+        // console.log(`\n--- DEBUG LOG 1: Full Timeline API Response for [${publicFigureId}] ---`);
+        // console.log(JSON.stringify(apiResponse.timeline_content.data, null, 2));
+
         const allArticleIds: string[] = [...(apiResponse.main_overview.articleIds || [])];
         if (apiResponse.timeline_content.schema_version === 'v1_legacy') {
             const legacyArticleIds = apiResponse.timeline_content.data.categoryContent.flatMap((item: WikiContentItem) => item.articleIds || []);
@@ -292,10 +295,16 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
                 if (mainCatData && mainCatData.subCategories) {
                     Object.values(mainCatData.subCategories).forEach((eventList) => {
                         eventList.forEach((event) => {
+                            // Check for `event.sources` (the old way)
                             (event.sources || []).forEach((source) => {
-                                if (source.id) {
-                                    sourcesSet.add(source.id);
-                                }
+                                if (source.id) sourcesSet.add(source.id);
+                            });
+
+                            // Check for `timeline_points` which might contain `sourceIds`
+                            (event.timeline_points || []).forEach(point => {
+                                (point.sourceIds || []).forEach(id => {
+                                    if (id) sourcesSet.add(id);
+                                });
                             });
                         });
                     });
@@ -307,6 +316,10 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
             // ================================================================== //
         }
         const uniqueArticleIds = allArticleIds.filter((id, index, self) => self.indexOf(id) === index);
+
+        // console.log(`\n--- DEBUG LOG 2: Collected Source IDs to Fetch for [${publicFigureId}] ---`);
+        // console.log(`Found ${uniqueArticleIds.length} unique source IDs.`);
+        // console.log(uniqueArticleIds);
 
         const relatedFiguresObject = publicFigureData.related_figures || {};
 
@@ -324,6 +337,17 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
             getArticleSummaries(publicFigureId, uniqueArticleIds),
             getFiguresByIds(similarFigureIds) 
         ]);
+
+        // console.log(`\n--- DEBUG LOG 3: Comparison for [${publicFigureId}] ---`);
+        // console.log(`Requested: ${uniqueArticleIds.length} articles.`);
+        // console.log(`Received:  ${articles.length} articles.`);
+        // if (uniqueArticleIds.length !== articles.length) {
+        //     console.error("!!! MISMATCH DETECTED: Not all requested articles were found or fetched. !!!");
+        //     const requestedIds = new Set(uniqueArticleIds);
+        //     const receivedIds = new Set(articles.map(a => a.id));
+        //     const missingIds = [...requestedIds].filter(id => !receivedIds.has(id));
+        //     console.log("Missing Article IDs:", missingIds);
+        // }
 
         // ... rest of the function (schemaData, JSX return) remains unchanged ...
         const schemaData = publicFigureData.is_group
@@ -379,7 +403,9 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
                             <CareerJourney
                                 apiResponse={apiResponse.timeline_content}
                                 articles={articles}
-                                articleSummaries={articleSummaries}
+                                figureId={publicFigureData.id}
+                                figureName={publicFigureData.name}
+                                figureNameKr={publicFigureData.name_kr}
                             />
                         </div>
                     </div>

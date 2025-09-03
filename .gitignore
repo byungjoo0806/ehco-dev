@@ -47,6 +47,7 @@ firebase.json
 firestore.indexes.json
 firestore.rules
 /functions
+/functions/.env.*
 
 # venv
 /crawler_env

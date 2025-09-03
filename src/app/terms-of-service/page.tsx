@@ -132,7 +132,7 @@ export default function TermsOfService() {
                         please contact us at: info@ehco.ai
                     </p>
 
-                    <div className="border rounded-md w-full h-40">
+                    <div className="rounded-md w-full h-40">
                         {/* for ads */}
                     </div>
 

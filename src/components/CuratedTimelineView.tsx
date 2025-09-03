@@ -10,6 +10,8 @@ import {
     TimelinePoint
 } from '@/types/definitions';
 import MainCategorySummary from './MainCategorySummary';
+import ScrapButton from './ScrapButton';
+import ReportButton from './ReportButton';
 
 // --- TYPE DEFINITIONS ---
 interface EventSourcesProps {
@@ -26,6 +28,9 @@ interface TimelinePointWithSourcesProps {
 interface CuratedTimelineViewProps {
     data: CuratedTimelineData;
     articles: Article[];
+    figureId: string;
+    figureName: string;
+    figureNameKr: string;
 }
 
 // --- CONSTANTS ---
@@ -68,6 +73,13 @@ const sortTimelinePoints = (points: TimelinePoint[]): TimelinePoint[] => {
         specificity: dateStr.split('-').length
     });
     return [...points].sort((a, b) => {
+        const aDateIsValid = a.date && typeof a.date === 'string';
+        const bDateIsValid = b.date && typeof b.date === 'string';
+
+        if (!aDateIsValid && !bDateIsValid) return 0; // Both are invalid, treat as equal
+        if (!aDateIsValid) return 1;  // 'a' is invalid, so it goes last
+        if (!bDateIsValid) return -1; // 'b' is invalid, so it goes last
+
         const dateA = parseDate(a.date);
         const dateB = parseDate(b.date);
         if (dateA.year !== dateB.year) return dateB.year - dateA.year;
@@ -200,9 +212,19 @@ const EventNavigator: React.FC<{ eventList: CuratedEvent[], onNavigate: (id: str
 
 
 const EventSources: React.FC<EventSourcesProps> = ({ articleIds, articlesMap }) => {
-    const relevantArticles = articleIds
-        .map(id => articlesMap.get(id))
-        .filter(Boolean) as Article[];
+    // --- ADD THESE CONSOLE.LOGS ---
+    console.log('--- Debugging EventSources Component ---');
+    console.log('Received articleIds:', articleIds);
+    
+    const mappedArticles = articleIds.map(id => articlesMap.get(id));
+    console.log('Result after mapping IDs to articlesMap:', mappedArticles);
+    
+    const relevantArticles = mappedArticles.filter(Boolean) as Article[];
+    console.log('Final relevantArticles after filtering out undefined:', relevantArticles);
+    // --- END OF LOGS ---
+    // const relevantArticles = articleIds
+    //     .map(id => articlesMap.get(id))
+    //     .filter(Boolean) as Article[];
     relevantArticles.sort((a, b) => {
         if (!a.sendDate) return 1;
         if (!b.sendDate) return -1;
@@ -245,7 +267,18 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
     // Fix: Check for both sourceIds and sources array
     const sourceIds = point.sourceIds || (point.sources?.map((source: { id?: string }) => source.id).filter((id): id is string => Boolean(id))) || [];
     const hasSources = sourceIds.length > 0;
-    const toggleSources = () => setIsSourcesVisible(prev => !prev);
+    const toggleSources = () => {
+        // --- ADD THIS CONSOLE.LOG ---
+        // console.log('--- Debugging Timeline Point ---');
+        // console.log('Raw timeline point:', point);
+        // console.log('Extracted sourceIds:', sourceIds);
+        // console.log('Does articlesMap have these IDs?');
+        // sourceIds.forEach(id => {
+        //     console.log(`  - ID: ${id}, Exists in map:`, articlesMap.has(id));
+        // });
+        // --- END OF LOG ---
+        setIsSourcesVisible(prev => !prev)
+    };
     return (
         <div className="relative pb-4">
             <div className="absolute w-3 h-3 bg-red-500 rounded-full left-[-20px] top-1 border-2 border-white"></div>
@@ -264,7 +297,7 @@ const TimelinePointWithSources: React.FC<TimelinePointWithSourcesProps> = ({ poi
 
 
 // --- MAIN COMPONENT ---
-const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, articles }) => {
+const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, articles, figureId, figureName, figureNameKr }) => {
     // console.log("Data received by CuratedTimelineView:", data);
 
     const router = useRouter();
@@ -315,6 +348,79 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
         setLocalActiveCategory(urlActiveCategory);
         setLocalActiveSubCategory(urlActiveSubCategory);
     }, [urlActiveCategory, urlActiveSubCategory]);
+
+    // Handle URL hash navigation and highlighting
+    useEffect(() => {
+        const hash = window.location.hash.slice(1); // Remove the # symbol
+        if (!hash) return;
+
+        // Find which category and subcategory contains the event with this hash
+        let foundCategory = '';
+        let foundSubCategory = '';
+        let targetEventTitle = '';
+
+        // Search through all data to find the event
+        for (const [mainCat, mainCatData] of Object.entries(processedData)) {
+            if (mainCatData?.subCategories) {
+                for (const [subCat, events] of Object.entries(mainCatData.subCategories)) {
+                    const foundEvent = events.find(event => slugify(event.event_title) === hash);
+                    if (foundEvent) {
+                        foundCategory = mainCat;
+                        foundSubCategory = subCat;
+                        targetEventTitle = foundEvent.event_title;
+                        break;
+                    }
+                }
+            }
+            if (foundCategory) break;
+        }
+
+        if (foundCategory && foundSubCategory) {
+            // Set the category and subcategory to make the event visible
+            setLocalActiveCategory(foundCategory);
+            setLocalActiveSubCategory(foundSubCategory);
+            setOpenCategories([foundCategory]); // For mobile view
+
+            // Open the specific event in mobile view
+            setOpenEvents(prev => [...prev, hash]);
+
+            // Scroll to the element after a short delay to ensure it's rendered
+            setTimeout(() => {
+                const element = document.getElementById(hash);
+                const header = document.getElementById('timeline-sticky-header');
+
+                if (element) {
+                    // Default scroll for mobile where the header isn't sticky
+                    if (!header || getComputedStyle(header).display === 'none') {
+                        element.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                        });
+                    } else {
+                        // Custom scroll for desktop to account for the sticky header
+                        const MAIN_HEADER_HEIGHT = 64; // Height from Header.tsx (h-16 class)
+                        const PADDING_TOP = 24; // Your adjustable vertical offset/padding (in pixels)
+
+                        const timelineHeaderHeight = header.offsetHeight;
+                        const elementPosition = element.getBoundingClientRect().top;
+
+                        const offsetPosition = elementPosition + window.pageYOffset - MAIN_HEADER_HEIGHT - timelineHeaderHeight - PADDING_TOP;
+
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                        });
+                    }
+
+                    // Highlight effect remains the same
+                    element.classList.add('ring-2', 'ring-blue-500', 'ring-opacity-50', 'transition-shadow', 'duration-300');
+                    setTimeout(() => {
+                        element.classList.remove('ring-2', 'ring-blue-500', 'ring-opacity-50');
+                    }, 3000);
+                }
+            }, 300); // 300ms delay allows the UI to update
+        }
+    }, [processedData]); // Run when processedData is available
 
     const [openCategories, setOpenCategories] = useState<string[]>([localActiveCategory]);
 
@@ -454,6 +560,9 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
 
     // Handler for smooth scrolling
     const handleEventNavigation = (id: string) => {
+        // Update URL hash without triggering a page reload
+        history.replaceState(null, '', `#${id}`);
+
         const element = document.getElementById(id);
         element?.scrollIntoView({
             behavior: 'smooth',
@@ -486,7 +595,7 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                 {/* --- DESKTOP VIEW (sm screens and up) ---                           */}
                 {/* ================================================================== */}
                 <div className="hidden sm:block">
-                    <div className="w-full mt-3 mb-6 sticky top-16 z-10 bg-white/80 backdrop-blur-sm">
+                    <div id="timeline-sticky-header" className="w-full mt-3 mb-6 sticky top-16 z-10 bg-white/80 backdrop-blur-sm">
                         <div className="flex flex-row flex-wrap gap-x-2 gap-y-1 pb-2 border-b border-gray-200">
                             {mainCategories.map(category => (
                                 <button key={category} onClick={() => handleSelectCategory(category)} className={`px-4 py-2 whitespace-nowrap font-medium text-sm transition-colors ${localActiveCategory === category ? 'text-red-500 border-b-2 border-red-500' : 'text-gray-500 hover:text-gray-800'}`}>
@@ -516,8 +625,31 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                         {displayedContent && Object.entries(displayedContent).map(([subCategory, eventList]) => (
                             <div key={subCategory} className="space-y-8">
                                 {eventList.map((event, eventIndex) => (
-                                    <div id={slugify(event.event_title)} key={`${localActiveCategory}-${localActiveSubCategory}-${eventIndex}`} className="p-4 border rounded-lg shadow-sm bg-white scroll-mt-80">
-                                        <h4 className="font-semibold text-lg text-gray-900">{event.event_title}</h4>
+                                    <div id={slugify(event.event_title)} key={`${localActiveCategory}-${localActiveSubCategory}-${eventIndex}`} className="p-4 border rounded-lg shadow-sm bg-white relative">
+                                        {/* Action buttons positioned at top-right */}
+                                        <div className="absolute top-4 right-4 flex gap-1">
+                                            <ReportButton
+                                                figureId={figureId}
+                                                figureName={figureName}
+                                                figureNameKr={figureNameKr}
+                                                mainCategory={localActiveCategory}
+                                                subcategory={localActiveSubCategory}
+                                                eventGroupIndex={eventIndex}
+                                                eventGroup={event}
+                                                size="sm"
+                                            />
+                                            <ScrapButton
+                                                figureId={figureId}
+                                                figureName={figureName}
+                                                figureNameKr={figureNameKr}
+                                                mainCategory={localActiveCategory}
+                                                subcategory={localActiveSubCategory}
+                                                eventGroupIndex={eventIndex}
+                                                eventGroup={event}
+                                                size="sm"
+                                            />
+                                        </div>
+                                        <h4 className="font-semibold text-lg text-gray-900 pr-16">{event.event_title}</h4>
                                         <p className="text-sm text-gray-600 italic mt-1 mb-3">{event.event_summary.replaceAll("*", "'")}</p>
                                         <div className="relative pl-5">
                                             {event.timeline_points.map((point, index) => (<TimelinePointWithSources key={index} point={point} articlesMap={articlesMap} isLast={index === event.timeline_points.length - 1} />))}
@@ -569,10 +701,33 @@ const CuratedTimelineView: React.FC<CuratedTimelineViewProps> = ({ data, article
                                                     {Object.values(displayedContent)[0].map((event, eventIndex) => {
                                                         const isEventOpen = openEvents.includes(slugify(event.event_title));
                                                         return (
-                                                            <div key={`${localActiveCategory}-${localActiveSubCategory}-${eventIndex}`} className="border rounded-lg overflow-hidden bg-white">
+                                                            <div key={`${localActiveCategory}-${localActiveSubCategory}-${eventIndex}`} className="border rounded-lg overflow-hidden bg-white relative">
+                                                                {/* Action buttons positioned at top-right */}
+                                                                <div className="absolute top-4 right-4 z-10 flex gap-1">
+                                                                    <ReportButton
+                                                                        figureId={figureId}
+                                                                        figureName={figureName}
+                                                                        figureNameKr={figureNameKr}
+                                                                        mainCategory={localActiveCategory}
+                                                                        subcategory={localActiveSubCategory}
+                                                                        eventGroupIndex={eventIndex}
+                                                                        eventGroup={event}
+                                                                        size="sm"
+                                                                    />
+                                                                    <ScrapButton
+                                                                        figureId={figureId}
+                                                                        figureName={figureName}
+                                                                        figureNameKr={figureNameKr}
+                                                                        mainCategory={localActiveCategory}
+                                                                        subcategory={localActiveSubCategory}
+                                                                        eventGroupIndex={eventIndex}
+                                                                        eventGroup={event}
+                                                                        size="sm"
+                                                                    />
+                                                                </div>
                                                                 <button
                                                                     onClick={() => handleToggleEvent(event.event_title)}
-                                                                    className="w-full flex justify-between items-center p-4 text-left"
+                                                                    className="w-full flex justify-between items-center p-4 text-left pr-20"
                                                                 >
                                                                     <h4 className="font-semibold text-base text-gray-800">{event.event_title}</h4>
                                                                     {isEventOpen ? <ChevronUp size={20} className="text-gray-500" /> : <ChevronDown size={20} className="text-gray-500" />}

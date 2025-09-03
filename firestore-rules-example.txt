@@ -1,0 +1,19 @@
+// Example Firestore Security Rules for your users collection
+// Add these to your firestore.rules file
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read and write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow reading public figures for all authenticated users
+    match /public-figures/{figureId} {
+      allow read: if request.auth != null;
+    }
+    
+    // Your existing rules for other collections...
+  }
+}
