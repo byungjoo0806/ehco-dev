@@ -1,10 +1,11 @@
+// src/components/SlidingMenu.tsx
 'use client';
 
 import { X } from 'lucide-react';
-import Link from 'next/link';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useLoading } from '@/context/LoadingContext'; // Import the loading hook
+import { useLoading } from '@/context/LoadingContext';
+import { useAuth } from '@/context/AuthContext'; // Import the auth hook
 
 interface SlidingMenuProps {
     isOpen: boolean;
@@ -12,8 +13,9 @@ interface SlidingMenuProps {
 }
 
 export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
-    const router = useRouter(); // Add router for programmatic navigation
-    const { showLoading } = useLoading(); // Use the loading context
+    const router = useRouter();
+    const { showLoading } = useLoading();
+    const { user } = useAuth(); // Get user from AuthContext
 
     // Handle escape key press
     useEffect(() => {
@@ -25,7 +27,6 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
 
         if (isOpen) {
             document.addEventListener('keydown', handleEscape);
-            // Prevent body scroll when menu is open
             document.body.style.overflow = 'hidden';
         }
 
@@ -71,6 +72,7 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                 {/* Menu Items */}
                 <nav className="px-8 py-4">
                     <ul className="space-y-8">
+                        {/* --- Always-visible links --- */}
                         <li>
                             <button
                                 onClick={() => handleNavigation('/', 'Loading home...')}
@@ -89,22 +91,6 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                         </li>
                         <li>
                             <button
-                                onClick={() => handleNavigation('/favorites', 'Loading your favorites...')}
-                                className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
-                            >
-                                My Favorites
-                            </button>
-                        </li>
-                        <li>
-                            <button
-                                onClick={() => handleNavigation('/scrapped', 'Loading scrapped events...')}
-                                className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
-                            >
-                                Scrapped Events
-                            </button>
-                        </li>
-                        <li>
-                            <button
                                 onClick={() => handleNavigation('/about-ehco', 'Loading about us...')}
                                 className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
                             >
@@ -119,6 +105,29 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                                 Contact Us
                             </button>
                         </li>
+
+                        {/* --- MODIFIED: Links for logged-in users only --- */}
+                        {user && (
+                            <>
+                                <div className="border-t border-gray-200 my-8"></div>
+                                <li>
+                                    <button
+                                        onClick={() => handleNavigation('/favorites', 'Loading your favorites...')}
+                                        className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
+                                    >
+                                        My Favorites
+                                    </button>
+                                </li>
+                                <li>
+                                    <button
+                                        onClick={() => handleNavigation('/scrapped', 'Loading scrapped events...')}
+                                        className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
+                                    >
+                                        Scrapped Events
+                                    </button>
+                                </li>
+                            </>
+                        )}
                     </ul>
                 </nav>
             </div>

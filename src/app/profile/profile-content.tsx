@@ -6,19 +6,19 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
-// import { getUserProfile } from '@/lib/user-service';
 import { removeFromFavorites } from '@/lib/favorites-service';
 import ProfileScrappedSectionEnhanced from '@/components/ProfileScrappedSectionEnhanced';
-// import { Article } from '@/types/definitions';
-import { User, Mail, Calendar, Loader2, Phone, Star, Trash2, Heart, Settings, FileText, ChevronDown } from 'lucide-react';
-// --- UPDATED: Added sendEmailVerification ---
-import { updateProfile, sendEmailVerification } from 'firebase/auth';
-// import { PublicFigure } from '@/lib/figures-service';
+import { User, Mail, Calendar, Loader2, Phone, Star, Trash2, Heart, Settings, FileText, ChevronDown, Upload } from 'lucide-react';
 
-// Import your new custom hook to consume the data
+// --- NEW: Firebase imports for storage and profile updates ---
+import { updateProfile, sendEmailVerification } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, storage } from '@/lib/firebase';
+import { updateUserProfile } from '@/lib/user-service'; // For Firestore updates
+
 import { useProfileData } from '@/context/ProfileDataContext';
 import { removeFromScrappedEvents } from '@/lib/scrapping-service';
-import LoadingOverlay from '@/components/LoadingOverlay'; // Import the LoadingOverlay
+import LoadingOverlay from '@/components/LoadingOverlay';
 
 type TabType = 'account' | 'favorites' | 'scrapped';
 
@@ -31,34 +31,37 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
   const router = useRouter();
   const pathname = usePathname();
 
-  // Consume all shared data from the context provider
   const {
     userProfile,
     favorites,
     scrappedEvents,
     articles,
     figureData,
-    isLoading, // Single loading state for favorites & scrapped data
-    isRouteLoading, // New: Route loading state
-    setFavorites, // Function to update context state
+    isLoading,
+    isRouteLoading,
+    setFavorites,
     setScrappedEvents,
-    setRouteLoading // New: Function to control route loading
+    setRouteLoading
   } = useProfileData();
 
-  // State specific to this component's UI remains here
+  // UI State
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
-  const [openAccordionTabs, setOpenAccordionTabs] = useState<TabType[]>([initialTab]); // <-- ADD THIS NEW STATE for mobile
+  const [openAccordionTabs, setOpenAccordionTabs] = useState<TabType[]>([initialTab]);
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
   const [removingId, setRemovingId] = useState<string | null>(null);
-  // --- NEW: State for resend email button ---
   const [isResending, setIsResending] = useState(false);
+
+  // --- NEW: State for profile picture management ---
+  const [newProfileImage, setNewProfileImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const mobileNavRef = useRef<HTMLElement>(null);
 
-  // This useEffect is now simplified to only handle login checks and the basic user profile.
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');
@@ -68,7 +71,6 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
     }
   }, [user, loading, router]);
 
-  // This effect for syncing the tab with the URL remains unchanged
   useEffect(() => {
     const tabFromPath = pathname.split('/').pop();
     const validTabs: TabType[] = ['account', 'favorites', 'scrapped'];
@@ -78,36 +80,87 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
         setActiveTab(tabFromPath as TabType);
       }
     } else {
-      // Handles the base '/profile' case
       if (activeTab !== 'account') {
         setActiveTab('account');
       }
     }
   }, [pathname, activeTab]);
 
-  // mobile tab status
   useEffect(() => {
     if (mobileNavRef.current) {
-      // Find the button that corresponds to the active tab
       const activeTabElement = mobileNavRef.current.querySelector(`[data-tab-id="${activeTab}"]`);
-
       if (activeTabElement) {
-        // If the element is found, scroll it into the visible area
-        activeTabElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'nearest'
-        });
+        activeTabElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
       }
     }
   }, [activeTab]);
+
+  // --- NEW: Handler for selecting a new profile image ---
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setUpdateMessage('Profile picture must be less than 5MB.');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setUpdateMessage('Please select a valid image file.');
+        return;
+      }
+      setNewProfileImage(file);
+      setUpdateMessage('');
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- NEW: Handler to cancel image update ---
+  const cancelImageUpdate = () => {
+    setNewProfileImage(null);
+    setImagePreview(null);
+    if (imageInputRef.current) {
+      imageInputRef.current.value = '';
+    }
+  };
+
+  // --- NEW: Handler to upload the new image and update the profile ---
+  const handleImageUpdate = async () => {
+    if (!user || !newProfileImage) return;
+
+    setIsUploading(true);
+    setUpdateMessage('');
+
+    try {
+      // 1. Upload to Firebase Storage
+      const imageRef = ref(storage, `profile-pictures/${user.uid}/${newProfileImage.name}`);
+      const snapshot = await uploadBytes(imageRef, newProfileImage);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      // 2. Update Firebase Auth profile
+      await updateProfile(user, { photoURL: downloadURL });
+
+      // 3. Update Firestore profile document
+      await updateUserProfile(user.uid, { profilePicture: downloadURL });
+
+      setUpdateMessage('Profile picture updated successfully!');
+      cancelImageUpdate(); // Reset the state
+    } catch (error) {
+      console.error("Error updating profile picture:", error);
+      setUpdateMessage('Failed to update profile picture. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
 
   const handleRemoveFavorite = async (figureId: string) => {
     if (!user) return;
     setRemovingId(figureId);
     try {
       await removeFromFavorites(user.uid, figureId);
-      // Update the shared state in the context directly
       setFavorites(prev => prev.filter(fav => fav.figureId !== figureId));
     } catch (error) {
       console.error('Error removing favorite:', error);
@@ -120,7 +173,6 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
     if (!user) return;
     try {
       await removeFromScrappedEvents(user.uid, scrappedEventId);
-      // Update the central state in the context
       setScrappedEvents(prev => prev.filter(event => event.id !== scrappedEventId));
     } catch (error) {
       console.error('Error removing scrapped event:', error);
@@ -129,10 +181,8 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
 
   const handleUpdateProfile = async () => {
     if (!user) return;
-
     setIsUpdating(true);
     setUpdateMessage('');
-
     try {
       await updateProfile(user, { displayName });
       setUpdateMessage('Profile updated successfully!');
@@ -144,7 +194,6 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
     }
   };
 
-  // --- NEW: Handler to resend verification email ---
   const handleResendVerification = async () => {
     if (!user) return;
     setIsResending(true);
@@ -161,27 +210,19 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
   };
 
   const handleTabClick = (tabId: TabType) => {
-    // Show loading overlay before navigation
     setRouteLoading(true);
-    
-    // --- This part handles the Desktop Logic (unchanged behavior) ---
     setActiveTab(tabId);
     const newPath = tabId === 'account' ? '/profile' : `/profile/${tabId}`;
     router.push(newPath, { scroll: false });
 
-    // --- This part handles the Mobile Accordion Logic ---
     setOpenAccordionTabs(prevOpenTabs => {
-      // Check if the clicked tab is already in the array (i.e., it's open)
       if (prevOpenTabs.includes(tabId)) {
-        // If it is, filter it out of the array to CLOSE it.
         return prevOpenTabs.filter(id => id !== tabId);
       } else {
-        // If it's not, add it to the array to OPEN it.
         return [...prevOpenTabs, tabId];
       }
     });
 
-    // Hide loading after a short delay to allow for smooth transition
     setTimeout(() => {
       setRouteLoading(false);
     }, 400);
@@ -189,12 +230,9 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
 
   const handleAccordionClick = (tabId: TabType) => {
     setOpenAccordionTabs(prevOpenTabs => {
-      // Check if the clicked tab is already in the array (i.e., it's open)
       if (prevOpenTabs.includes(tabId)) {
-        // If it is, filter it out of the array to CLOSE it.
         return prevOpenTabs.filter(id => id !== tabId);
       } else {
-        // If it's not, add it to the array to OPEN it.
         return [...prevOpenTabs, tabId];
       }
     });
@@ -212,12 +250,10 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
   }
 
   if (!user) {
-    return null; // Will redirect to login
+    return null;
   }
 
-  const joinDate = user.metadata.creationTime
-    ? new Date(user.metadata.creationTime).toLocaleDateString()
-    : 'Unknown';
+  const joinDate = user.metadata.creationTime ? new Date(user.metadata.creationTime).toLocaleDateString() : 'Unknown';
 
   const navigationItems = [
     { id: 'account' as TabType, label: 'Account Information', icon: Settings },
@@ -229,6 +265,53 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
     <div className="bg-gray-50 rounded-2xl p-8">
       <h2 className="hidden md:block text-2xl font-bold text-gray-900 mb-6">Account Information</h2>
       <div className="space-y-6">
+
+        {/* --- NEW: Profile Picture Section --- */}
+        <div>
+          <label className="block text-gray-900 font-medium mb-3">
+            Profile Picture
+          </label>
+          <div className="flex flex-col sm:flex-row items-center gap-6">
+            <div className="relative w-24 h-24">
+              <Image
+                src={imagePreview || user.photoURL || '/images/default-profile.png'}
+                alt="Profile Picture"
+                fill
+                className="rounded-full object-cover border-4 border-gray-200"
+                sizes="96px"
+              />
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                disabled={isUploading}
+                className="absolute bottom-0 right-0 bg-key-color text-white rounded-full p-2 hover:bg-pink-700 transition-colors disabled:opacity-50"
+                aria-label="Upload new profile picture"
+              >
+                <Upload size={16} />
+              </button>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
+            {newProfileImage && (
+              <div className="flex gap-3">
+                <button onClick={handleImageUpdate} disabled={isUploading} className="bg-key-color text-white font-medium px-6 py-2 rounded-full hover:bg-pink-700 transition-colors disabled:opacity-75 disabled:cursor-not-allowed flex items-center gap-2">
+                  {isUploading && <Loader2 className="animate-spin" size={16} />}
+                  {isUploading ? 'Uploading...' : 'Save Photo'}
+                </button>
+                <button onClick={cancelImageUpdate} disabled={isUploading} className="bg-gray-300 text-gray-700 font-medium px-6 py-2 rounded-full hover:bg-gray-400 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+        <hr className="my-2" />
+
         <div>
           <label className="flex items-center gap-2 text-gray-900 font-medium mb-3">
             <User size={18} /> Display Name
@@ -253,14 +336,14 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
             </div>
           )}
         </div>
-        {/* --- UPDATED: Email Address Section --- */}
+
         <div>
           <label className="flex items-center gap-2 text-gray-900 font-medium mb-3">
             <Mail size={18} /> Email Address
           </label>
           <div className="flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-gray-700 text-lg">{user.email}</span>
+              <span className="text-gray-700 text-lg break-all">{user.email}</span>
               <span className={`text-sm px-2 py-1 rounded-full w-fit mt-1 ${user.emailVerified ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
                 {user.emailVerified ? '✓ Verified' : '⚠ Not Verified'}
               </span>
@@ -272,8 +355,6 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
             }
           </div>
         </div>
-
-        {/* --- REMOVED: Phone Verification Section --- */}
 
         <div>
           <label className="flex items-center gap-2 text-gray-900 font-medium mb-3">
@@ -370,108 +451,101 @@ export default function ProfileContent({ initialTab }: ProfileContentProps) {
 
   return (
     <>
-      {/* Loading Overlay */}
       <LoadingOverlay isVisible={isRouteLoading} message="Loading..." />
-      
       <div className="min-h-screen bg-white">
-      <main className="w-[90%] md:w-[80%] mx-auto px-4 py-8 lg:py-16">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl lg:text-4xl font-bold text-key-color mb-4">Your Profile</h1>
-          <p className="text-gray-600">Manage your account information and favorites</p>
-        </div>
-        {updateMessage && (
-          <div className={`mb-6 p-4 rounded-lg max-w-4xl mx-auto ${updateMessage.includes('successfully') || updateMessage.includes('sent') ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
-            <p className="text-sm">{updateMessage}</p>
+        <main className="w-[90%] md:w-[80%] mx-auto px-4 py-8 lg:py-16">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl lg:text-4xl font-bold text-key-color mb-4">Your Profile</h1>
+            <p className="text-gray-600">Manage your account information and favorites</p>
           </div>
-        )}
+          {updateMessage && (
+            <div className={`mb-6 p-4 rounded-lg max-w-4xl mx-auto ${updateMessage.includes('successfully') || updateMessage.includes('sent') ? 'bg-green-50 border border-green-200 text-green-700' : 'bg-red-50 border border-red-200 text-red-700'}`}>
+              <p className="text-sm">{updateMessage}</p>
+            </div>
+          )}
 
-        {/* --- NEW: Mobile Tab Navigation --- */}
-        {/* --- NEW: Mobile Accordion Navigation --- */}
-        <div className="block lg:hidden space-y-3">
-          {navigationItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = openAccordionTabs.includes(item.id);
+          <div className="block lg:hidden space-y-3">
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = openAccordionTabs.includes(item.id);
 
-            return (
-              <div key={item.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                {/* Accordion Header/Button */}
-                <button
-                  onClick={() => handleAccordionClick(item.id)}
-                  className="w-full flex items-center justify-between p-4 text-left bg-gray-50 hover:bg-gray-100 focus:outline-none"
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon size={18} className="text-key-color" />
-                    <span className="font-medium text-gray-900">{item.label}</span>
-                  </div>
-                  <ChevronDown
-                    size={20}
-                    className={`text-gray-500 transform transition-transform duration-300 ${isActive ? 'rotate-180' : ''
+              return (
+                <div key={item.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                  <button
+                    onClick={() => handleAccordionClick(item.id)}
+                    className="w-full flex items-center justify-between p-4 text-left bg-gray-50 hover:bg-gray-100 focus:outline-none"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon size={18} className="text-key-color" />
+                      <span className="font-medium text-gray-900">{item.label}</span>
+                    </div>
+                    <ChevronDown
+                      size={20}
+                      className={`text-gray-500 transform transition-transform duration-300 ${isActive ? 'rotate-180' : ''
+                        }`}
+                    />
+                  </button>
+                  <div
+                    className={`transition-all duration-500 ease-in-out overflow-hidden ${isActive ? 'max-h-screen' : 'max-h-0'
                       }`}
-                  />
-                </button>
-
-                {/* Accordion Content Panel */}
-                <div
-                  className={`transition-all duration-500 ease-in-out overflow-hidden ${isActive ? 'max-h-screen' : 'max-h-0'
-                    }`}
-                >
-                  <div className="p-4 border-t border-gray-200">
-                    {item.id === 'account' && renderAccountSection()}
-                    {item.id === 'favorites' && renderFavoritesSection()}
-                    {item.id === 'scrapped' && renderScrappedSection()}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-col lg:flex-row gap-8">
-          <div className="hidden lg:block w-64 flex-shrink-0">
-            <nav className="lg:sticky lg:top-20">
-              <div className="bg-gray-50 rounded-2xl p-4">
-                <h3 className="text-sm font-semibold text-gray-900 mb-4 px-3">Navigation</h3>
-                <ul className="space-y-1">
-                  {navigationItems.map((item) => {
-                    const Icon = item.icon;
-                    const isActive = activeTab === item.id;
-                    return (
-                      <li key={item.id}>
-                        <button onClick={() => handleTabClick(item.id)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors ${isActive ? 'bg-key-color text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
-                          <Icon size={18} />
-                          <span className="font-medium">{item.label}</span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <div className="mt-6 pt-4 border-t border-gray-200">
-                  <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-3">Quick Stats</h4>
-                  <div className="space-y-2 px-3">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Favorites</span>
-                      <span className="font-medium text-gray-900">{favorites.length}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Scrapped Events</span>
-                      <span className="font-medium text-gray-900">{scrappedEvents.length}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Member Since</span>
-                      <span className="font-medium text-gray-900">{joinDate}</span>
+                  >
+                    <div className="p-4 border-t border-gray-200">
+                      {item.id === 'account' && renderAccountSection()}
+                      {item.id === 'favorites' && renderFavoritesSection()}
+                      {item.id === 'scrapped' && renderScrappedSection()}
                     </div>
                   </div>
                 </div>
-              </div>
-            </nav>
+              );
+            })}
           </div>
-          <div className="hidden lg:block flex-1">
-            {activeTab === 'account' && renderAccountSection()}
-            {activeTab === 'favorites' && renderFavoritesSection()}
-            {activeTab === 'scrapped' && renderScrappedSection()}
+
+          <div className="flex flex-col lg:flex-row gap-8">
+            <div className="hidden lg:block w-64 flex-shrink-0">
+              <nav className="lg:sticky lg:top-20">
+                <div className="bg-gray-50 rounded-2xl p-4">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-4 px-3">Navigation</h3>
+                  <ul className="space-y-1">
+                    {navigationItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <li key={item.id}>
+                          <button onClick={() => handleTabClick(item.id)} className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors ${isActive ? 'bg-key-color text-white shadow-md' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}>
+                            <Icon size={18} />
+                            <span className="font-medium">{item.label}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-3 px-3">Quick Stats</h4>
+                    <div className="space-y-2 px-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Favorites</span>
+                        <span className="font-medium text-gray-900">{favorites.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Scrapped Events</span>
+                        <span className="font-medium text-gray-900">{scrappedEvents.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600">Member Since</span>
+                        <span className="font-medium text-gray-900">{joinDate}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </nav>
+            </div>
+            <div className="hidden lg:block flex-1">
+              {activeTab === 'account' && renderAccountSection()}
+              {activeTab === 'favorites' && renderFavoritesSection()}
+              {activeTab === 'scrapped' && renderScrappedSection()}
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
       </div>
     </>
   );

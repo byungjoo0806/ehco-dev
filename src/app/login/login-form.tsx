@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useLoading } from '@/context/LoadingContext'; // 1. Import useLoading
 
 export default function LoginForm() {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ export default function LoginForm() {
   const [successMessage, setSuccessMessage] = useState('');
 
   const { signIn, signInWithGoogle } = useAuth();
+  const { showLoading } = useLoading(); // 2. Get the showLoading function from the context
   const router = useRouter();
 
   // Check for signup success message
@@ -101,6 +103,14 @@ export default function LoginForm() {
       [e.target.name]: e.target.value
     });
   };
+
+  // 3. Create a handler to show loading before navigation
+  const handleLinkClick = (e: React.MouseEvent<HTMLAnchorElement>, path: string) => {
+    e.preventDefault(); // Prevent the link from navigating immediately
+    showLoading('Loading page...'); // Show the global loading overlay
+    router.push(path); // Programmatically navigate
+  };
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -230,13 +240,23 @@ export default function LoginForm() {
         <div className="mt-8 text-center text-sm text-gray-600">
           {/* 3. Corrected unescaped entity */}
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-key-color font-medium hover:underline">
+          {/* 4. Update the Sign Up link */}
+          <Link
+            href="/signup"
+            onClick={(e) => handleLinkClick(e, '/signup')}
+            className="text-key-color font-medium hover:underline"
+          >
             Sign up here
           </Link>
         </div>
 
         <div className="mt-4 text-center text-sm text-gray-600">
-          <Link href="/forgot-password" className="text-key-color hover:underline">
+          {/* 4. Update the Forgot Password link */}
+          <Link
+            href="/forgot-password"
+            onClick={(e) => handleLinkClick(e, '/forgot-password')}
+            className="text-key-color hover:underline"
+          >
             Forgot your password?
           </Link >
         </div>
