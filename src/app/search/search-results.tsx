@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import algoliasearch from 'algoliasearch';
 import Link from 'next/link';
 import Image from 'next/image';
+import { createUrlSlug } from '@/lib/slugify';
 
 const searchClient = algoliasearch(
     "B1QF6MLIU5",
@@ -201,7 +202,7 @@ export default function SearchResults() {
                                     {profiles.map((profile) => (
                                         <Link
                                             key={profile.objectID}
-                                            href={`/${profile.objectID}`}
+                                            href={`/${createUrlSlug(profile.objectID)}`}
                                             className="block"
                                         >
                                             <div className="flex flex-col sm:flex-row border border-key-color rounded-lg p-4 sm:p-6 hover:shadow-md hover:bg-slate-50 transition-shadow">

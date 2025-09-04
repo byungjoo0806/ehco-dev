@@ -8,6 +8,7 @@ import algoliasearch from 'algoliasearch';
 import { useFigures } from '@/context/FiguresContext';
 import Image from 'next/image';
 import WelcomeBanner from '@/components/WelcomeBanner';
+import { createUrlSlug } from '@/lib/slugify';
 
 // Setup Algolia client - same as in Header.tsx
 const searchClient = algoliasearch(
@@ -170,7 +171,7 @@ export default function Home() {
 
     const autoSlideInterval = setInterval(() => {
       setCurrentIndex((prev) => (prev + (isMobile ? 3 : 6)) % figures.length);
-    }, 3000); // Slide every 3 seconds
+    }, 5000); // Slide every 3 seconds
 
     return () => clearInterval(autoSlideInterval);
   }, [isAutoSliding, figures.length, isMobile, imagesLoading]);
@@ -402,14 +403,14 @@ export default function Home() {
                         {searchResults.map((result) => (
                           <Link
                             key={result.objectID}
-                            href={`/${result.objectID}`}
+                            href={`/${createUrlSlug(result.objectID)}`}
                             className="flex flex-row items-center px-4 py-3 hover:bg-gray-100"
                             onClick={(e) => {
                               e.preventDefault();
                               setShowResults(false);
                               setSearchQuery('');
                               setIsPageLoading(true);
-                              router.push(`/${result.objectID}`);
+                              router.push(`/${createUrlSlug(result.objectID)}`);
 
                               setTimeout(() => {
                                 setIsPageLoading(false);
@@ -497,7 +498,7 @@ export default function Home() {
                 <div className="flex justify-center items-center gap-2 sm:gap-4 md:gap-8 px-1 sm:px-4 md:px-8">
                   {displayedFigures.map((figure, index) => (
                     <Link
-                      href={`/${figure.id}`}
+                      href={`/${createUrlSlug(figure.id)}`}
                       key={`${figure.id}-${index}`}
                       className="text-center group"
                     >

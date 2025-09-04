@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import algoliasearch from 'algoliasearch';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import Image from 'next/image';
+import { createUrlSlug } from '@/lib/slugify';
 
 // Setup Algolia client
 const searchClient = algoliasearch(
@@ -335,7 +336,7 @@ export default function AllFiguresContent() {
                     <>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
                             {figures.map((figure) => (
-                                <Link href={`/${figure.id}`} key={figure.id} className="flex flex-col items-center group">
+                                <Link href={`/${createUrlSlug(figure.id)}`} key={figure.id} className="flex flex-col items-center group">
                                     <div className="w-24 h-24 sm:w-28 sm:h-28 lg:w-40 lg:h-40 relative mb-3 rounded-full overflow-hidden border-2 border-gray-200 group-hover:border-key-color transition-colors">
                                         <Image src={figure.profilePic || '/images/default-profile.png'} alt={figure.name} fill sizes="(max-width: 640px) 6rem, 10rem" className="object-cover" priority />
                                     </div>

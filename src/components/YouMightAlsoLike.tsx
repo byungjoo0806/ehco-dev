@@ -4,6 +4,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { createUrlSlug } from '@/lib/slugify';
 
 interface SimilarProfile {
     id: string;
@@ -14,7 +15,7 @@ interface SimilarProfile {
 
 // A simple placeholder for a related profile card
 const YouMightAlsoLikeCard: React.FC<SimilarProfile> = ({ id, name, name_kr, profilePic }) => (
-    <Link href={`/${id}`} className="flex items-center gap-3 group hover:bg-gray-50 p-2 rounded-md transition-colors">
+    <Link href={`/${createUrlSlug(id)}`} className="flex items-center gap-3 group hover:bg-gray-50 p-2 rounded-md transition-colors">
         <div className="relative w-12 h-12 bg-gray-200 rounded-md overflow-hidden">
             {profilePic ? (
                 <Image

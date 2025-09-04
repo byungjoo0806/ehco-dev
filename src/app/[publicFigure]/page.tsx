@@ -165,13 +165,16 @@ async function getArticleSummaries(publicFigureId: string, articleIds: string[])
     }
 }
 
-async function getPublicFigureData(publicFigureId: string): Promise<PublicFigure> {
-    const docRef = doc(db, 'selected-figures', publicFigureId.toLowerCase());
-    const docSnap = await getDoc(docRef);
+async function getPublicFigureData(publicFigureSlug: string): Promise<PublicFigure> {
+    const figuresRef = collection(db, 'selected-figures');
+    const q = query(figuresRef, where('slug', '==', publicFigureSlug.toLowerCase()));
+    const querySnapshot = await getDocs(q);
 
-    if (!docSnap.exists()) {
+    if (querySnapshot.empty) {
         throw new Error('Public figure not found');
     }
+
+    const docSnap = querySnapshot.docs[0];
 
     const data = docSnap.data();
     const publicFigureData: Partial<PublicFigure> = {
@@ -274,7 +277,7 @@ async function getFiguresByIds(ids: string[]): Promise<Array<{ id: string; name:
 async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: string }) {
     try {
         const publicFigureData = await getPublicFigureData(publicFigureId);
-        const apiResponse = await getPublicFigureContent(publicFigureId);
+        const apiResponse = await getPublicFigureContent(publicFigureData.id);
 
         // console.log(`\n--- DEBUG LOG 1: Full Timeline API Response for [${publicFigureId}] ---`);
         // console.log(JSON.stringify(apiResponse.timeline_content.data, null, 2));
@@ -334,7 +337,7 @@ async function PublicFigurePageContent({ publicFigureId }: { publicFigureId: str
 
         const [articles, articleSummaries, similarProfiles] = await Promise.all([
             getArticlesByIds(uniqueArticleIds),
-            getArticleSummaries(publicFigureId, uniqueArticleIds),
+            getArticleSummaries(publicFigureData.id, uniqueArticleIds),
             getFiguresByIds(similarFigureIds) 
         ]);
 

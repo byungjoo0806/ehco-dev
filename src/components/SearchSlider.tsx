@@ -7,6 +7,7 @@ import { debounce } from 'lodash';
 import { usePathname, useRouter } from 'next/navigation';
 import algoliasearch from 'algoliasearch';
 import Image from 'next/image';
+import { createUrlSlug } from '@/lib/slugify';
 
 const searchClient = algoliasearch(
     "B1QF6MLIU5",
@@ -155,7 +156,7 @@ export default function SearchSlider({ isOpen, onClose }: SearchSliderProps) {
     const renderSearchResult = (result: PublicFigure) => (
         <Link
             key={result.objectID}
-            href={`/${result.objectID}`}
+            href={`/${createUrlSlug(result.objectID)}`}
             className="flex flex-row items-center px-4 py-3 hover:bg-gray-50 transition-colors duration-150"
             onClick={handlePublicFigureClick}
         >

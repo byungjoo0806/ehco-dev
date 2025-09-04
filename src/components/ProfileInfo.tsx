@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { User, Instagram, Youtube, Music, Globe, Twitter, Facebook, Star, LogIn, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { addToFavorites, removeFromFavorites, isInFavorites } from '@/lib/favorites-service';
+import { createUrlSlug } from '@/lib/slugify';
 
 // --- TYPE DEFINITIONS ---
 // These interfaces are based on what's available in page.tsx
@@ -95,7 +96,7 @@ const LoginPromptModal: React.FC<{ onClose: () => void; onLogin: () => void; onS
 );
 
 // --- HELPER COMPONENTS & FUNCTIONS ---
-const InfoField: React.FC<{ label: string; value: string }> = ({ label, value }) => (
+const InfoField: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
   <div>
     <p className="text-xs font-semibold text-gray-500">{label}</p>
     <p className="text-sm text-gray-800">{value}</p>
@@ -141,6 +142,27 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
 
     checkFavoriteStatus();
   }, [user, publicFigureData.id]);
+
+  const renderRolesValue = (occupation: string): React.ReactNode => {
+    const groupRegex = /^(.*?)\s*\((.*?)\)$/;
+    const match = occupation.match(groupRegex);
+
+    if (match) {
+      const rolesText = match[1].trim();
+      const groupName = match[2].trim();
+      return (
+        <>
+          {rolesText} (
+          <Link href={`/${createUrlSlug(groupName)}`} className="hover:underline hover:text-blue-500 transition-colors">
+            {groupName}
+          </Link>
+          )
+        </>
+      );
+    }
+
+    return occupation; // Return the plain string if no match
+  };
 
   const handleFavoriteClick = async () => {
     if (!user) {
@@ -255,7 +277,7 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
             )}
             <InfoField label="Origin" value={publicFigureData.nationality} />
             {!publicFigureData.is_group && (
-              <InfoField label="Roles" value={publicFigureData.occupation[0]} />
+              <InfoField label="Roles" value={renderRolesValue(publicFigureData.occupation[0])} />
             )}
             <InfoField label="Labels" value={publicFigureData.company || 'N/A'} />
             {publicFigureData.is_group && (
@@ -264,7 +286,7 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
                 <div className="text-sm text-gray-800 flex flex-wrap items-center gap-x-1">
                   {publicFigureData.members?.map((member, index) => (
                     <React.Fragment key={member.name}>
-                      <Link href={`/${member.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`} className="hover:underline hover:text-blue-500 transition-colors">
+                      <Link href={`/${createUrlSlug(member.name)}`} className="hover:underline hover:text-blue-500 transition-colors">
                         {member.name}
                       </Link>
                       {/* This check is safe because this code only runs if members exists */}

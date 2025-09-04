@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { useAuth } from '@/context/AuthContext';
 import { getUserScrappedEvents, removeFromScrappedEvents, ScrappedEventItem } from '@/lib/scrapping-service';
 import { Bookmark, Trash2, ExternalLink, Calendar, Tag, Loader2, ChevronDown, ChevronUp, Clock, User as UserIcon } from 'lucide-react';
+import { createUrlSlug } from '@/lib/slugify';
 
 interface ProfileScrappedSectionEnhancedProps {
     maxItems?: number;
@@ -276,7 +277,7 @@ const ScrappedEventCard: React.FC<ScrappedEventCardProps> = ({
 
             {/* Figure Info with Profile Picture */}
             <div className="mb-3">
-                <Link href={`/${scrappedEvent.figureId}`}>
+                <Link href={`/${createUrlSlug(scrappedEvent.figureId)}`}>
                     <div className="flex items-center gap-3 hover:text-key-color transition-colors">
                         {/* Profile Picture */}
                         <div className="w-12 h-12 bg-gray-200 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0">
