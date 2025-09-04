@@ -264,7 +264,7 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
                 <div className="text-sm text-gray-800 flex flex-wrap items-center gap-x-1">
                   {publicFigureData.members?.map((member, index) => (
                     <React.Fragment key={member.name}>
-                      <Link href={`/${member.name.toLowerCase()}`} className="hover:underline hover:text-blue-500 transition-colors">
+                      <Link href={`/${member.name.toLowerCase().replace(/[^a-z0-9]/g, '')}`} className="hover:underline hover:text-blue-500 transition-colors">
                         {member.name}
                       </Link>
                       {/* This check is safe because this code only runs if members exists */}
