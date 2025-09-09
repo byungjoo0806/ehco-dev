@@ -5,7 +5,7 @@ import { ProfileDataProvider } from '@/context/ProfileDataContext';
 
 export const metadata: Metadata = {
   title: 'Profile - EHCO',
-  description: 'Manage your EHCO account settings and preferences.',
+  description: 'Access and customize your EHCO profile dashboard. Manage account settings, view your favorite K-Pop artists, organize saved content, and personalize your Korean entertainment experience. Control privacy settings, notification preferences, and account security.',
 };
 
 // Define the type for the URL parameters

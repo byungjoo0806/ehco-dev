@@ -1,34 +1,29 @@
-// app/search/page.tsx
+// src/app/search/page.tsx
 import { Suspense } from 'react';
-import SearchResults from './search-results';
+import SearchPageContent from './search-page-content';
 import { Loader2 } from 'lucide-react';
 import { Metadata } from 'next';
 
 export async function generateMetadata(
     { searchParams }: { searchParams: Promise<{ q?: string }> }
 ): Promise<Metadata> {
-    // Extract the search query from the URL.
     const resolvedParams = await searchParams;
     const query = resolvedParams.q || '';
 
-    // If a query exists, create a dynamic title and description.
     if (query) {
         return {
-            title: `Search results for "${query}"`,
-            description: `Find the latest profiles and articles about "${query}" on EHCO.`,
-            // IMPORTANT: It's crucial to keep this rule. You do not want Google to index
-            // thousands of different search result pages, as it can harm your site's SEO.
+            title: `Search results for "${query}" - EHCO`,
+            description: `Discover comprehensive search results for "${query}" on EHCO - your ultimate destination for K-Pop profiles, artist information, news, and exclusive content. Find detailed biographies, latest updates, and trending stories about your favorite Korean artists and entertainers.`,
             robots: {
                 index: false,
-                follow: true, // Allow Google to follow links from this page.
+                follow: true,
             },
         };
     }
 
-    // If there is no query, return the default metadata for the base /search page.
     return {
-        title: 'Search',
-        // The base search page should also not be indexed.
+        title: 'Search Korean Artists & Entertainers - EHCO',
+        description: 'Search and explore EHCO\'s extensive collection of K-Pop profiles, artist biographies, entertainment news, and exclusive content. Discover your favorite Korean artists, bands, actors, and celebrities with our comprehensive search platform.',
         robots: {
             index: false,
             follow: true,
@@ -48,7 +43,7 @@ export default function SearchPage() {
                 </div>
             }
         >
-            <SearchResults />
+            <SearchPageContent />
         </Suspense>
     );
 }

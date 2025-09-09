@@ -25,10 +25,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://ehco.ai'),
   title: {
-    default: 'EHCO - K-Entertainment Facts & Timeline',
+    default: 'EHCO - K-Pop Facts & Timeline',
     template: '%s | EHCO'
   },
-  description: 'Real-time verified facts and timeline about Korean celebrities. Latest K-entertainment news with accurate fact-checking.',
+  description: 'Real-time verified facts and timeline about Korean celebrities. Latest K-Pop news with accurate fact-checking.',
   keywords: [
     // English Keywords
     'Korean celebrity news',

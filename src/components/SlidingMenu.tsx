@@ -112,7 +112,7 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                                 <div className="border-t border-gray-200 my-8"></div>
                                 <li>
                                     <button
-                                        onClick={() => handleNavigation('/favorites', 'Loading your favorites...')}
+                                        onClick={() => handleNavigation('/profile/favorites', 'Loading your favorites...')}
                                         className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
                                     >
                                         My Favorites
@@ -120,7 +120,7 @@ export default function SlidingMenu({ isOpen, onClose }: SlidingMenuProps) {
                                 </li>
                                 <li>
                                     <button
-                                        onClick={() => handleNavigation('/scrapped', 'Loading scrapped events...')}
+                                        onClick={() => handleNavigation('/profile/scrapped', 'Loading scrapped events...')}
                                         className="block w-full text-left text-2xl px-4 font-normal text-key-color hover:bg-slate-100 hover:rounded-full transition-colors"
                                     >
                                         Scrapped Events

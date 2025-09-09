@@ -221,7 +221,7 @@ export default function SearchResults() {
                                                             {profile.name || "Profile"}
                                                         </p>
                                                         <p className='text-center text-gray-500'>
-                                                            {profile.name_kr || "Profile KR"}
+                                                            {profile.name_kr}
                                                         </p>
                                                     </div>
                                                 </div>
