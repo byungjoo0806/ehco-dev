@@ -1,9 +1,0 @@
-# *
-User-agent: *
-Allow: /
-
-# Host
-Host: https://www.ehco.ai
-
-# Sitemaps
-Sitemap: https://www.ehco.ai/sitemap.xml
