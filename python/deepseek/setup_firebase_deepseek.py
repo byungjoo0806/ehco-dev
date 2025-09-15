@@ -225,3 +225,5 @@ class NewsManager:
         except Exception as e:
             print(f"\n❌ An error occurred during migration: {e}")
             raise
+        
+news_manager = NewsManager()
