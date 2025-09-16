@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { User, Instagram, Youtube, Music, Globe, Twitter, Facebook, Star, LogIn, X } from 'lucide-react';
+import { User, Instagram, Youtube, Music, Twitter, Facebook, Star, LogIn, X, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { addToFavorites, removeFromFavorites, isInFavorites } from '@/lib/favorites-service';
 import { createUrlSlug } from '@/lib/slugify';
@@ -164,6 +164,28 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
     return occupation; // Return the plain string if no match
   };
 
+  const renderLabelsValue = (): React.ReactNode => {
+    const companyName = publicFigureData.company || 'N/A';
+    
+    // If there's no company or no company URL, just return the company name
+    if (!publicFigureData.company || !publicFigureData.companyUrl) {
+      return companyName;
+    }
+    
+    // If both company and companyUrl exist, render as a clickable link
+    return (
+      <a
+        href={publicFigureData.companyUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="hover:underline hover:text-blue-500 transition-colors inline-flex items-center gap-1"
+      >
+        {companyName}
+        <ExternalLink size={12} className="text-gray-400" />
+      </a>
+    );
+  };
+
   const handleFavoriteClick = async () => {
     if (!user) {
       setShowLoginPrompt(true);
@@ -279,7 +301,7 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
             {!publicFigureData.is_group && (
               <InfoField label="Roles" value={renderRolesValue(publicFigureData.occupation[0])} />
             )}
-            <InfoField label="Labels" value={publicFigureData.company || 'N/A'} />
+            <InfoField label="Labels" value={renderLabelsValue()} />
             {publicFigureData.is_group && (
               <div>
                 <p className="text-xs font-semibold text-gray-500">Members</p>
@@ -308,7 +330,6 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
           <div className="mt-8 pt-4 border-t border-gray-200">
             <h3 className="text-sm font-semibold text-gray-500 mb-3">Official Links</h3>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <SocialLink href={publicFigureData.companyUrl} icon={<Globe size={16} />} label="Website" />
               <SocialLink href={publicFigureData.instagramUrl} icon={<Instagram size={16} />} label="Instagram" />
               <SocialLink href={publicFigureData.twitterUrl} icon={<Twitter size={16} />} label="Twitter" />
               <SocialLink href={publicFigureData.youtubeUrl} icon={<Youtube size={16} />} label="YouTube" />
