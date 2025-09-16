@@ -153,7 +153,7 @@ async function getArticleSummaries(publicFigureId: string, articleIds: string[])
 
     try {
         const response = await fetch(
-            `${protocol}://${host}/api/article-summaries?publicFigure=${publicFigureId}&articleIds=${articleIds.join(',')}`,
+            `${protocol}://${host}/api/article-summaries?publicFigure=${encodeURIComponent(publicFigureId)}&articleIds=${encodeURIComponent(articleIds.join(','))}`,
             { cache: 'force-cache', next: { revalidate: 3600 } }
         );
 
@@ -167,7 +167,17 @@ async function getArticleSummaries(publicFigureId: string, articleIds: string[])
 
 async function getPublicFigureData(publicFigureSlug: string): Promise<PublicFigure> {
     const figuresRef = collection(db, 'selected-figures');
-    const q = query(figuresRef, where('slug', '==', publicFigureSlug.toLowerCase()));
+    
+    // Handle special case for &team: both %26team and team should work
+    let searchSlug = decodeURIComponent(publicFigureSlug.toLowerCase());
+    
+    // If someone accesses /%26team, we want to search for the 'team' slug in database
+    // but if they access /team, we also want it to work for &team
+    if (searchSlug === '&team') {
+        searchSlug = 'team'; // Search for the existing 'team' slug in database
+    }
+    
+    const q = query(figuresRef, where('slug', '==', searchSlug));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
@@ -220,7 +230,7 @@ async function getPublicFigureContent(publicFigureId: string): Promise<ApiConten
 
     try {
         const contentResponse = await fetch(
-            `${protocol}://${host}/api/public-figure-content/${publicFigureId}`,
+            `${protocol}://${host}/api/public-figure-content/${encodeURIComponent(publicFigureId)}`,
             { cache: 'force-cache', next: { revalidate: 3600 } }
             // { cache: 'no-store' }
         );
