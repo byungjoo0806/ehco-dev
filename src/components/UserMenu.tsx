@@ -42,7 +42,6 @@ export default function UserMenu() {
     try {
       await signOut();
       setIsOpen(false);
-      router.push('/');
     } catch (error) {
       console.error('Failed to logout:', error);
     } finally {

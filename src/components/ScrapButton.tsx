@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Bookmark, BookmarkCheck, LogIn, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { addToScrappedEvents, removeFromScrappedEvents, isScrapped } from '@/lib/scrapping-service';
+import { createPortal } from 'react-dom';
 
 interface EventGroupData {
   event_title?: string;
@@ -24,10 +25,10 @@ interface ScrapButtonProps {
 }
 
 // Login Prompt Modal Component
-const LoginPromptModal: React.FC<{ onClose: () => void; onLogin: () => void; onSignup: () => void }> = ({ 
-  onClose, 
-  onLogin, 
-  onSignup 
+const LoginPromptModal: React.FC<{ onClose: () => void; onLogin: () => void; onSignup: () => void }> = ({
+  onClose,
+  onLogin,
+  onSignup
 }) => (
   <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={onClose}>
     <div className="bg-white rounded-lg p-6 max-w-sm w-full relative" onClick={(e) => e.stopPropagation()}>
@@ -42,7 +43,7 @@ const LoginPromptModal: React.FC<{ onClose: () => void; onLogin: () => void; onS
         <Bookmark className="mx-auto mb-4 text-blue-500" size={48} />
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Scrap Event</h3>
         <p className="text-gray-600 mb-6">Sign in or create an account to save interesting event groups for later viewing.</p>
-        
+
         <div className="space-y-3">
           <button
             onClick={onLogin}
@@ -51,14 +52,14 @@ const LoginPromptModal: React.FC<{ onClose: () => void; onLogin: () => void; onS
             <LogIn size={18} />
             Sign In
           </button>
-          
+
           <button
             onClick={onSignup}
             className="w-full bg-gray-100 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
           >
             Create Account
           </button>
-          
+
           <button
             onClick={onClose}
             className="w-full text-gray-500 text-sm hover:text-gray-700 transition-colors"
@@ -86,11 +87,59 @@ export default function ScrapButton({
   const [isScrappedState, setIsScrappedState] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
+
+  useEffect(() => {
+    if (showLoginPrompt) {
+      // Save current scroll position
+      const currentScroll = window.scrollY;
+      setScrollPosition(currentScroll);
+
+      // Prevent body scroll while maintaining position
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${currentScroll}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+    } else {
+      // Restore body styles first
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+
+      // Use requestAnimationFrame to ensure DOM has updated before scrolling
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollPosition);
+      });
+    }
+
+    return () => {
+      // Cleanup
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+    };
+  }, [showLoginPrompt]);
+
+  // Also add this cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      if (scrollPosition > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, scrollPosition);
+        });
+      }
+    };
+  }, []);
 
   // Size variants
   const sizeClasses = {
     sm: 'p-1',
-    md: 'p-2', 
+    md: 'p-2',
     lg: 'p-3'
   };
 
@@ -181,25 +230,26 @@ export default function ScrapButton({
         title={isScrappedState ? 'Remove from scrapped events' : 'Scrap this event group'}
       >
         {isScrappedState ? (
-          <BookmarkCheck 
-            size={iconSizes[size]} 
+          <BookmarkCheck
+            size={iconSizes[size]}
             className="text-blue-500 fill-blue-500"
           />
         ) : (
-          <Bookmark 
-            size={iconSizes[size]} 
+          <Bookmark
+            size={iconSizes[size]}
             className="text-gray-400 hover:text-blue-500 transition-colors"
           />
         )}
       </button>
 
       {/* Login Prompt Modal */}
-      {showLoginPrompt && (
+      {showLoginPrompt && createPortal(
         <LoginPromptModal
           onClose={() => setShowLoginPrompt(false)}
           onLogin={handleLoginRedirect}
           onSignup={handleSignupRedirect}
-        />
+        />,
+        document.body
       )}
     </>
   );

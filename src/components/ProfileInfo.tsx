@@ -195,16 +195,16 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
     setIsLoading(true);
     try {
       if (isFavorited) {
-        await removeFromFavorites(user.uid, publicFigureData.id);
         setIsFavorited(false);
+        await removeFromFavorites(user.uid, publicFigureData.id);
       } else {
+        setIsFavorited(true);
         await addToFavorites(user.uid, {
           figureId: publicFigureData.id,
           figureName: publicFigureData.name,
           figureNameKr: publicFigureData.name_kr,
           profilePic: publicFigureData.profilePic
         });
-        setIsFavorited(true);
       }
     } catch (error) {
       console.error('Error updating favorites:', error);
@@ -312,7 +312,7 @@ export default function ProfileInfo({ publicFigureData }: ProfileInfoProps) {
                         {member.name}
                       </Link>
                       {/* This check is safe because this code only runs if members exists */}
-                      {publicFigureData.members && index < publicFigureData.members.length - 1 && <span>,</span>}
+                      {publicFigureData.members && index < publicFigureData.members.length - 1 && ","}
                     </React.Fragment>
                   ))}
 

@@ -1,9 +1,10 @@
 // src/components/ReportButton.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Flag, X, Send } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { createPortal } from 'react-dom';
 
 // 1. Defined a specific type for the eventGroup object
 interface EventGroupData {
@@ -68,8 +69,8 @@ const ReportModal: React.FC<{
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={handleBackdropClick}>
-      <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-[9999] flex items-end sm:items-center justify-center p-4" onClick={handleBackdropClick}>
+      <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full max-h-[85vh] sm:max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-900">Report Issue</h3>
           <button
@@ -119,7 +120,7 @@ const ReportModal: React.FC<{
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Please provide specific details about the issue you found..."
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+              className="w-full h-[10vh] p-2 sm:p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
               rows={4}
               required
               disabled={isSubmitting}
@@ -244,6 +245,54 @@ export default function ReportButton({
   const [showReportModal, setShowReportModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
+
+  useEffect(() => {
+    if (showReportModal) {
+      // Save current scroll position
+      const currentScroll = window.scrollY;
+      setScrollPosition(currentScroll);
+
+      // Prevent body scroll while maintaining position
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${currentScroll}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+    } else {
+      // Restore body styles first
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+
+      // Use requestAnimationFrame to ensure DOM has updated before scrolling
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scrollPosition);
+      });
+    }
+
+    return () => {
+      // Cleanup
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+    };
+  }, [showReportModal]);
+
+  // Also add this cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      if (scrollPosition > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, scrollPosition);
+        });
+      }
+    };
+  }, []);
 
   // Size variants
   const sizeClasses = {
@@ -318,7 +367,7 @@ export default function ReportButton({
         onClick={handleReportClick}
         className={`
           ${sizeClasses[size]}
-          rounded-full hover:bg-red-50 transition-colors 
+          rounded-full hover:bg-red-50 transition-colors z-0
           ${className}
         `}
         title="Report an issue with this event"
@@ -330,7 +379,7 @@ export default function ReportButton({
       </button>
 
       {/* Report Modal */}
-      {showReportModal && (
+      {showReportModal && createPortal(
         <ReportModal
           onClose={() => setShowReportModal(false)}
           onSubmit={handleSubmitReport}
@@ -339,14 +388,15 @@ export default function ReportButton({
           eventTitle={eventGroup.event_title || 'N/A'}
           userEmail={user?.email}
           isLoggedIn={!!user}
-        />
+        />,
+        document.body
       )}
 
-      {/* Success Modal */}
-      {showSuccessModal && (
+      {showSuccessModal && createPortal(
         <SuccessModal
           onClose={() => setShowSuccessModal(false)}
-        />
+        />,
+        document.body
       )}
     </>
   );
